@@ -1,0 +1,214 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Plus, Minus } from "lucide-react";
+
+interface Supply {
+  id: string;
+  category: string;
+  name: string;
+  quantity: number;
+  safetyStock: number;
+}
+
+interface EditQuantityModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (id: string, newQuantity: number, changeType: string, reason: string) => void;
+  supply: Supply | null;
+}
+
+export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: EditQuantityModalProps) {
+  const [changeType, setChangeType] = useState<"increase" | "decrease">("increase");
+  const [changeAmount, setChangeAmount] = useState<number>(0);
+  const [reason, setReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
+
+  const increaseReasons = [
+    "其他（請說明）"
+  ];
+
+  const decreaseReasons = [
+    "過期",
+    "其他（請說明）"
+  ];
+
+  useEffect(() => {
+    // Reset form when modal opens
+    if (open) {
+      setChangeType("increase");
+      setChangeAmount(0);
+      setReason("");
+      setCustomReason("");
+    }
+  }, [open]);
+
+  const handleSubmit = () => {
+    if (supply && changeAmount > 0 && (reason !== "其他（請說明）" ? reason : customReason)) {
+      const finalReason = reason === "其他（請說明）" ? customReason : reason;
+      const newQuantity = changeType === "increase" 
+        ? supply.quantity + changeAmount 
+        : Math.max(0, supply.quantity - changeAmount);
+      
+      onSubmit(supply.id, newQuantity, changeType, finalReason);
+      onOpenChange(false);
+    }
+  };
+
+  const getCurrentReasons = () => {
+    return changeType === "increase" ? increaseReasons : decreaseReasons;
+  };
+
+  const getNewQuantity = () => {
+    if (!supply) return 0;
+    return changeType === "increase" 
+      ? supply.quantity + changeAmount 
+      : Math.max(0, supply.quantity - changeAmount);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-semibold">修改庫存數量</DialogTitle>
+          <DialogDescription className="text-sm">
+            {supply && `${supply.name} - 目前庫存：${supply.quantity} 個`}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          {/* 增減選擇 */}
+          <div className="space-y-2">
+            <Label>操作類型</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={changeType === "increase" ? "default" : "outline"}
+                onClick={() => setChangeType("increase")}
+                className="flex-1"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                增加庫存
+              </Button>
+              <Button
+                type="button"
+                variant={changeType === "decrease" ? "default" : "outline"}
+                onClick={() => setChangeType("decrease")}
+                className="flex-1"
+              >
+                <Minus className="h-4 w-4 mr-2" />
+                減少庫存
+              </Button>
+            </div>
+          </div>
+
+          {/* 數量輸入 */}
+          <div className="space-y-2">
+            <Label htmlFor="change-amount">
+              {changeType === "increase" ? "增加數量" : "減少數量"}
+            </Label>
+            <Input
+              id="change-amount"
+              type="number"
+              min="1"
+              max={changeType === "decrease" ? supply?.quantity : undefined}
+              value={changeAmount}
+              onChange={(e) => setChangeAmount(parseInt(e.target.value) || 0)}
+              placeholder={`請輸入要${changeType === "increase" ? "增加" : "減少"}的數量`}
+            />
+            {changeType === "decrease" && supply && changeAmount > supply.quantity && (
+              <p className="text-sm text-destructive">
+                減少數量不能超過目前庫存數量
+              </p>
+            )}
+          </div>
+
+          {/* 原因選擇 */}
+          <div className="space-y-2">
+            <Label>變更原因</Label>
+            <Select value={reason} onValueChange={setReason}>
+              <SelectTrigger>
+                <SelectValue placeholder="選擇變更原因" />
+              </SelectTrigger>
+              <SelectContent>
+                {getCurrentReasons().map((reasonOption) => (
+                  <SelectItem key={reasonOption} value={reasonOption}>
+                    {reasonOption}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 自定義原因 */}
+          {reason === "其他（請說明）" && (
+            <div className="space-y-2">
+              <Label htmlFor="custom-reason">請說明原因</Label>
+              <Textarea
+                id="custom-reason"
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+                placeholder="請詳細說明變更原因..."
+                rows={3}
+              />
+            </div>
+          )}
+
+          {/* 預覽結果 */}
+          {changeAmount > 0 && (
+            <div className="p-3 bg-muted rounded-lg">
+              <div className="text-sm">
+                <p className="font-medium mb-1">變更預覽：</p>
+                <p className="text-muted-foreground">
+                  {supply?.quantity} → {getNewQuantity()} 個
+                  <span className={`ml-2 font-medium ${
+                    changeType === "increase" ? "text-green-600" : "text-red-600"
+                  }`}>
+                    ({changeType === "increase" ? "+" : "-"}{changeAmount})
+                  </span>
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            取消
+          </Button>
+          <Button 
+            onClick={handleSubmit}
+            disabled={
+              !changeAmount || 
+              changeAmount <= 0 || 
+              !reason || 
+              (reason === "其他（請說明）" && !customReason.trim()) ||
+              (changeType === "decrease" && supply && changeAmount > supply.quantity)
+            }
+          >
+            確認修改
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
