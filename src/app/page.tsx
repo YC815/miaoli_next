@@ -9,9 +9,11 @@ import { AddSupplyModal } from "@/components/modals/AddSupplyModal";
 import { BatchPickupModal } from "@/components/modals/BatchPickupModal";
 import { ReceiptModal } from "@/components/modals/ReceiptModal";
 import { ModeToggle } from "@/components/theme-toggle";
+import { StaffManagement } from "@/components/admin/StaffManagement";
+import { UserProfile } from "@/components/auth/UserProfile";
 import * as XLSX from 'xlsx';
 
-type TabType = "supplies" | "records";
+type TabType = "supplies" | "records" | "staff";
 
 interface Supply {
   id: string;
@@ -62,6 +64,7 @@ export default function Home() {
   const [isAddSupplyOpen, setIsAddSupplyOpen] = useState(false);
   const [isBatchPickupOpen, setIsBatchPickupOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
 
   const [supplies, setSupplies] = useState<Supply[]>([
     { id: "1", category: "生活用品", name: "牙膏", quantity: 50, safetyStock: 10 },
@@ -208,12 +211,12 @@ export default function Home() {
           </div>
 
           {/* Center: Navigation Tabs */}
-          <div className="flex-1 flex justify-center max-w-md mx-4">
+          <div className="flex-1 flex justify-center max-w-lg mx-4">
             <div className="flex bg-muted/30 rounded-lg p-1">
               <Button
                 variant={activeTab === "supplies" ? "default" : "ghost"}
                 onClick={() => setActiveTab("supplies")}
-                className="rounded-md text-sm px-4 py-2"
+                className="rounded-md text-sm px-3 py-2"
                 size="sm"
               >
                 物資管理
@@ -221,10 +224,19 @@ export default function Home() {
               <Button
                 variant={activeTab === "records" ? "default" : "ghost"}
                 onClick={() => setActiveTab("records")}
-                className="rounded-md text-sm px-4 py-2"
+                className="rounded-md text-sm px-3 py-2"
                 size="sm"
               >
                 紀錄調取
+              </Button>
+              {/* 管理員專用分頁 - 暫時顯示，之後會根據用戶角色條件渲染 */}
+              <Button
+                variant={activeTab === "staff" ? "default" : "ghost"}
+                onClick={() => setActiveTab("staff")}
+                className="rounded-md text-sm px-3 py-2"
+                size="sm"
+              >
+                人員管理
               </Button>
             </div>
           </div>
@@ -238,15 +250,23 @@ export default function Home() {
               </span>
             </div>
 
-            {/* User Avatar Placeholder */}
+            {/* User Avatar */}
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all">
+              <div 
+                className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
+                onClick={() => setIsUserProfileOpen(true)}
+                title="點擊編輯個人資料"
+              >
                 <span className="text-white font-medium text-sm">管</span>
               </div>
               {/* User name - Desktop only */}
-              <span className="hidden lg:block text-sm font-medium text-foreground">
+              <button 
+                className="hidden lg:block text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
+                onClick={() => setIsUserProfileOpen(true)}
+                title="點擊編輯個人資料"
+              >
                 管理員
-              </span>
+              </button>
             </div>
 
             {/* Theme Toggle */}
@@ -282,6 +302,12 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {activeTab === "staff" && (
+          <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-6">
+            <StaffManagement />
+          </div>
+        )}
       </main>
 
       {/* Modals */}
@@ -302,6 +328,11 @@ export default function Home() {
         open={isReceiptOpen}
         onOpenChange={setIsReceiptOpen}
         onPrint={handlePrintReceipts}
+      />
+
+      <UserProfile
+        open={isUserProfileOpen}
+        onOpenChange={setIsUserProfileOpen}
       />
 
       {/* Floating Action Buttons */}
