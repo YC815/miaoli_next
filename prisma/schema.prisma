@@ -1,15 +1,103 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id          String    @id @default(cuid())
+  clerkId     String    @unique
+  email       String    @unique
+  nickname    String?
+  role        Role      @default(VOLUNTEER)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  donationRecords  DonationRecord[]
+  disbursements    Disbursement[]
+  inventoryLogs    InventoryLog[]
+}
+
+model Supply {
+  id          String    @id @default(cuid())
+  name        String
+  category    String
+  quantity    Int
+  safetyStock Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  donationItems     DonationItem[]
+  disbursementItems DisbursementItem[]
+  inventoryLogs     InventoryLog[]
+}
+
+model DonationRecord {
+  id          String    @id @default(cuid())
+  donorName   String
+  donorPhone  String?
+  address     String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  donationItems DonationItem[]
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+}
+
+model DonationItem {
+  id         String          @id @default(cuid())
+  donation   DonationRecord  @relation(fields: [donationId], references: [id])
+  donationId String
+  supply     Supply          @relation(fields: [supplyId], references: [id])
+  supplyId   String
+  quantity   Int
+  expiryDate DateTime?
+}
+
+model Disbursement {
+  id                String    @id @default(cuid())
+  recipientUnit     String
+  recipientPhone    String?
+  purpose           String?
+  createdAt         DateTime  @default(now())
+  disbursementItems DisbursementItem[]
+  user              User      @relation(fields: [userId], references: [id])
+  userId            String
+}
+
+model DisbursementItem {
+  id              String        @id @default(cuid())
+  disbursement    Disbursement  @relation(fields: [disbursementId], references: [id])
+  disbursementId  String
+  supply          Supply        @relation(fields: [supplyId], references: [id])
+  supplyId        String
+  quantity        Int
+}
+
+model InventoryLog {
+  id           String      @id @default(cuid())
+  supply       Supply      @relation(fields: [supplyId], references: [id])
+  supplyId     String
+  changeType   ChangeType
+  changeAmount Int
+  newQuantity  Int
+  reason       String
+  createdAt    DateTime    @default(now())
+  user         User        @relation(fields: [userId], references: [id])
+  userId       String
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  VOLUNTEER
+}
+
+enum ChangeType {
+  INCREASE
+  DECREASE
 }
