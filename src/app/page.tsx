@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { StatisticsCards } from "@/components/StatisticsCards";
 import { SuppliesTable } from "@/components/SuppliesTable";
@@ -12,6 +12,8 @@ import { ModeToggle } from "@/components/theme-toggle";
 import { StaffManagement } from "@/components/admin/StaffManagement";
 import { UserProfile } from "@/components/auth/UserProfile";
 import * as XLSX from 'xlsx';
+import { AuthGuard, User } from "@/components/auth/AuthGuard";
+import { toast } from "sonner";
 
 type TabType = "supplies" | "records" | "staff";
 
@@ -59,68 +61,161 @@ interface DonationRecord {
   selected: boolean;
 }
 
-export default function Home() {
+function HomePage({ dbUser: initialDbUser }: { dbUser: User | null }) {
+  const [dbUser, setDbUser] = useState(initialDbUser);
   const [activeTab, setActiveTab] = useState<TabType>("supplies");
   const [isAddSupplyOpen, setIsAddSupplyOpen] = useState(false);
   const [isBatchPickupOpen, setIsBatchPickupOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
 
-  const [supplies, setSupplies] = useState<Supply[]>([
-    { id: "1", category: "生活用品", name: "牙膏", quantity: 50, safetyStock: 10 },
-    { id: "2", category: "食品", name: "食用油", quantity: 25, safetyStock: 5 },
-    { id: "3", category: "衣物", name: "毛毯", quantity: 8, safetyStock: 15 },
-    { id: "4", category: "醫療用品", name: "口罩", quantity: 200, safetyStock: 50 },
-    { id: "5", category: "生活用品", name: "洗髮精", quantity: 30, safetyStock: 8 },
-    { id: "6", category: "食品", name: "白米", quantity: 45, safetyStock: 20 },
-    { id: "7", category: "衣物", name: "外套", quantity: 15, safetyStock: 10 },
-    { id: "8", category: "醫療用品", name: "酒精", quantity: 80, safetyStock: 25 },
-    { id: "9", category: "食品", name: "罐頭", quantity: 120, safetyStock: 30 },
-    { id: "10", category: "生活用品", name: "衛生紙", quantity: 5, safetyStock: 20 },
-    { id: "11", category: "衣物", name: "襪子", quantity: 60, safetyStock: 15 },
-    { id: "12", category: "食品", name: "麵條", quantity: 35, safetyStock: 12 },
-    { id: "13", category: "醫療用品", name: "繃帶", quantity: 40, safetyStock: 18 },
-    { id: "14", category: "生活用品", name: "肥皂", quantity: 22, safetyStock: 10 },
-    { id: "15", category: "食品", name: "奶粉", quantity: 18, safetyStock: 25 }
-  ]);
+  const [supplies, setSupplies] = useState<Supply[]>([]);
+
+  const fetchSupplies = async () => {
+    try {
+      const response = await fetch('/api/supplies');
+      if (response.ok) {
+        const data = await response.json();
+        setSupplies(data);
+      } else {
+        toast.error("載入物資失敗");
+      }
+    } catch (error) {
+      console.error("Error fetching supplies:", error);
+      toast.error("載入物資失敗");
+    }
+  };
+
+  useEffect(() => {
+    fetchSupplies();
+  }, []);
 
   const stats = {
     totalCategories: supplies.length,
-    monthlyDonations: 128,
-    monthlyDistributions: 89,
+    monthlyDonations: 0, // Will be fetched from records later
+    monthlyDistributions: 0, // Will be fetched from records later
     lowStock: supplies.filter(s => s.quantity < s.safetyStock).length,
   };
 
-  const handleAddSupply = (donorInfo: DonorInfo, supplyItems: SupplyItem[], notes: string) => {
-    console.log("Donor Info:", donorInfo);
-    console.log("Supply Items:", supplyItems);
-    console.log("Notes:", notes);
-    setIsAddSupplyOpen(false);
+  const handleUserUpdate = (updatedUser: User) => {
+    setDbUser(updatedUser);
   };
 
-  const handleBatchPickup = (pickupInfo: BatchPickupInfo, selectedItems: PickupItem[]) => {
-    console.log("Pickup Info:", pickupInfo);
-    console.log("Selected Items:", selectedItems);
-    setIsBatchPickupOpen(false);
+  const handleAddSupply = async (donorInfo: DonorInfo, supplyItems: SupplyItem[], notes: string) => {
+    try {
+      const response = await fetch('/api/donations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ donorInfo, supplyItems, notes }),
+      });
+
+      if (response.ok) {
+        toast.success("物資新增成功！");
+        fetchSupplies(); // Refresh supplies list
+        setIsAddSupplyOpen(false);
+      } else {
+        const errorData = await response.json();
+        toast.error(`新增物資失敗: ${errorData.error || response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Error adding supply:", error);
+      toast.error("新增物資失敗");
+    }
   };
 
-  const handleUpdateSupply = (updatedSupply: Supply) => {
-    setSupplies(supplies.map(supply => 
-      supply.id === updatedSupply.id ? updatedSupply : supply
-    ));
+  const handleBatchPickup = async (pickupInfo: BatchPickupInfo, selectedItems: PickupItem[]) => {
+    try {
+      const response = await fetch('/api/disbursements', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ pickupInfo, selectedItems }),
+      });
+
+      if (response.ok) {
+        toast.success("批量領取成功！");
+        fetchSupplies(); // Refresh supplies list
+        setIsBatchPickupOpen(false);
+      } else {
+        const errorData = await response.json();
+        toast.error(`批量領取失敗: ${errorData.error || response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Error batch pickup:", error);
+      toast.error("批量領取失敗");
+    }
   };
 
-  const handleUpdateQuantity = (id: string, newQuantity: number, changeType: string, reason: string) => {
-    setSupplies(supplies.map(supply => 
-      supply.id === id ? { ...supply, quantity: newQuantity } : supply
-    ));
-    console.log(`庫存變更記錄: ${id} - ${changeType} - 新數量: ${newQuantity} - 原因: ${reason}`);
+  const handleUpdateSupply = async (updatedSupply: Supply) => {
+    try {
+      const response = await fetch(`/api/supplies/${updatedSupply.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedSupply),
+      });
+
+      if (response.ok) {
+        toast.success("物資資訊更新成功！");
+        fetchSupplies(); // Refresh supplies list
+      } else {
+        const errorData = await response.json();
+        toast.error(`更新物資失敗: ${errorData.error || response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Error updating supply:", error);
+      toast.error("更新物資失敗");
+    }
   };
 
-  const handleUpdateSafetyStock = (id: string, newSafetyStock: number) => {
-    setSupplies(supplies.map(supply => 
-      supply.id === id ? { ...supply, safetyStock: newSafetyStock } : supply
-    ));
+  const handleUpdateQuantity = async (id: string, newQuantity: number, changeType: string, reason: string) => {
+    try {
+      const response = await fetch('/api/inventory-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ supplyId: id, changeType, changeAmount: Math.abs(newQuantity - (supplies.find(s => s.id === id)?.quantity || 0)), newQuantity, reason }),
+      });
+
+      if (response.ok) {
+        toast.success("庫存數量更新成功！");
+        fetchSupplies(); // Refresh supplies list
+      } else {
+        const errorData = await response.json();
+        toast.error(`更新庫存失敗: ${errorData.error || response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Error updating quantity:", error);
+      toast.error("更新庫存失敗");
+    }
+  };
+
+  const handleUpdateSafetyStock = async (id: string, newSafetyStock: number) => {
+    try {
+      const response = await fetch(`/api/supplies/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ safetyStock: newSafetyStock }),
+      });
+
+      if (response.ok) {
+        toast.success("安全庫存量更新成功！");
+        fetchSupplies(); // Refresh supplies list
+      } else {
+        const errorData = await response.json();
+        toast.error(`更新安全庫存失敗: ${errorData.error || response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Error updating safety stock:", error);
+      toast.error("更新安全庫存失敗");
+    }
   };
 
   const handleExportExcel = () => {
@@ -195,6 +290,12 @@ export default function Home() {
     }
   };
 
+  const roleMapping = {
+    ADMIN: '管理員',
+    STAFF: '工作人員',
+    VOLUNTEER: '志工',
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex flex-col">
       {/* Navigation Bar */}
@@ -229,45 +330,50 @@ export default function Home() {
               >
                 紀錄調取
               </Button>
-              {/* 管理員專用分頁 - 暫時顯示，之後會根據用戶角色條件渲染 */}
-              <Button
-                variant={activeTab === "staff" ? "default" : "ghost"}
-                onClick={() => setActiveTab("staff")}
-                className="rounded-md text-sm px-3 py-2"
-                size="sm"
-              >
-                人員管理
-              </Button>
+              {dbUser && dbUser.role === 'ADMIN' && (
+                <Button
+                  variant={activeTab === "staff" ? "default" : "ghost"}
+                  onClick={() => setActiveTab("staff")}
+                  className="rounded-md text-sm px-3 py-2"
+                  size="sm"
+                >
+                  人員管理
+                </Button>
+              )}
             </div>
           </div>
 
           {/* Right: User Info & Settings */}
           <div className="flex items-center gap-3">
-            {/* User Role Badge - Desktop only */}
-            <div className="hidden md:flex items-center">
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                管理員
-              </span>
-            </div>
+            {dbUser && (
+              <>
+                {/* User Role Badge - Desktop only */}
+                <div className="hidden md:flex items-center">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    {roleMapping[dbUser.role]}
+                  </span>
+                </div>
 
-            {/* User Avatar */}
-            <div className="flex items-center gap-2">
-              <div 
-                className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
-                onClick={() => setIsUserProfileOpen(true)}
-                title="點擊編輯個人資料"
-              >
-                <span className="text-white font-medium text-sm">管</span>
-              </div>
-              {/* User name - Desktop only */}
-              <button 
-                className="hidden lg:block text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
-                onClick={() => setIsUserProfileOpen(true)}
-                title="點擊編輯個人資料"
-              >
-                管理員
-              </button>
-            </div>
+                {/* User Avatar */}
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
+                    onClick={() => setIsUserProfileOpen(true)}
+                    title="點擊編輯個人資料"
+                  >
+                    <span className="text-white font-medium text-sm">{dbUser.nickname?.[0]}</span>
+                  </div>
+                  {/* User name - Desktop only */}
+                  <button 
+                    className="hidden lg:block text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
+                    onClick={() => setIsUserProfileOpen(true)}
+                    title="點擊編輯個人資料"
+                  >
+                    {dbUser.nickname}
+                  </button>
+                </div>
+              </>
+            )}
 
             {/* Theme Toggle */}
             <ModeToggle />
@@ -333,6 +439,8 @@ export default function Home() {
       <UserProfile
         open={isUserProfileOpen}
         onOpenChange={setIsUserProfileOpen}
+        dbUser={dbUser}
+        onUserUpdate={handleUserUpdate}
       />
 
       {/* Floating Action Buttons */}
@@ -345,5 +453,14 @@ export default function Home() {
         />
       )}
     </div>
+  );
+}
+
+
+export default function Home() {
+  return (
+    <AuthGuard>
+      <HomePage dbUser={null} />
+    </AuthGuard>
   );
 }

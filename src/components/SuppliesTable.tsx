@@ -125,7 +125,7 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredSupplies.map((supply, index) => {
+                filteredSupplies.map((supply) => {
                   const status = getStockStatus(supply.quantity, supply.safetyStock);
                   return (
                     <TableRow key={supply.id} className="hover:bg-muted/20 transition-colors">

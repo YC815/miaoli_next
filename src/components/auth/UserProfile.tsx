@@ -15,58 +15,27 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@clerk/nextjs";
 import { Crown, UserCheck, Users, Edit2 } from "lucide-react";
-
-interface User {
-  id: string;
-  clerkId: string;
-  email: string;
-  nickname?: string;
-  avatarUrl?: string;
-  role: "admin" | "staff" | "volunteer";
-  isFirstLogin: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  lastLoginAt?: Date;
-}
+import { User } from "./AuthGuard";
 
 interface UserProfileProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  dbUser: User | null;
+  onUserUpdate: (updatedUser: User) => void;
 }
 
-export function UserProfile({ open, onOpenChange }: UserProfileProps) {
+export function UserProfile({ open, onOpenChange, dbUser, onUserUpdate }: UserProfileProps) {
   const { user: clerkUser } = useUser();
-  const [dbUser, setDbUser] = useState<User | null>(null);
   const [nickname, setNickname] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    if (open) {
-      fetchUserProfile();
+    if (dbUser) {
+      setNickname(dbUser.nickname || "");
     }
-  }, [open]);
-
-  const fetchUserProfile = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch('/api/users/profile');
-      if (response.ok) {
-        const userData = await response.json();
-        setDbUser(userData);
-        setNickname(userData.nickname || "");
-      } else {
-        throw new Error('Failed to fetch user profile');
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      setError('載入用戶資料時發生錯誤');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [dbUser]);
 
   const handleSubmit = async () => {
     if (!dbUser) return;
@@ -88,7 +57,7 @@ export function UserProfile({ open, onOpenChange }: UserProfileProps) {
 
       if (response.ok) {
         const updatedUser = await response.json();
-        setDbUser(updatedUser);
+        onUserUpdate(updatedUser);
         setSuccess('暱稱更新成功！');
         setTimeout(() => {
           setSuccess("");
@@ -151,7 +120,8 @@ export function UserProfile({ open, onOpenChange }: UserProfileProps) {
 
   const roleInfo = dbUser ? getRoleInfo(dbUser.role) : null;
 
-  const formatDate = (date: Date | string) => {
+  const formatDate = (date: Date | string | undefined) => {
+    if (!date) return "N/A";
     const d = new Date(date);
     return d.toLocaleDateString('zh-TW', {
       year: 'numeric',
@@ -175,11 +145,7 @@ export function UserProfile({ open, onOpenChange }: UserProfileProps) {
           </DialogDescription>
         </DialogHeader>
         
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
-          </div>
-        ) : dbUser ? (
+        {dbUser ? (
           <div className="space-y-4">
             {/* 用戶基本資訊 */}
             <div className="p-4 bg-muted rounded-lg">
@@ -219,7 +185,7 @@ export function UserProfile({ open, onOpenChange }: UserProfileProps) {
                 <div>
                   <span className="text-muted-foreground">最後登入</span>
                   <div className="font-medium">
-                    {dbUser.lastLoginAt ? formatDate(dbUser.lastLoginAt) : "首次登入"}
+                    {formatDate(dbUser.lastLoginAt)}
                   </div>
                 </div>
               </div>
@@ -278,7 +244,7 @@ export function UserProfile({ open, onOpenChange }: UserProfileProps) {
           </div>
         ) : (
           <div className="text-center py-8">
-            <p className="text-muted-foreground">載入用戶資料失敗</p>
+            <p className="text-muted-foreground">無法載入使用者資料</p>
           </div>
         )}
 
@@ -288,7 +254,7 @@ export function UserProfile({ open, onOpenChange }: UserProfileProps) {
           </Button>
           <Button 
             onClick={handleSubmit} 
-            disabled={isSubmitting || isLoading || !dbUser || nickname === (dbUser?.nickname || "")}
+            disabled={isSubmitting || !dbUser || nickname === (dbUser?.nickname || "")}
           >
             {isSubmitting ? (
               <div className="flex items-center space-x-2">

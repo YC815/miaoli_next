@@ -57,10 +57,12 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
     purpose: "",
   });
   const [pickupItems, setPickupItems] = useState<PickupItem[]>([]);
-
-  const pickupUnits = ["慈濟基金會", "紅十字會", "世界展望會", "創世基金會"];
+  const [availablePickupUnits, setAvailablePickupUnits] = useState<string[]>([]);
 
   useEffect(() => {
+    const mockPickupUnits = ["慈濟基金會", "紅十字會", "世界展望會", "創世基金會"];
+    setAvailablePickupUnits(mockPickupUnits);
+
     const availableItems: PickupItem[] = supplies.map(supply => ({
       id: supply.id,
       name: supply.name,
@@ -87,6 +89,10 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
   };
 
   const handleSubmit = () => {
+    if (batchPickupInfo.unit === "new" && !batchPickupInfo.unit.trim()) {
+      // Handle error for empty new unit
+      return;
+    }
     const selectedItems = pickupItems.filter(item => item.requestedQuantity > 0);
     onSubmit(batchPickupInfo, selectedItems);
     resetForm();
@@ -124,12 +130,20 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
                     <SelectValue placeholder="選擇領取單位" />
                   </SelectTrigger>
                   <SelectContent>
-                    {pickupUnits.map((unit) => (
+                    {availablePickupUnits.map((unit) => (
                       <SelectItem key={unit} value={unit}>{unit}</SelectItem>
                     ))}
                     <SelectItem value="new">+ 新增單位</SelectItem>
                   </SelectContent>
                 </Select>
+                {batchPickupInfo.unit === "new" && (
+                  <Input
+                    type="text"
+                    value={batchPickupInfo.unit === "new" ? "" : batchPickupInfo.unit}
+                    onChange={(e) => setBatchPickupInfo({...batchPickupInfo, unit: e.target.value})}
+                    placeholder="輸入新領取單位名稱"
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="unit-phone">聯絡電話</Label>
@@ -208,7 +222,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
             取消
           </Button>
           <Button 

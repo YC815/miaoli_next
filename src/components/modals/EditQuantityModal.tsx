@@ -33,7 +33,7 @@ interface Supply {
 interface EditQuantityModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (id: string, newQuantity: number, changeType: string, reason: string) => void;
+  onSubmit: (id: string, newQuantity: number, changeType: "INCREASE" | "DECREASE", reason: string) => void;
   supply: Supply | null;
 }
 
@@ -69,7 +69,7 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
         ? supply.quantity + changeAmount 
         : Math.max(0, supply.quantity - changeAmount);
       
-      onSubmit(supply.id, newQuantity, changeType, finalReason);
+      onSubmit(supply.id, newQuantity, changeType.toUpperCase() as "INCREASE" | "DECREASE", finalReason);
       onOpenChange(false);
     }
   };

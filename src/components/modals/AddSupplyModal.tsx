@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -51,9 +51,16 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
     { name: "", category: "", quantity: 0, expiryDate: "" }
   ]);
   const [notes, setNotes] = useState("");
+  const [availableSupplyNames, setAvailableSupplyNames] = useState<string[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
 
-  const supplyNames = ["牙膏", "食用油", "毛毯", "衣物", "罐頭", "麵條"];
-  const categories = ["生活用品", "食品", "衣物", "醫療用品"];
+  useEffect(() => {
+    // Mock fetching supply names and categories
+    const mockSupplyNames = ["牙膏", "食用油", "毛毯", "衣物", "罐頭", "麵條"];
+    const mockCategories = ["生活用品", "食品", "衣物", "醫療用品"];
+    setAvailableSupplyNames(mockSupplyNames);
+    setAvailableCategories(mockCategories);
+  }, []);
 
   const addSupplyItem = () => {
     setSupplyItems([...supplyItems, { name: "", category: "", quantity: 0, expiryDate: "" }]);
@@ -171,12 +178,20 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
                         <SelectValue placeholder="選擇物資" />
                       </SelectTrigger>
                       <SelectContent>
-                        {supplyNames.map((name) => (
+                        {availableSupplyNames.map((name) => (
                           <SelectItem key={name} value={name}>{name}</SelectItem>
                         ))}
                         <SelectItem value="new">+ 新增物資</SelectItem>
                       </SelectContent>
                     </Select>
+                    {item.name === "new" && (
+                      <Input
+                        type="text"
+                        value={item.name === "new" ? "" : item.name}
+                        onChange={(e) => updateSupplyItem(index, "name", e.target.value)}
+                        placeholder="輸入新物資名稱"
+                      />
+                    )}
                   </div>
                   
                   <div className="space-y-2">
@@ -189,7 +204,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
                         <SelectValue placeholder="選擇類別" />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map((category) => (
+                        {availableCategories.map((category) => (
                           <SelectItem key={category} value={category}>{category}</SelectItem>
                         ))}
                       </SelectContent>
@@ -234,7 +249,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
             取消
           </Button>
           <Button onClick={handleSubmit}>
