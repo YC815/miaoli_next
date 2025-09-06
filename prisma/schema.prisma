@@ -37,6 +37,7 @@ model Supply {
 
 model DonationRecord {
   id            String         @id @default(cuid())
+  serialNumber  String         @unique @default("")
   donorName     String
   donorPhone    String?
   address       String?
@@ -59,6 +60,7 @@ model DonationItem {
 
 model Disbursement {
   id                String             @id @default(cuid())
+  serialNumber      String             @unique @default("")
   recipientUnit     String
   recipientPhone    String?
   purpose           String?
