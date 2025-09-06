@@ -216,7 +216,7 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
               changeAmount <= 0 || 
               !reason || 
               (reason === "其他（請說明）" && !customReason.trim()) ||
-              (changeType === "decrease" && supply && changeAmount > supply.quantity)
+              !!(changeType === "decrease" && supply && changeAmount > supply.quantity)
             }
           >
             確認修改

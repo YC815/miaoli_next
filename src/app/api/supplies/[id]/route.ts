@@ -5,7 +5,7 @@ import { Role } from '@prisma/client';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId: clerkId } = await auth();
@@ -23,7 +23,7 @@ export async function PUT(
       }, { status: 403 });
     }
 
-    const supplyId = params.id;
+    const { id: supplyId } = await params;
     const { name, category, quantity, safetyStock } = await request.json();
 
     const existingSupply = await prisma.supply.findUnique({

@@ -141,7 +141,7 @@ export function DataManagement() {
               <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/20">
                 <div className="flex-1">
                   <div className="font-medium">{item.name}</div>
-                  {item.phone && (
+                  {'phone' in item && item.phone && (
                     <div className="text-sm text-muted-foreground">電話：{item.phone}</div>
                   )}
                   <div className="text-xs text-muted-foreground">

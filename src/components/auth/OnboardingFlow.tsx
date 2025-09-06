@@ -57,7 +57,7 @@ export function OnboardingFlow({ open, onComplete }: OnboardingFlowProps) {
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="max-w-md" hideCloseButton>
+      <DialogContent className="max-w-md" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-center">
             歡迎加入苗栗社福！

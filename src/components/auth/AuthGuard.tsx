@@ -19,7 +19,7 @@ export interface User {
 }
 
 interface AuthGuardProps {
-  children: React.ReactNode;
+  children: React.ReactElement<{ dbUser?: User | null }>;
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
@@ -86,7 +86,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
         throw new Error('Failed to sync user');
       }
     } catch (error) {
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         console.error('⏰ 用戶同步超時');
         setSyncError('使用者資料同步失敗，請稍後再試');
         toast.error("使用者資料同步失敗，請稍後再試");
@@ -167,7 +167,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     console.log('✅ 顯示主要應用程式 - dbUser:', !!dbUser, 'syncError:', !!syncError);
     return (
       <>
-        {React.cloneElement(children as React.ReactElement, { dbUser })}
+        {React.cloneElement(children, { dbUser })}
         <OnboardingFlow 
           open={isOnboardingOpen}
           onComplete={handleOnboardingComplete}
