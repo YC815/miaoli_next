@@ -7,10 +7,21 @@ export async function POST(request: NextRequest) {
   try {
     const { userId: clerkId } = await auth(); // clerkId can be null if not authenticated
 
-    const { email } = await request.json();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    if (!clerkId || !email) { // Ensure we have at least clerkId and email
-      return NextResponse.json({ error: 'Missing user information' }, { status: 400 });
+    let email: string | undefined;
+    try {
+      const body = await request.json();
+      email = body.email;
+    } catch (jsonError) {
+      // If JSON parsing fails, we'll try to get email from Clerk later
+      console.log('No JSON body provided, will get email from Clerk');
+    }
+
+    if (!email) {
+      return NextResponse.json({ error: 'Missing email information' }, { status: 400 });
     }
 
     const existingUser = await prisma.user.findUnique({

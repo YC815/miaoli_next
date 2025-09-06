@@ -61,9 +61,12 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
   const [newUnitName, setNewUnitName] = useState("");
 
   useEffect(() => {
-    const mockPickupUnits = ["慈濟基金會", "紅十字會", "世界展望會", "創世基金會"];
-    setAvailablePickupUnits(mockPickupUnits);
+    if (open) {
+      fetchRecipientUnits();
+    }
+  }, [open]);
 
+  useEffect(() => {
     const availableItems: PickupItem[] = supplies.map(supply => ({
       id: supply.id,
       name: supply.name,
@@ -73,6 +76,18 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
     }));
     setPickupItems(availableItems);
   }, [supplies]);
+
+  const fetchRecipientUnits = async () => {
+    try {
+      const response = await fetch('/api/recipient-units');
+      if (response.ok) {
+        const data = await response.json();
+        setAvailablePickupUnits(data.map((unit: { name: string }) => unit.name));
+      }
+    } catch (error) {
+      console.error('Error fetching recipient units:', error);
+    }
+  };
 
   const updatePickupQuantity = (id: string, quantity: number) => {
     setPickupItems(items => 

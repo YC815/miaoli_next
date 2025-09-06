@@ -56,12 +56,37 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
 
   useEffect(() => {
-    // Mock fetching supply names and categories
-    const mockSupplyNames = ["牙膏", "食用油", "毛毯", "衣物", "罐頭", "麵條"];
-    const mockCategories = ["生活用品", "食品", "衣物", "醫療用品"];
-    setAvailableSupplyNames(mockSupplyNames);
-    setAvailableCategories(mockCategories);
-  }, []);
+    if (open) {
+      fetchCategories();
+      fetchSupplyNames();
+    }
+  }, [open]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableCategories(data.map((category: { name: string }) => category.name));
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchSupplyNames = async () => {
+    try {
+      const response = await fetch('/api/supplies');
+      if (response.ok) {
+        const data = await response.json();
+        // Get unique supply names from existing supplies
+        const uniqueNames = [...new Set(data.map((supply: { name: string }) => supply.name))] as string[];
+        setAvailableSupplyNames(uniqueNames);
+      }
+    } catch (error) {
+      console.error('Error fetching supply names:', error);
+    }
+  };
 
   const addSupplyItem = () => {
     setSupplyItems([...supplyItems, { name: "", category: "", quantity: 0, expiryDate: "" }]);

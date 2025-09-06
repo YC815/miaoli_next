@@ -42,25 +42,39 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
   const [changeAmount, setChangeAmount] = useState<number>(0);
   const [reason, setReason] = useState("");
   const [customReason, setCustomReason] = useState("");
-
-  const increaseReasons = [
-    "其他（請說明）"
-  ];
-
-  const decreaseReasons = [
-    "過期",
-    "其他（請說明）"
-  ];
+  const [increaseReasons, setIncreaseReasons] = useState<string[]>([]);
+  const [decreaseReasons, setDecreaseReasons] = useState<string[]>([]);
 
   useEffect(() => {
-    // Reset form when modal opens
+    // Reset form when modal opens and fetch reasons
     if (open) {
       setChangeType("increase");
       setChangeAmount(0);
       setReason("");
       setCustomReason("");
+      fetchReasons();
     }
   }, [open]);
+
+  const fetchReasons = async () => {
+    try {
+      // Fetch increase reasons
+      const increaseResponse = await fetch('/api/inventory-reasons?changeType=INCREASE');
+      if (increaseResponse.ok) {
+        const increaseData = await increaseResponse.json();
+        setIncreaseReasons(increaseData.map((reason: { reason: string }) => reason.reason));
+      }
+
+      // Fetch decrease reasons
+      const decreaseResponse = await fetch('/api/inventory-reasons?changeType=DECREASE');
+      if (decreaseResponse.ok) {
+        const decreaseData = await decreaseResponse.json();
+        setDecreaseReasons(decreaseData.map((reason: { reason: string }) => reason.reason));
+      }
+    } catch (error) {
+      console.error('Error fetching inventory reasons:', error);
+    }
+  };
 
   const handleSubmit = () => {
     if (supply && changeAmount > 0 && (reason !== "其他（請說明）" ? reason : customReason)) {

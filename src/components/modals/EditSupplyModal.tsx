@@ -43,14 +43,32 @@ export function EditSupplyModal({ open, onOpenChange, onSubmit, supply }: EditSu
     quantity: 0,
     safetyStock: 0,
   });
+  const [categories, setCategories] = useState<string[]>([]);
 
-  const categories = ["生活用品", "食品", "衣物", "醫療用品"];
+  // Fetch categories when modal opens
+  useEffect(() => {
+    if (open) {
+      fetchCategories();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (supply) {
       setFormData(supply);
     }
   }, [supply]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.map((category: { name: string }) => category.name));
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   const handleSubmit = () => {
     if (formData.name && formData.category) {
