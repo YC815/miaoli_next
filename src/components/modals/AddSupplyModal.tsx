@@ -26,14 +26,17 @@ interface SupplyItem {
   name: string;
   category: string;
   quantity: number;
+  unit: string;
   expiryDate?: string;
   isNewSupplyName?: boolean;
   isNewCategory?: boolean;
+  isNewUnit?: boolean;
 }
 
 interface DonorInfo {
   name: string;
   phone: string;
+  unifiedNumber: string;
   address: string;
 }
 
@@ -48,19 +51,22 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
   const [donorInfo, setDonorInfo] = useState<DonorInfo>({
     name: "",
     phone: "",
+    unifiedNumber: "",
     address: "",
   });
   const [supplyItems, setSupplyItems] = useState<SupplyItem[]>([
-    { name: "", category: "", quantity: 0, expiryDate: "", isNewSupplyName: false, isNewCategory: false }
+    { name: "", category: "", quantity: 0, unit: "個", expiryDate: "", isNewSupplyName: false, isNewCategory: false, isNewUnit: false }
   ]);
   const [notes, setNotes] = useState("");
   const [availableSupplyNames, setAvailableSupplyNames] = useState<string[]>([]);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [availableUnits, setAvailableUnits] = useState<string[]>([]);
 
   useEffect(() => {
     if (open) {
       fetchCategories();
       fetchSupplyNames();
+      fetchUnits();
     }
   }, [open]);
 
@@ -88,8 +94,20 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
     }
   };
 
+  const fetchUnits = async () => {
+    try {
+      const response = await fetch('/api/units');
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableUnits(data.map((unit: { name: string }) => unit.name));
+      }
+    } catch (error) {
+      console.error('Error fetching units:', error);
+    }
+  };
+
   const addSupplyItem = () => {
-    setSupplyItems([...supplyItems, { name: "", category: "", quantity: 0, expiryDate: "", isNewSupplyName: false, isNewCategory: false }]);
+    setSupplyItems([...supplyItems, { name: "", category: "", quantity: 0, unit: "個", expiryDate: "", isNewSupplyName: false, isNewCategory: false, isNewUnit: false }]);
   };
 
   const removeSupplyItem = (index: number) => {
@@ -213,10 +231,53 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
     }
   };
 
+  const handleUnitSelect = (index: number, value: string) => {
+    const updatedItems = [...supplyItems];
+    if (value === "new") {
+      updatedItems[index] = { 
+        ...updatedItems[index], 
+        unit: "", 
+        isNewUnit: true 
+      };
+    } else {
+      updatedItems[index] = { 
+        ...updatedItems[index], 
+        unit: value, 
+        isNewUnit: false 
+      };
+    }
+    setSupplyItems(updatedItems);
+  };
+
+  const createNewUnit = async (unitName: string) => {
+    try {
+      const response = await fetch('/api/units', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: unitName,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchUnits(); // Refresh the units list
+        return true;
+      } else {
+        console.error('Failed to create unit');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error creating unit:', error);
+      return false;
+    }
+  };
+
   const resetForm = () => {
     setCurrentStep(0);
-    setDonorInfo({ name: "", phone: "", address: "" });
-    setSupplyItems([{ name: "", category: "", quantity: 0, expiryDate: "", isNewSupplyName: false, isNewCategory: false }]);
+    setDonorInfo({ name: "", phone: "", unifiedNumber: "", address: "" });
+    setSupplyItems([{ name: "", category: "", quantity: 0, unit: "個", expiryDate: "", isNewSupplyName: false, isNewCategory: false, isNewUnit: false }]);
     setNotes("");
   };
 
@@ -231,6 +292,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
       name: item.name,
       category: item.category,
       quantity: item.quantity,
+      unit: item.unit,
       expiryDate: item.expiryDate
     }));
     
@@ -338,14 +400,23 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="donor-phone">電話/統編</Label>
+                  <Label htmlFor="donor-phone">電話</Label>
                   <Input 
                     id="donor-phone"
                     value={donorInfo.phone}
                     onChange={(e) => setDonorInfo({...donorInfo, phone: e.target.value})}
-                    placeholder="請輸入電話或統編"
+                    placeholder="請輸入電話號碼"
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="donor-unified-number">統一編號（選填）</Label>
+                <Input 
+                  id="donor-unified-number"
+                  value={donorInfo.unifiedNumber}
+                  onChange={(e) => setDonorInfo({...donorInfo, unifiedNumber: e.target.value})}
+                  placeholder="請輸入統一編號"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="donor-address">地址</Label>
