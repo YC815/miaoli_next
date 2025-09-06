@@ -28,7 +28,7 @@ interface User {
   email: string;
   nickname?: string;
   avatarUrl?: string;
-  role: "admin" | "staff" | "volunteer";
+  role: "ADMIN" | "STAFF" | "VOLUNTEER";
   isFirstLogin: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -44,7 +44,7 @@ interface UserEditModalProps {
 
 export function UserEditModal({ open, onOpenChange, user, onUserUpdate }: UserEditModalProps) {
   const [nickname, setNickname] = useState("");
-  const [role, setRole] = useState<"admin" | "staff" | "volunteer">("volunteer");
+  const [role, setRole] = useState<"ADMIN" | "STAFF" | "VOLUNTEER">("VOLUNTEER");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -99,21 +99,21 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdate }: UserEd
 
   const getRoleInfo = (roleValue: string) => {
     switch (roleValue) {
-      case "admin":
+      case "ADMIN":
         return {
           label: "管理員",
           icon: <Crown className="h-4 w-4" />,
           description: "系統完整管理權限，可以管理所有用戶和系統設定",
           color: "text-blue-600"
         };
-      case "staff":
+      case "STAFF":
         return {
           label: "工作人員",
           icon: <UserCheck className="h-4 w-4" />,
           description: "可以執行日常物資管理操作，查看報表和記錄",
           color: "text-green-600"
         };
-      case "volunteer":
+      case "VOLUNTEER":
         return {
           label: "志工",
           icon: <Users className="h-4 w-4" />,
@@ -197,24 +197,24 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdate }: UserEd
             {/* 角色選擇 */}
             <div className="space-y-2">
               <Label>角色權限</Label>
-              <Select value={role} onValueChange={(value: "admin" | "staff" | "volunteer") => setRole(value)}>
+              <Select value={role} onValueChange={(value: "ADMIN" | "STAFF" | "VOLUNTEER") => setRole(value)}>
                 <SelectTrigger disabled={isSubmitting}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="volunteer">
+                  <SelectItem value="VOLUNTEER">
                     <div className="flex items-center space-x-2">
                       <Users className="h-4 w-4 text-orange-600" />
                       <span>志工</span>
                     </div>
                   </SelectItem>
-                  <SelectItem value="staff">
+                  <SelectItem value="STAFF">
                     <div className="flex items-center space-x-2">
                       <UserCheck className="h-4 w-4 text-green-600" />
                       <span>工作人員</span>
                     </div>
                   </SelectItem>
-                  <SelectItem value="admin">
+                  <SelectItem value="ADMIN">
                     <div className="flex items-center space-x-2">
                       <Crown className="h-4 w-4 text-blue-600" />
                       <span>管理員</span>

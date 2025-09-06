@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
+import { Role } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId: clerkId } = await auth();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId: clerkId } = await auth(); // clerkId can be null if not authenticated
 
     const { email } = await request.json();
+
+    if (!clerkId || !email) { // Ensure we have at least clerkId and email
+      return NextResponse.json({ error: 'Missing user information' }, { status: 400 });
+    }
 
     const existingUser = await prisma.user.findUnique({
       where: { clerkId },
@@ -20,6 +22,7 @@ export async function POST(request: NextRequest) {
         where: { id: existingUser.id },
         data: {
           lastLoginAt: new Date(),
+          email: email, // Update email in case it changed in Clerk
         },
       });
       return NextResponse.json(updatedUser);
@@ -28,6 +31,8 @@ export async function POST(request: NextRequest) {
         data: {
           clerkId,
           email,
+          role: Role.VOLUNTEER, // Default role for new users
+          isFirstLogin: true, // Mark as first login
         },
       });
       return NextResponse.json(newUser, { status: 201 });

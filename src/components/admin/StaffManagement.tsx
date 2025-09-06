@@ -35,7 +35,7 @@ interface User {
   email: string;
   nickname?: string;
   avatarUrl?: string;
-  role: "admin" | "staff" | "volunteer";
+  role: "ADMIN" | "STAFF" | "VOLUNTEER";
   isFirstLogin: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -91,21 +91,21 @@ export function StaffManagement() {
 
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case "admin":
+      case "ADMIN":
         return (
           <Badge variant="default" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
             <Crown className="h-3 w-3 mr-1" />
             管理員
           </Badge>
         );
-      case "staff":
+      case "STAFF":
         return (
           <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
             <UserCheck className="h-3 w-3 mr-1" />
             工作人員
           </Badge>
         );
-      case "volunteer":
+      case "VOLUNTEER":
         return (
           <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
             <Users className="h-3 w-3 mr-1" />
@@ -130,9 +130,9 @@ export function StaffManagement() {
 
   const getStatistics = () => {
     const total = users.length;
-    const admins = users.filter(u => u.role === 'admin').length;
-    const staff = users.filter(u => u.role === 'staff').length;
-    const volunteers = users.filter(u => u.role === 'volunteer').length;
+    const admins = users.filter(u => u.role === 'ADMIN').length;
+    const staff = users.filter(u => u.role === 'STAFF').length;
+    const volunteers = users.filter(u => u.role === 'VOLUNTEER').length;
     const newUsers = users.filter(u => u.isFirstLogin).length;
 
     return { total, admins, staff, volunteers, newUsers };

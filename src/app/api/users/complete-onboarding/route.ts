@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { users } from '../sync/route'; // 臨時導入用戶存儲
+import prisma from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
-    // 驗證 Clerk 身份
-    const { userId } = await auth();
-    if (!userId) {
+    const { userId: clerkId } = await auth();
+    
+    if (!clerkId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -28,16 +28,23 @@ export async function POST(request: NextRequest) {
     }
 
     // 查找當前用戶
-    const currentUser = Array.from(users.values()).find(user => user.clerkId === userId);
+    const currentUser = await prisma.user.findUnique({
+      where: { clerkId },
+    });
     
     if (!currentUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // 檢查暱稱是否已被使用（排除自己）
-    const nicknameExists = Array.from(users.values()).some(
-      user => user.id !== currentUser.id && user.nickname?.toLowerCase() === nickname.trim().toLowerCase()
-    );
+    const nicknameExists = await prisma.user.findFirst({
+      where: {
+        nickname: nickname.trim(),
+        NOT: {
+          id: currentUser.id
+        }
+      }
+    });
 
     if (nicknameExists) {
       return NextResponse.json(
@@ -47,17 +54,18 @@ export async function POST(request: NextRequest) {
     }
 
     // 更新用戶資料
-    currentUser.nickname = nickname.trim();
-    currentUser.isFirstLogin = false;
-    currentUser.updatedAt = new Date();
-    users.set(currentUser.id, currentUser);
-
-    // 記錄操作日誌（實際應用中會存儲到資料庫）
-    console.log(`User ${currentUser.email} completed onboarding with nickname: ${nickname.trim()}`);
+    const updatedUser = await prisma.user.update({
+      where: { clerkId },
+      data: {
+        nickname: nickname.trim(),
+        isFirstLogin: false,
+        lastLoginAt: new Date(),
+      },
+    });
 
     return NextResponse.json({
       message: '暱稱設定成功',
-      user: currentUser
+      user: updatedUser
     });
 
   } catch (error) {

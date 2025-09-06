@@ -87,21 +87,21 @@ export function UserProfile({ open, onOpenChange, dbUser, onUserUpdate }: UserPr
 
   const getRoleInfo = (role: string) => {
     switch (role) {
-      case "admin":
+      case "ADMIN":
         return {
           label: "管理員",
           icon: <Crown className="h-4 w-4" />,
           description: "系統完整管理權限",
           color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
         };
-      case "staff":
+      case "STAFF":
         return {
           label: "工作人員",
           icon: <UserCheck className="h-4 w-4" />,
           description: "日常物資管理操作",
           color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
         };
-      case "volunteer":
+      case "VOLUNTEER":
         return {
           label: "志工",
           icon: <Users className="h-4 w-4" />,
