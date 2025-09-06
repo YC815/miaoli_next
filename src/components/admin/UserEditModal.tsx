@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Crown, UserCheck, Users } from "lucide-react";
+import Image from "next/image";
 
 interface User {
   id: string;
@@ -150,9 +151,11 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdate }: UserEd
               <div className="flex items-center space-x-3">
                 <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
                   {user.avatarUrl ? (
-                    <img 
+                    <Image 
                       src={user.avatarUrl} 
                       alt="頭像" 
+                      width={40}
+                      height={40}
                       className="h-10 w-10 rounded-full object-cover"
                     />
                   ) : (

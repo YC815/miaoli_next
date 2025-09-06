@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@clerk/nextjs";
 import { Crown, UserCheck, Users, Edit2 } from "lucide-react";
+import Image from "next/image";
 import { User } from "./AuthGuard";
 
 interface UserProfileProps {
@@ -152,9 +153,11 @@ export function UserProfile({ open, onOpenChange, dbUser, onUserUpdate }: UserPr
               <div className="flex items-center space-x-3 mb-3">
                 <div className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
                   {clerkUser?.imageUrl ? (
-                    <img 
+                    <Image 
                       src={clerkUser.imageUrl} 
                       alt="頭像" 
+                      width={48}
+                      height={48}
                       className="h-12 w-12 rounded-full object-cover"
                     />
                   ) : (

@@ -21,6 +21,7 @@ import {
   UserCheck,
   Clock
 } from "lucide-react";
+import Image from "next/image";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -250,9 +251,11 @@ export function StaffManagement() {
                       <div className="flex items-center space-x-3">
                         <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
                           {user.avatarUrl ? (
-                            <img 
+                            <Image 
                               src={user.avatarUrl} 
                               alt="頭像" 
+                              width={32}
+                              height={32}
                               className="h-8 w-8 rounded-full object-cover"
                             />
                           ) : (

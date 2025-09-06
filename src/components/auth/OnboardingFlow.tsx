@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@clerk/nextjs";
+import Image from "next/image";
 
 interface OnboardingFlowProps {
   open: boolean;
@@ -72,9 +73,11 @@ export function OnboardingFlow({ open, onComplete }: OnboardingFlowProps) {
           <div className="flex flex-col items-center space-y-3">
             <div className="h-16 w-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
               {user?.imageUrl ? (
-                <img 
+                <Image 
                   src={user.imageUrl} 
                   alt="用戶頭像" 
+                  width={64}
+                  height={64}
                   className="h-16 w-16 rounded-full object-cover"
                 />
               ) : (
