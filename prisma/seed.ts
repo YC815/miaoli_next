@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, ChangeType } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
@@ -51,7 +51,7 @@ async function main() {
     await prisma.inventoryChangeReason.create({
       data: {
         reason: reason.reason,
-        changeType: reason.changeType as any,
+        changeType: reason.changeType as ChangeType,
         sortOrder: reason.sortOrder,
       },
     })
