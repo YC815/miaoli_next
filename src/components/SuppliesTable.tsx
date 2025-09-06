@@ -169,33 +169,33 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
   return (
     <div className="flex flex-col h-full max-w-full mx-auto">
       {/* Search and Header */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-4">
-        <div>
-          <h2 className="text-xl font-semibold mb-1">物資庫存清單</h2>
-          <p className="text-sm text-muted-foreground">
-            共 {filteredAndSortedSupplies.length} 項物資
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-3 sm:gap-4 mb-3 sm:mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
+          <div>
+            <h2 className="text-lg sm:text-xl font-semibold mb-1">物資庫存清單</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              共 {filteredAndSortedSupplies.length} 項物資
+            </p>
+          </div>
           <Button
             variant="outline"
             size="sm"
             onClick={copyAvailableItemsToClipboard}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 self-start sm:self-auto min-h-[44px] px-3 sm:px-4"
             disabled={filteredAndSortedSupplies.filter(s => s.quantity > 1).length === 0}
           >
             <Copy className="h-4 w-4" />
-            複製有庫存品項
+            <span className="text-xs sm:text-sm">複製有庫存品項</span>
           </Button>
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="搜尋物資名稱或類別..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 text-base"
-            />
-          </div>
+        </div>
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="搜尋物資名稱或類別..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 text-sm sm:text-base min-h-[44px]"
+          />
         </div>
       </div>
 
@@ -278,50 +278,50 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
                   const status = getStockStatus(supply.quantity, supply.safetyStock);
                   return (
                     <TableRow key={supply.id} className="hover:bg-muted/20 transition-colors">
-                      <TableCell className="py-4">
-                        <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getCategoryColor(supply.category)}`}>
+                      <TableCell className="py-2 sm:py-4">
+                        <span className={`inline-flex px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-medium ${getCategoryColor(supply.category)}`}>
                           {supply.category}
                         </span>
                       </TableCell>
-                      <TableCell className="py-4">
-                        <div className="font-medium text-base">{supply.name}</div>
+                      <TableCell className="py-2 sm:py-4">
+                        <div className="font-medium text-sm sm:text-base break-words">{supply.name}</div>
                       </TableCell>
-                      <TableCell className="py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className={`text-lg font-semibold ${supply.quantity === 0 ? 'text-red-600' : ''}`}>
+                      <TableCell className="py-2 sm:py-4 text-center">
+                        <div className="flex items-center justify-center gap-1 sm:gap-2">
+                          <span className={`text-sm sm:text-lg font-semibold ${supply.quantity === 0 ? 'text-red-600' : ''}`}>
                             {supply.quantity.toLocaleString()}
                           </span>
                           {supply.quantity < supply.safetyStock && (
-                            <AlertTriangle className="h-4 w-4 text-orange-500" />
+                            <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 text-orange-500 flex-shrink-0" />
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="py-4 text-center">
-                        <span className="text-base text-muted-foreground">
+                      <TableCell className="py-2 sm:py-4 text-center">
+                        <span className="text-sm sm:text-base text-muted-foreground">
                           {supply.safetyStock.toLocaleString()}
                         </span>
                       </TableCell>
-                      <TableCell className="py-4 text-center">
-                        <span className={`text-sm font-medium ${status.color}`}>
+                      <TableCell className="py-2 sm:py-4 text-center">
+                        <span className={`text-xs sm:text-sm font-medium ${status.color} break-words`}>
                           {status.label}
                         </span>
                       </TableCell>
-                      <TableCell className="py-4 text-center">
+                      <TableCell className="py-2 sm:py-4 text-center">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button 
                               variant="ghost" 
                               size="sm"
-                              className="h-8 w-8 p-0 hover:bg-muted"
+                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-muted min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px]"
                             >
                               <MoreHorizontal className="h-4 w-4" />
                               <span className="sr-only">開啟選單</span>
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuContent align="end" className="w-36 sm:w-40">
                             {userPermissions?.canEditSupplyInfo && (
                               <DropdownMenuItem 
-                                className="text-base py-2 cursor-pointer"
+                                className="text-sm sm:text-base py-2 cursor-pointer"
                                 onClick={() => handleEditSupply(supply)}
                               >
                                 編輯資訊
@@ -329,7 +329,7 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
                             )}
                             {userPermissions?.canEditQuantity && (
                               <DropdownMenuItem 
-                                className="text-base py-2 cursor-pointer"
+                                className="text-sm sm:text-base py-2 cursor-pointer"
                                 onClick={() => handleEditQuantity(supply)}
                               >
                                 編輯數量
@@ -337,10 +337,10 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
                             )}
                             {userPermissions?.canEditSafetyStock && (
                               <DropdownMenuItem 
-                                className="text-base py-2 cursor-pointer"
+                                className="text-sm sm:text-base py-2 cursor-pointer"
                                 onClick={() => handleEditSafetyStock(supply)}
                               >
-                                編輯安全庫存量
+                                編輯安全庫存
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>

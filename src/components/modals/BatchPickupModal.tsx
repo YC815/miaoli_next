@@ -206,7 +206,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
 
   return (
     <Dialog open={open} onOpenChange={() => onOpenChange(false)}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-3xl max-h-[95vh] overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle>批量物資領取</DialogTitle>
           <DialogDescription>
@@ -227,11 +227,11 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
           <WizardStep title="領取單位資訊">
             <div className="space-y-4">
               <h3 className="text-lg font-medium">領取單位資訊</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>領取單位</Label>
                   {isNewUnit ? (
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Input
                         type="text"
                         value={newUnitName}
@@ -243,6 +243,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
                         variant="outline"
                         size="sm"
                         onClick={confirmNewUnit}
+                        className="sm:w-auto w-full min-h-[44px]"
                       >
                         確認
                       </Button>
@@ -293,20 +294,20 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
               <h3 className="text-lg font-medium">選擇物資</h3>
               <div className="space-y-3">
                 {pickupItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div key={item.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg gap-3 sm:gap-0">
                     <div className="flex-1">
-                      <div className="flex items-center gap-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-sm">{item.name}</p>
                           <p className="text-xs text-muted-foreground">{item.category}</p>
                         </div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-muted-foreground sm:text-right">
                           庫存：{item.availableQuantity} 個
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor={`quantity-${item.id}`} className="text-sm">領取數量：</Label>
+                    <div className="flex items-center gap-2 sm:flex-shrink-0">
+                      <Label htmlFor={`quantity-${item.id}`} className="text-sm whitespace-nowrap">領取數量：</Label>
                       <Input
                         id={`quantity-${item.id}`}
                         type="number"
@@ -314,7 +315,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
                         max={item.availableQuantity}
                         value={item.requestedQuantity}
                         onChange={(e) => updatePickupQuantity(item.id, parseInt(e.target.value) || 0)}
-                        className="w-20"
+                        className="w-20 min-h-[44px]"
                       />
                     </div>
                   </div>
@@ -329,36 +330,36 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
               <h3 className="text-lg font-medium">領取確認</h3>
               
               {/* Unit Info Summary */}
-              <div className="p-4 bg-muted rounded-lg">
-                <h4 className="font-medium mb-2">領取單位資訊</h4>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span>領取單位：</span>
-                    <span>{getPickupUnitDisplayName()}</span>
+              <div className="p-3 sm:p-4 bg-muted rounded-lg">
+                <h4 className="font-medium mb-2 text-sm sm:text-base">領取單位資訊</h4>
+                <div className="space-y-1 text-xs sm:text-sm">
+                  <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                    <span className="font-medium sm:font-normal">領取單位：</span>
+                    <span className="break-words">{getPickupUnitDisplayName()}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>聯絡電話：</span>
-                    <span>{batchPickupInfo.phone}</span>
+                  <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                    <span className="font-medium sm:font-normal">聯絡電話：</span>
+                    <span className="break-all">{batchPickupInfo.phone}</span>
                   </div>
                   {batchPickupInfo.purpose && (
-                    <div className="flex justify-between">
-                      <span>領取用途：</span>
-                      <span>{batchPickupInfo.purpose}</span>
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                      <span className="font-medium sm:font-normal">領取用途：</span>
+                      <span className="break-words">{batchPickupInfo.purpose}</span>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Items Summary */}
-              <div className="p-4 bg-muted rounded-lg">
-                <h4 className="font-medium mb-2">領取物資清單</h4>
-                <div className="space-y-1 text-sm">
+              <div className="p-3 sm:p-4 bg-muted rounded-lg">
+                <h4 className="font-medium mb-2 text-sm sm:text-base">領取物資清單</h4>
+                <div className="space-y-1 text-xs sm:text-sm">
                   {pickupItems
                     .filter(item => item.requestedQuantity > 0)
                     .map((item) => (
-                      <div key={item.id} className="flex justify-between">
-                        <span>{item.name}</span>
-                        <span>{item.requestedQuantity} 個</span>
+                      <div key={item.id} className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                        <span className="font-medium sm:font-normal break-words">{item.name}</span>
+                        <span className="text-right">{item.requestedQuantity} 個</span>
                       </div>
                     ))
                   }
@@ -368,7 +369,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
                 </div>
               </div>
               
-              <div className="text-center p-4 text-muted-foreground">
+              <div className="text-center p-3 sm:p-4 text-muted-foreground text-xs sm:text-sm">
                 請確認以上資訊無誤後，點擊「批量領取物資」完成領取。
               </div>
             </div>

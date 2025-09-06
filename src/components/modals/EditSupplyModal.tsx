@@ -93,7 +93,7 @@ export function EditSupplyModal({ open, onOpenChange, onSubmit, supply }: EditSu
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[95vw] max-w-md max-h-[95vh] overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">編輯物資資訊</DialogTitle>
           <DialogDescription className="text-sm">
@@ -130,11 +130,18 @@ export function EditSupplyModal({ open, onOpenChange, onSubmit, supply }: EditSu
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto min-h-[44px]"
+          >
             取消
           </Button>
-          <Button onClick={handleSubmit}>
+          <Button 
+            onClick={handleSubmit}
+            className="w-full sm:w-auto min-h-[44px]"
+          >
             確認修改
           </Button>
         </DialogFooter>

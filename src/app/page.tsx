@@ -14,10 +14,12 @@ import { DataManagement } from "@/components/admin/DataManagement";
 import { RecordsView } from "@/components/RecordsView";
 import { UserProfile } from "@/components/auth/UserProfile";
 import * as XLSX from 'xlsx';
+import { generateReceiptsPDF } from '@/lib/receipt-generator';
 import { User } from "@/components/auth/AuthGuard";
 import { toast } from "sonner";
 import { getPermissions } from "@/lib/permissions";
 import { useUser, SignOutButton } from "@clerk/nextjs";
+import { Menu, X } from "lucide-react";
 
 type TabType = "supplies" | "records" | "staff" | "data";
 
@@ -87,6 +89,7 @@ export default function HomePage() {
   const [isBatchPickupOpen, setIsBatchPickupOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [supplies, setSupplies] = useState<Supply[]>([]);
 
@@ -138,6 +141,20 @@ export default function HomePage() {
       fetchSupplies();
     }
   }, [dbUser]); // Add dbUser to dependency array
+
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    // Cleanup function to restore scroll on unmount
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
 
   const stats = {
     totalCategories: supplies.length,
@@ -299,56 +316,33 @@ export default function HomePage() {
     XLSX.writeFile(wb, filename);
   };
 
-  const handlePrintReceipts = (selectedRecords: DonationRecord[]) => {
+  const handlePrintReceipts = async (selectedRecords: DonationRecord[]) => {
     if (selectedRecords.length === 0) return;
 
-    const receiptContent = selectedRecords.map(record => `
-      <div style="margin-bottom: 30px; page-break-inside: avoid; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h2 style="margin: 0; color: #333;">苗栗社福促進協會</h2>
-          <h3 style="margin: 5px 0; color: #666;">物資捐贈收據</h3>
-        </div>
-        <div style="margin-bottom: 15px;">
-          <p><strong>捐贈者：</strong>${record.donorName}</p>
-          <p><strong>聯絡電話：</strong>${record.donorPhone}</p>
-          <p><strong>捐贈日期：</strong>${record.date}</p>
-        </div>
-        <div style="margin-bottom: 15px;">
-          <p><strong>捐贈物資：</strong></p>
-          <p style="margin-left: 20px;">${record.items}</p>
-        </div>
-        <div style="text-align: center; margin-top: 30px;">
-          <p style="margin: 5px 0;">謝謝您的愛心捐贈！</p>
-          <p style="margin: 5px 0; font-size: 12px; color: #666;">本收據為愛心證明，請妥善保管</p>
-        </div>
-      </div>
-    `).join('');
-
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>捐贈收據</title>
-            <style>
-              body { font-family: 'Microsoft JhengHei', sans-serif; line-height: 1.6; }
-              @media print { 
-                body { margin: 0; padding: 20px; }
-                .no-print { display: none; }
-              }
-            </style>
-          </head>
-          <body>
-            <div style="max-width: 600px; margin: 0 auto;">
-              ${receiptContent}
-            </div>
-            <div class="no-print" style="text-align: center; margin: 20px;">
-              <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">列印收據</button>
-            </div>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
+    try {
+      toast.loading('正在生成收據 PDF...');
+      
+      // 使用新的 PDF 生成器
+      const pdfBlob = await generateReceiptsPDF(selectedRecords);
+      
+      // 創建下載連結
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `收據_${new Date().toLocaleDateString('zh-TW').replace(/\//g, '')}.pdf`;
+      
+      // 觸發下載
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // 清理 URL
+      URL.revokeObjectURL(url);
+      
+      toast.success(`已生成 ${selectedRecords.length} 份收據 PDF`);
+    } catch (error) {
+      console.error('生成收據失敗:', error);
+      toast.error('生成收據失敗，請稍後再試');
     }
   };
 
@@ -395,19 +389,19 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex flex-col">
       {/* Navigation Bar */}
       <nav className="border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 flex-shrink-0">
-        <div className="container flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="container flex h-14 sm:h-16 items-center justify-between px-2 sm:px-4 lg:px-6 xl:px-8">
           {/* Left: Brand */}
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">苗</span>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xs sm:text-sm">苗</span>
             </div>
-            <h1 className="hidden sm:block text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            <h1 className="hidden sm:block text-lg sm:text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               苗栗社福物資管理平台
             </h1>
           </div>
 
-          {/* Center: Navigation Tabs */}
-          <div className="flex-1 flex justify-center max-w-lg mx-4">
+          {/* Desktop Navigation Tabs */}
+          <div className="hidden md:flex flex-1 justify-center max-w-lg mx-4">
             <div className="flex bg-muted/30 rounded-lg p-1">
               <Button
                 variant={activeTab === "supplies" ? "default" : "ghost"}
@@ -450,34 +444,47 @@ export default function HomePage() {
             </div>
           </div>
 
+          {/* Mobile Menu Button */}
+          <div className="md:hidden flex-1 flex justify-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="min-h-[44px] px-3 flex items-center gap-2"
+            >
+              <Menu className="h-4 w-4" />
+              <span className="text-sm">選單</span>
+            </Button>
+          </div>
+
           {/* Right: User Info & Settings */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             {/* Theme Toggle */}
             <ModeToggle />
             
             {dbUser && (
               <>
                 {/* Divider */}
-                <div className="h-6 w-px bg-border" />
+                <div className="hidden md:block h-6 w-px bg-border" />
                 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
                   {/* Role Badge */}
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border">
+                  <span className="hidden sm:inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border">
                     {roleMapping[dbUser.role]}
                   </span>
 
                   {/* User Avatar */}
                   <div 
-                    className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
+                    className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
                     onClick={() => setIsUserProfileOpen(true)}
                     title="點擊編輯個人資料"
                   >
-                    <span className="text-white font-medium text-sm">{dbUser.nickname?.[0]}</span>
+                    <span className="text-white font-medium text-xs sm:text-sm">{dbUser.nickname?.[0]}</span>
                   </div>
 
                   {/* User Name */}
                   <button 
-                    className="hidden sm:block text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
+                    className="hidden lg:block text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
                     onClick={() => setIsUserProfileOpen(true)}
                     title="點擊編輯個人資料"
                   >
@@ -489,7 +496,7 @@ export default function HomePage() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="text-sm text-muted-foreground hover:text-foreground"
+                      className="hidden md:block text-sm text-muted-foreground hover:text-foreground px-4"
                     >
                       登出
                     </Button>
@@ -502,13 +509,13 @@ export default function HomePage() {
       </nav>
 
       {/* Main Content */}
-      <main className="flex flex-col flex-1 pb-32 md:pb-24">
+      <main className="flex flex-col flex-1 pb-20 sm:pb-24 md:pb-32">
         {activeTab === "supplies" && (
           <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto">
-            <div className="py-6">
+            <div className="py-3 sm:py-6">
               <StatisticsCards stats={stats} />
             </div>
-            <div className="flex-1 pb-6">
+            <div className="flex-1 pb-3 sm:pb-6">
               <SuppliesTable 
                 supplies={supplies}
                 onUpdateSupply={handleUpdateSupply}
@@ -521,19 +528,19 @@ export default function HomePage() {
         )}
 
         {activeTab === "records" && (
-          <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-6">
+          <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-3 sm:py-6">
             <RecordsView />
           </div>
         )}
 
         {activeTab === "staff" && (
-          <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-6">
+          <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-3 sm:py-6">
             <StaffManagement />
           </div>
         )}
 
         {activeTab === "data" && (
-          <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-6">
+          <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-3 sm:py-6">
             <DataManagement />
           </div>
         )}
@@ -565,6 +572,128 @@ export default function HomePage() {
         dbUser={dbUser}
         onUserUpdate={handleUserUpdate}
       />
+
+      {/* Mobile Sidebar */}
+      {isMobileMenuOpen && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 z-50 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          
+          {/* Sidebar */}
+          <div className="fixed left-0 top-0 h-full w-80 bg-background border-r z-50 md:hidden transform transition-transform duration-300">
+            {/* Sidebar Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-sm">苗</span>
+                </div>
+                <h2 className="font-semibold text-lg">物資管理</h2>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="min-h-[44px] min-w-[44px] p-2"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Navigation Links */}
+            <div className="p-4 space-y-2">
+              <Button
+                variant={activeTab === "supplies" ? "default" : "ghost"}
+                onClick={() => {
+                  setActiveTab("supplies");
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full justify-start text-left min-h-[48px] px-4"
+              >
+                物資管理
+              </Button>
+              
+              {userPermissions?.canViewRecords && (
+                <Button
+                  variant={activeTab === "records" ? "default" : "ghost"}
+                  onClick={() => {
+                    setActiveTab("records");
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="w-full justify-start text-left min-h-[48px] px-4"
+                >
+                  紀錄調取
+                </Button>
+              )}
+              
+              {userPermissions?.canManageUsers && (
+                <Button
+                  variant={activeTab === "staff" ? "default" : "ghost"}
+                  onClick={() => {
+                    setActiveTab("staff");
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="w-full justify-start text-left min-h-[48px] px-4"
+                >
+                  人員管理
+                </Button>
+              )}
+              
+              {userPermissions?.canManageUsers && (
+                <Button
+                  variant={activeTab === "data" ? "default" : "ghost"}
+                  onClick={() => {
+                    setActiveTab("data");
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="w-full justify-start text-left min-h-[48px] px-4"
+                >
+                  資料管理
+                </Button>
+              )}
+            </div>
+
+            {/* User Section in Mobile Sidebar */}
+            {dbUser && (
+              <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-muted/30">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+                    <span className="text-white font-medium text-sm">{dbUser.nickname?.[0]}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm break-words">{dbUser.nickname}</p>
+                    <p className="text-xs text-muted-foreground">{roleMapping[dbUser.role]}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setIsUserProfileOpen(true);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="flex-1 min-h-[44px]"
+                  >
+                    編輯資料
+                  </Button>
+                  <SignOutButton>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="min-h-[44px] px-4"
+                    >
+                      登出
+                    </Button>
+                  </SignOutButton>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Floating Action Buttons */}
       {activeTab === "supplies" && (

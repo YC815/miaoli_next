@@ -72,21 +72,22 @@ export function FloatingActionButtons({
     <>
       {/* Desktop View - Horizontal centered buttons */}
       <div className="hidden md:block">
-        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2">
-          <div className="bg-background/80 backdrop-blur-lg border rounded-2xl p-4 shadow-2xl">
-            <div className="flex gap-4 items-center">
+        <div className="fixed bottom-6 sm:bottom-8 left-1/2 transform -translate-x-1/2 z-40">
+          <div className="bg-background/80 backdrop-blur-lg border rounded-2xl p-3 sm:p-4 shadow-2xl">
+            <div className="flex gap-2 sm:gap-4 items-center">
               {actions.map((action, index) => {
                 const Icon = action.icon;
                 return (
                   <Button
                     key={index}
-                    size="lg"
+                    size="sm"
                     variant={action.variant}
-                    className="rounded-xl shadow-md hover:shadow-lg transition-all duration-200 px-6 py-4 text-base font-medium"
+                    className="rounded-xl shadow-md hover:shadow-lg transition-all duration-200 px-3 sm:px-6 py-2 sm:py-4 text-sm sm:text-base font-medium min-h-[44px]"
                     onClick={action.onClick}
                   >
-                    <Icon className="h-5 w-5 mr-2" />
-                    {action.label}
+                    <Icon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
+                    <span className="hidden lg:inline">{action.label}</span>
+                    <span className="lg:hidden">{action.label.split('物')[0]}</span>
                   </Button>
                 );
               })}
@@ -97,37 +98,37 @@ export function FloatingActionButtons({
 
       {/* Mobile View - Hamburger menu */}
       <div className="md:hidden">
-        <div className="fixed bottom-6 right-6">
+        <div className="fixed bottom-4 right-4 z-40">
           <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
             <DropdownMenuTrigger asChild>
               <Button
                 size="lg"
-                className="rounded-full h-16 w-16 shadow-2xl bg-primary hover:bg-primary/90 transition-all duration-300"
+                className="rounded-full h-14 w-14 shadow-2xl bg-primary hover:bg-primary/90 transition-all duration-300"
               >
-                <Menu className="h-6 w-6" />
+                <Menu className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent 
               align="end" 
               side="top" 
-              className="w-64 mb-2 bg-background/95 backdrop-blur-lg border-2"
+              className="w-72 mb-2 mr-2 bg-background/95 backdrop-blur-lg border-2"
             >
               {actions.map((action, index) => {
                 const Icon = action.icon;
                 return (
                   <DropdownMenuItem
                     key={index}
-                    className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                    className="p-3 cursor-pointer hover:bg-accent/50 transition-colors min-h-[56px]"
                     onClick={() => {
                       action.onClick();
                       setIsOpen(false);
                     }}
                   >
                     <div className="flex items-start gap-3 w-full">
-                      <Icon className="h-5 w-5 mt-1 text-primary" />
-                      <div className="flex-1">
-                        <div className="font-medium text-base">{action.label}</div>
-                        <div className="text-sm text-muted-foreground mt-1">
+                      <Icon className="h-5 w-5 mt-1 text-primary flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm sm:text-base break-words">{action.label}</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground mt-1 break-words">
                           {action.description}
                         </div>
                       </div>

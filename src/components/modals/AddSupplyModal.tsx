@@ -305,7 +305,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
 
   return (
     <Dialog open={open} onOpenChange={() => onOpenChange(false)}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[95vh] overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">新增物資</DialogTitle>
           <DialogDescription className="text-base">
@@ -327,7 +327,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
           <WizardStep title="捐贈者資訊">
             <div className="space-y-4">
               <h3 className="text-lg font-medium">捐贈者資訊</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="donor-name">姓名/抬頭</Label>
                   <Input 
@@ -364,38 +364,46 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium">物資</h3>
-                <Button type="button" onClick={addSupplyItem} variant="outline" size="sm">
+                <Button 
+                  type="button" 
+                  onClick={addSupplyItem} 
+                  variant="outline" 
+                  size="sm"
+                  className="min-h-[44px] px-4"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   新增
                 </Button>
               </div>
               
               {supplyItems.map((item, index) => (
-                <div key={index} className="p-4 border rounded-lg space-y-4">
+                <div key={index} className="p-3 sm:p-4 border rounded-lg space-y-3 sm:space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-medium">物資 {index + 1}</h4>
+                    <h4 className="font-medium text-sm sm:text-base">物資 {index + 1}</h4>
                     {supplyItems.length > 1 && (
                       <Button 
                         type="button" 
                         onClick={() => removeSupplyItem(index)}
                         variant="ghost" 
                         size="sm"
+                        className="min-h-[44px] min-w-[44px] p-2"
                       >
                         <X className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label>物資名稱</Label>
                       {item.isNewSupplyName ? (
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <Input
                             type="text"
                             value={item.name}
                             onChange={(e) => updateSupplyItem(index, "name", e.target.value)}
                             placeholder="輸入新物資名稱"
+                            className="flex-1"
                           />
                           <Button
                             type="button"
@@ -405,6 +413,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
                               console.log('🔥 確認按鈕被點擊！index:', index);
                               confirmNewSupplyName(index);
                             }}
+                            className="sm:w-auto w-full min-h-[44px]"
                           >
                             確認
                           </Button>
@@ -445,12 +454,13 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
                           </SelectContent>
                         </Select>
                       ) : (
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <Input
                             type="text"
                             value={item.category}
                             onChange={(e) => updateSupplyItem(index, "category", e.target.value)}
                             placeholder="輸入新類別名稱"
+                            className="flex-1"
                           />
                           <Button
                             type="button"
@@ -464,6 +474,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
                                 }
                               }
                             }}
+                            className="sm:w-auto w-full min-h-[44px]"
                           >
                             確認
                           </Button>
@@ -499,9 +510,9 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
                 type="button" 
                 onClick={addSupplyItem} 
                 variant="outline" 
-                className="w-full py-6 text-base"
+                className="w-full py-4 sm:py-6 text-sm sm:text-base min-h-[44px]"
               >
-                <Plus className="h-5 w-5 mr-2" />
+                <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                 新增物資
               </Button>
             </div>

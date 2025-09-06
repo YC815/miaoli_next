@@ -101,7 +101,7 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[95vw] max-w-md max-h-[95vh] overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">修改庫存數量</DialogTitle>
           <DialogDescription className="text-sm">
@@ -113,12 +113,12 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
           {/* 增減選擇 */}
           <div className="space-y-2">
             <Label>操作類型</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button
                 type="button"
                 variant={changeType === "increase" ? "default" : "outline"}
                 onClick={() => setChangeType("increase")}
-                className="flex-1"
+                className="flex-1 min-h-[44px]"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 增加庫存
@@ -127,7 +127,7 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
                 type="button"
                 variant={changeType === "decrease" ? "default" : "outline"}
                 onClick={() => setChangeType("decrease")}
-                className="flex-1"
+                className="flex-1 min-h-[44px]"
               >
                 <Minus className="h-4 w-4 mr-2" />
                 減少庫存
@@ -190,9 +190,9 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
           {/* 預覽結果 */}
           {changeAmount > 0 && (
             <div className="p-3 bg-muted rounded-lg">
-              <div className="text-sm">
+              <div className="text-xs sm:text-sm">
                 <p className="font-medium mb-1">變更預覽：</p>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground break-words">
                   {supply?.quantity} → {getNewQuantity()} 個
                   <span className={`ml-2 font-medium ${
                     changeType === "increase" ? "text-green-600" : "text-red-600"
@@ -205,8 +205,12 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto min-h-[44px]"
+          >
             取消
           </Button>
           <Button 
@@ -218,6 +222,7 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
               (reason === "其他（請說明）" && !customReason.trim()) ||
               !!(changeType === "decrease" && supply && changeAmount > supply.quantity)
             }
+            className="w-full sm:w-auto min-h-[44px]"
           >
             確認修改
           </Button>

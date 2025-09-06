@@ -41,21 +41,21 @@ export function StatisticsCards({ stats }: StatisticsCardsProps) {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
         {cards.map((card, index) => {
           const Icon = card.icon;
           
           return (
             <div
               key={index}
-              className="bg-card border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 text-center"
+              className="bg-card border rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-all duration-200 text-center"
             >
-              <div className="flex flex-col items-center space-y-2">
-                <Icon className={`h-8 w-8 ${card.color}`} />
-                <p className="text-xs text-muted-foreground font-medium">
+              <div className="flex flex-col items-center space-y-1 sm:space-y-2">
+                <Icon className={`h-6 w-6 sm:h-8 sm:w-8 ${card.color}`} />
+                <p className="text-xs sm:text-sm text-muted-foreground font-medium leading-tight text-center">
                   {card.title}
                 </p>
-                <p className={`text-2xl font-bold ${index === 3 ? 'text-destructive' : card.color}`}>
+                <p className={`text-lg sm:text-2xl font-bold ${index === 3 ? 'text-destructive' : card.color}`}>
                   {card.value.toLocaleString()}
                 </p>
               </div>
