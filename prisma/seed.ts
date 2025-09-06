@@ -8,6 +8,7 @@ async function main() {
   // 清理現有數據 (按依賴關係順序)
   await prisma.inventoryChangeReason.deleteMany()
   await prisma.recipientUnit.deleteMany()
+  await prisma.unit.deleteMany()
   await prisma.category.deleteMany()
 
   console.log('📦 創建物資類別...')
@@ -38,6 +39,26 @@ async function main() {
     })
   }
 
+  console.log('📏 創建單位...')
+  const units = [
+    { name: '個', sortOrder: 1 },
+    { name: '盒', sortOrder: 2 },
+    { name: '包', sortOrder: 3 },
+    { name: '罐', sortOrder: 4 },
+    { name: '瓶', sortOrder: 5 },
+    { name: '袋', sortOrder: 6 },
+    { name: '件', sortOrder: 7 },
+    { name: '組', sortOrder: 8 },
+    { name: '公斤', sortOrder: 9 },
+    { name: '公升', sortOrder: 10 },
+  ]
+
+  for (const unit of units) {
+    await prisma.unit.create({
+      data: unit,
+    })
+  }
+
   console.log('📝 創建庫存變更原因...')
   const inventoryReasons = [
     { reason: '其他（請說明）', changeType: 'INCREASE', sortOrder: 1 },
@@ -61,12 +82,14 @@ async function main() {
   
   // 顯示填充結果
   const categoryCount = await prisma.category.count()
-  const unitCount = await prisma.recipientUnit.count()
+  const recipientUnitCount = await prisma.recipientUnit.count()
+  const unitCount = await prisma.unit.count()
   const reasonCount = await prisma.inventoryChangeReason.count()
 
   console.log(`📊 填充結果:`)
   console.log(`   - 物資類別: ${categoryCount} 筆`)
-  console.log(`   - 領取單位: ${unitCount} 筆`)
+  console.log(`   - 領取單位: ${recipientUnitCount} 筆`)
+  console.log(`   - 單位: ${unitCount} 筆`)
   console.log(`   - 庫存變更原因: ${reasonCount} 筆`)
 }
 
