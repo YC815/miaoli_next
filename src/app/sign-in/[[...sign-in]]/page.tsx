@@ -13,6 +13,7 @@ export default function Page() {
         </div>
         
         <SignIn 
+          fallbackRedirectUrl="/"
           appearance={{
             elements: {
               rootBox: "mx-auto",
