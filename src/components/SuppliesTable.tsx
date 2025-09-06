@@ -58,8 +58,8 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
     if (!sortField || !sortDirection) return filtered;
 
     return [...filtered].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: string | number;
+      let bValue: string | number;
 
       switch (sortField) {
         case 'category':

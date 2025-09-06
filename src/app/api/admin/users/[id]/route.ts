@@ -5,7 +5,7 @@ import { Role } from '@prisma/client'; // Import Role enum
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId: clerkId } = await auth();
@@ -13,7 +13,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const targetUserId = params.id;
+    const { id: targetUserId } = await params;
     const { nickname, role } = await request.json();
 
     const currentUser = await prisma.user.findUnique({
@@ -109,7 +109,7 @@ export async function PUT(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId: clerkId } = await auth();
@@ -117,7 +117,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const targetUserId = params.id;
+    const { id: targetUserId } = await params;
 
     const currentUser = await prisma.user.findUnique({
       where: { clerkId },

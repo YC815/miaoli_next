@@ -4,7 +4,6 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/sonner";
-import { AuthGuard } from "@/components/auth/AuthGuard";
 
 interface RootLayoutProps {
   children: React.ReactNode;

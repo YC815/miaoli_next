@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     try {
       const body = await request.json();
       email = body.email;
-    } catch (jsonError) {
+    } catch {
       // If JSON parsing fails, we'll try to get email from Clerk later
       console.log('No JSON body provided, will get email from Clerk');
     }
