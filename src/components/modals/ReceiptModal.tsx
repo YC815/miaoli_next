@@ -28,6 +28,8 @@ interface DonationRecord {
   createdAt: string;
   donationItems: DonationItem[];
   selected: boolean;
+  items: string;  // Transformed display string
+  date: string;   // Formatted date string
 }
 
 interface ReceiptModalProps {

@@ -19,6 +19,7 @@ import { useState } from "react";
 import { EditSupplyModal } from "@/components/modals/EditSupplyModal";
 import { EditQuantityModal } from "@/components/modals/EditQuantityModal";
 import { EditSafetyStockModal } from "@/components/modals/EditSafetyStockModal";
+import { Permission } from "@/lib/permissions";
 
 interface Supply {
   id: string;
@@ -33,9 +34,10 @@ interface SuppliesTableProps {
   onUpdateSupply: (updatedSupply: Supply) => void;
   onUpdateQuantity: (id: string, newQuantity: number, changeType: string, reason: string) => void;
   onUpdateSafetyStock: (id: string, newSafetyStock: number) => void;
+  userPermissions: Permission | null;
 }
 
-export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUpdateSafetyStock }: SuppliesTableProps) {
+export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUpdateSafetyStock, userPermissions }: SuppliesTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isEditSupplyOpen, setIsEditSupplyOpen] = useState(false);
   const [isEditQuantityOpen, setIsEditQuantityOpen] = useState(false);
@@ -170,24 +172,30 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem 
-                              className="text-base py-2 cursor-pointer"
-                              onClick={() => handleEditSupply(supply)}
-                            >
-                              編輯資訊
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-base py-2 cursor-pointer"
-                              onClick={() => handleEditQuantity(supply)}
-                            >
-                              編輯數量
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-base py-2 cursor-pointer"
-                              onClick={() => handleEditSafetyStock(supply)}
-                            >
-                              編輯安全庫存量
-                            </DropdownMenuItem>
+                            {userPermissions?.canEditSupplyInfo && (
+                              <DropdownMenuItem 
+                                className="text-base py-2 cursor-pointer"
+                                onClick={() => handleEditSupply(supply)}
+                              >
+                                編輯資訊
+                              </DropdownMenuItem>
+                            )}
+                            {userPermissions?.canEditQuantity && (
+                              <DropdownMenuItem 
+                                className="text-base py-2 cursor-pointer"
+                                onClick={() => handleEditQuantity(supply)}
+                              >
+                                編輯數量
+                              </DropdownMenuItem>
+                            )}
+                            {userPermissions?.canEditSafetyStock && (
+                              <DropdownMenuItem 
+                                className="text-base py-2 cursor-pointer"
+                                onClick={() => handleEditSafetyStock(supply)}
+                              >
+                                編輯安全庫存量
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

@@ -12,8 +12,10 @@ import { ModeToggle } from "@/components/theme-toggle";
 import { StaffManagement } from "@/components/admin/StaffManagement";
 import { UserProfile } from "@/components/auth/UserProfile";
 import * as XLSX from 'xlsx';
-import { AuthGuard, User } from "@/components/auth/AuthGuard";
+import { User } from "@/components/auth/AuthGuard";
 import { toast } from "sonner";
+import { getPermissions } from "@/lib/permissions";
+import { useUser, SignOutButton } from "@clerk/nextjs";
 
 type TabType = "supplies" | "records" | "staff";
 
@@ -55,15 +57,30 @@ interface PickupItem {
 interface DonationRecord {
   id: string;
   donorName: string;
-  donorPhone: string;
+  donorPhone?: string;
+  address?: string;
+  notes?: string;
+  createdAt: string;
+  donationItems: {
+    quantity: number;
+    supply: {
+      name: string;
+    };
+  }[];
+  selected: boolean;
   items: string;
   date: string;
-  selected: boolean;
 }
 
-function HomePage({ dbUser: initialDbUser }: { dbUser: User | null }) {
-  const [dbUser, setDbUser] = useState(initialDbUser);
+export default function HomePage() {
+  const { isLoaded, isSignedIn, user: clerkUser } = useUser();
+  const [dbUser, setDbUser] = useState<User | null>(null);
+  
+  console.log('🔍 HomePage Debug:', { isLoaded, isSignedIn, clerkUser: clerkUser?.id });
   const [activeTab, setActiveTab] = useState<TabType>("supplies");
+  
+  // Calculate user permissions
+  const userPermissions = dbUser ? getPermissions(dbUser.role) : null;
   const [isAddSupplyOpen, setIsAddSupplyOpen] = useState(false);
   const [isBatchPickupOpen, setIsBatchPickupOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
@@ -86,9 +103,39 @@ function HomePage({ dbUser: initialDbUser }: { dbUser: User | null }) {
     }
   };
 
+  // Sync user to database when Clerk loads
   useEffect(() => {
-    fetchSupplies();
-  }, []);
+    const syncUser = async () => {
+      if (isLoaded && isSignedIn && clerkUser && !dbUser) {
+        console.log('🔄 開始同步用戶資料');
+        try {
+          const response = await fetch('/api/users/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: clerkUser.emailAddresses[0]?.emailAddress,
+            }),
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            console.log('✅ 用戶資料同步成功:', userData);
+            setDbUser(userData);
+          }
+        } catch (error) {
+          console.error('❌ 用戶同步錯誤:', error);
+        }
+      }
+    };
+    
+    syncUser();
+  }, [isLoaded, isSignedIn, clerkUser, dbUser]);
+
+  useEffect(() => {
+    if (dbUser) { // Only fetch supplies if dbUser is available
+      fetchSupplies();
+    }
+  }, [dbUser]); // Add dbUser to dependency array
 
   const stats = {
     totalCategories: supplies.length,
@@ -296,6 +343,39 @@ function HomePage({ dbUser: initialDbUser }: { dbUser: User | null }) {
     VOLUNTEER: '志工',
   }
 
+  // Handle loading state
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+          <p className="text-muted-foreground">載入中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle not signed in
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4 text-center max-w-md">
+          <div className="text-4xl mb-4">🔒</div>
+          <h2 className="text-2xl font-semibold">需要登入</h2>
+          <p className="text-muted-foreground mb-6">
+            請登入您的帳戶以使用物資管理系統
+          </p>
+          <button 
+            onClick={() => window.location.href = '/sign-in'}
+            className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-lg font-medium"
+          >
+            前往登入
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex flex-col">
       {/* Navigation Bar */}
@@ -322,15 +402,17 @@ function HomePage({ dbUser: initialDbUser }: { dbUser: User | null }) {
               >
                 物資管理
               </Button>
-              <Button
-                variant={activeTab === "records" ? "default" : "ghost"}
-                onClick={() => setActiveTab("records")}
-                className="rounded-md text-sm px-3 py-2"
-                size="sm"
-              >
-                紀錄調取
-              </Button>
-              {dbUser && dbUser.role === 'ADMIN' && (
+              {userPermissions?.canViewRecords && (
+                <Button
+                  variant={activeTab === "records" ? "default" : "ghost"}
+                  onClick={() => setActiveTab("records")}
+                  className="rounded-md text-sm px-3 py-2"
+                  size="sm"
+                >
+                  紀錄調取
+                </Button>
+              )}
+              {userPermissions?.canManageUsers && (
                 <Button
                   variant={activeTab === "staff" ? "default" : "ghost"}
                   onClick={() => setActiveTab("staff")}
@@ -344,18 +426,22 @@ function HomePage({ dbUser: initialDbUser }: { dbUser: User | null }) {
           </div>
 
           {/* Right: User Info & Settings */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            {/* Theme Toggle */}
+            <ModeToggle />
+            
             {dbUser && (
               <>
-                {/* User Role Badge - Desktop only */}
-                <div className="hidden md:flex items-center">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                {/* Divider */}
+                <div className="h-6 w-px bg-border" />
+                
+                <div className="flex items-center gap-3">
+                  {/* Role Badge */}
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border">
                     {roleMapping[dbUser.role]}
                   </span>
-                </div>
 
-                {/* User Avatar */}
-                <div className="flex items-center gap-2">
+                  {/* User Avatar */}
                   <div 
                     className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
                     onClick={() => setIsUserProfileOpen(true)}
@@ -363,20 +449,29 @@ function HomePage({ dbUser: initialDbUser }: { dbUser: User | null }) {
                   >
                     <span className="text-white font-medium text-sm">{dbUser.nickname?.[0]}</span>
                   </div>
-                  {/* User name - Desktop only */}
+
+                  {/* User Name */}
                   <button 
-                    className="hidden lg:block text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
+                    className="hidden sm:block text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
                     onClick={() => setIsUserProfileOpen(true)}
                     title="點擊編輯個人資料"
                   >
                     {dbUser.nickname}
                   </button>
+
+                  {/* Sign Out Button */}
+                  <SignOutButton>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      登出
+                    </Button>
+                  </SignOutButton>
                 </div>
               </>
             )}
-
-            {/* Theme Toggle */}
-            <ModeToggle />
           </div>
         </div>
       </nav>
@@ -394,6 +489,7 @@ function HomePage({ dbUser: initialDbUser }: { dbUser: User | null }) {
                 onUpdateSupply={handleUpdateSupply}
                 onUpdateQuantity={handleUpdateQuantity}
                 onUpdateSafetyStock={handleUpdateSafetyStock}
+                userPermissions={userPermissions}
               />
             </div>
           </div>
@@ -450,6 +546,7 @@ function HomePage({ dbUser: initialDbUser }: { dbUser: User | null }) {
           onBatchPickup={() => setIsBatchPickupOpen(true)}
           onExportExcel={handleExportExcel}
           onPrintReceipt={() => setIsReceiptOpen(true)}
+          userPermissions={userPermissions}
         />
       )}
     </div>
@@ -457,10 +554,3 @@ function HomePage({ dbUser: initialDbUser }: { dbUser: User | null }) {
 }
 
 
-export default function Home() {
-  return (
-    <AuthGuard>
-      <HomePage dbUser={null} />
-    </AuthGuard>
-  );
-}
