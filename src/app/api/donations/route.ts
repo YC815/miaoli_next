@@ -18,7 +18,10 @@ interface SupplyItem {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🚀 Donations API POST called');
+    
     const { userId: clerkId } = await auth();
+    console.log('🔐 ClerkId:', clerkId);
     if (!clerkId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -26,6 +29,7 @@ export async function POST(request: NextRequest) {
     const currentUser = await prisma.user.findUnique({
       where: { clerkId },
     });
+    console.log('👤 Current user:', currentUser);
 
     if (!currentUser || (currentUser.role !== Role.ADMIN && currentUser.role !== Role.STAFF && currentUser.role !== Role.VOLUNTEER)) {
       return NextResponse.json({ 
@@ -33,21 +37,41 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-        const { donorInfo, supplyItems, notes }: { donorInfo: DonorInfo, supplyItems: SupplyItem[], notes: string } = await request.json();
+    const requestBody = await request.json();
+    console.log('📥 Request body received:', requestBody);
+    
+    const { donorInfo, supplyItems, notes }: { donorInfo: DonorInfo, supplyItems: SupplyItem[], notes: string } = requestBody;
 
-    if (!donorInfo || !donorInfo.name || !supplyItems || supplyItems.length === 0) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    console.log('📦 Supply items received:', supplyItems);
+    
+    if (!supplyItems || supplyItems.length === 0) {
+      console.log('❌ No supply items provided');
+      return NextResponse.json({ error: 'Supply items are required' }, { status: 400 });
+    }
+
+    // Validate that at least one supply item is valid
+    const validSupplyItems = supplyItems.filter(item => 
+      item.name && item.name.trim() !== '' && 
+      item.category && item.category.trim() !== '' && 
+      item.quantity > 0
+    );
+
+    console.log('✅ Valid supply items:', validSupplyItems);
+
+    if (validSupplyItems.length === 0) {
+      console.log('❌ No valid supply items found');
+      return NextResponse.json({ error: 'At least one valid supply item is required' }, { status: 400 });
     }
 
     const newDonationRecord = await prisma.donationRecord.create({
       data: {
-        donorName: donorInfo.name,
-        donorPhone: donorInfo.phone || null,
-        address: donorInfo.address || null,
+        donorName: donorInfo?.name || '匿名捐贈者',
+        donorPhone: donorInfo?.phone || null,
+        address: donorInfo?.address || null,
         notes: notes || null,
         userId: currentUser.id,
         donationItems: {
-          create: await Promise.all(supplyItems.map(async (item: SupplyItem) => {
+          create: await Promise.all(validSupplyItems.map(async (item: SupplyItem) => {
             // Find or create supply
             let supply = await prisma.supply.findFirst({
               where: { name: item.name, category: item.category },

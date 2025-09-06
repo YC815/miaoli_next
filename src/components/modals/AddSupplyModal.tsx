@@ -27,6 +27,8 @@ interface SupplyItem {
   category: string;
   quantity: number;
   expiryDate?: string;
+  isNewSupplyName?: boolean;
+  isNewCategory?: boolean;
 }
 
 interface DonorInfo {
@@ -49,7 +51,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
     address: "",
   });
   const [supplyItems, setSupplyItems] = useState<SupplyItem[]>([
-    { name: "", category: "", quantity: 0, expiryDate: "" }
+    { name: "", category: "", quantity: 0, expiryDate: "", isNewSupplyName: false, isNewCategory: false }
   ]);
   const [notes, setNotes] = useState("");
   const [availableSupplyNames, setAvailableSupplyNames] = useState<string[]>([]);
@@ -76,12 +78,10 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
 
   const fetchSupplyNames = async () => {
     try {
-      const response = await fetch('/api/supplies');
+      const response = await fetch('/api/supply-names');
       if (response.ok) {
         const data = await response.json();
-        // Get unique supply names from existing supplies
-        const uniqueNames = [...new Set(data.map((supply: { name: string }) => supply.name))] as string[];
-        setAvailableSupplyNames(uniqueNames);
+        setAvailableSupplyNames(data.map((item: { name: string }) => item.name));
       }
     } catch (error) {
       console.error('Error fetching supply names:', error);
@@ -89,7 +89,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
   };
 
   const addSupplyItem = () => {
-    setSupplyItems([...supplyItems, { name: "", category: "", quantity: 0, expiryDate: "" }]);
+    setSupplyItems([...supplyItems, { name: "", category: "", quantity: 0, expiryDate: "", isNewSupplyName: false, isNewCategory: false }]);
   };
 
   const removeSupplyItem = (index: number) => {
@@ -99,20 +99,144 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
   };
 
   const updateSupplyItem = (index: number, field: keyof SupplyItem, value: string | number) => {
+    console.log('⚡ updateSupplyItem called:', { index, field, value });
     const updatedItems = [...supplyItems];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
+    console.log('📊 After update:', updatedItems[index]);
     setSupplyItems(updatedItems);
+  };
+
+  const handleSupplyNameSelect = (index: number, value: string) => {
+    console.log('🎯 handleSupplyNameSelect called:', { index, value });
+    const updatedItems = [...supplyItems];
+    if (value === "new") {
+      console.log('📝 Setting new supply name mode for index:', index);
+      updatedItems[index] = { 
+        ...updatedItems[index], 
+        name: "", 
+        isNewSupplyName: true 
+      };
+    } else {
+      // 這裡是當選擇現有物資或確認新物資名稱時
+      console.log('✅ Setting supply name for index:', index, 'value:', value);
+      updatedItems[index] = { 
+        ...updatedItems[index], 
+        name: value, 
+        isNewSupplyName: false 
+      };
+    }
+    console.log('📊 Updated supplyItems:', updatedItems);
+    setSupplyItems(updatedItems);
+  };
+
+  const confirmNewSupplyName = async (index: number) => {
+    console.log('✨ Confirming new supply name for index:', index);
+    const item = supplyItems[index];
+    if (!item.name.trim()) return;
+
+    try {
+      // 呼叫 API 新增物資名稱到資料庫
+      const response = await fetch('/api/supply-names', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: item.name.trim(),
+        }),
+      });
+
+      if (response.ok || response.status === 409) { // 409 表示已存在，也是正常情況
+        // 添加到本地可用清單
+        const newName = item.name.trim();
+        if (!availableSupplyNames.includes(newName)) {
+          setAvailableSupplyNames(prev => [...prev, newName]);
+        }
+        
+        // 更新 UI 狀態，退出新增模式
+        const updatedItems = [...supplyItems];
+        updatedItems[index] = { 
+          ...updatedItems[index], 
+          name: newName,
+          isNewSupplyName: false 
+        };
+        setSupplyItems(updatedItems);
+        console.log('✅ New supply name confirmed and added:', newName);
+      } else {
+        console.error('Failed to create supply name');
+      }
+    } catch (error) {
+      console.error('Error creating supply name:', error);
+    }
+  };
+
+  const handleCategorySelect = (index: number, value: string) => {
+    const updatedItems = [...supplyItems];
+    if (value === "new") {
+      updatedItems[index] = { 
+        ...updatedItems[index], 
+        category: "", 
+        isNewCategory: true 
+      };
+    } else {
+      updatedItems[index] = { 
+        ...updatedItems[index], 
+        category: value, 
+        isNewCategory: false 
+      };
+    }
+    setSupplyItems(updatedItems);
+  };
+
+  const createNewCategory = async (categoryName: string) => {
+    try {
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: categoryName,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchCategories(); // Refresh the categories list
+        return true;
+      } else {
+        console.error('Failed to create category');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error creating category:', error);
+      return false;
+    }
   };
 
   const resetForm = () => {
     setCurrentStep(0);
     setDonorInfo({ name: "", phone: "", address: "" });
-    setSupplyItems([{ name: "", category: "", quantity: 0, expiryDate: "" }]);
+    setSupplyItems([{ name: "", category: "", quantity: 0, expiryDate: "", isNewSupplyName: false, isNewCategory: false }]);
     setNotes("");
   };
 
   const handleComplete = () => {
-    onSubmit(donorInfo, supplyItems, notes);
+    console.log('🚀 handleComplete called');
+    console.log('📋 Current supplyItems:', supplyItems);
+    console.log('👤 Current donorInfo:', donorInfo);
+    console.log('📝 Current notes:', notes);
+    
+    // Clean the supply items to remove internal tracking properties
+    const cleanedSupplyItems = supplyItems.map(item => ({
+      name: item.name,
+      category: item.category,
+      quantity: item.quantity,
+      expiryDate: item.expiryDate
+    }));
+    
+    console.log('🧹 Cleaned supplyItems:', cleanedSupplyItems);
+    
+    onSubmit(donorInfo, cleanedSupplyItems, notes);
     resetForm();
   };
 
@@ -127,11 +251,13 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
   };
 
   const hasValidSupplyItems = () => {
-    return supplyItems.some(item => 
-      item.name.trim() !== "" && 
-      item.category.trim() !== "" && 
-      item.quantity > 0
-    );
+    return supplyItems.some(item => {
+      const hasValidName = item.name.trim() !== "";
+      const hasValidCategory = item.category.trim() !== "";
+      const hasValidQuantity = item.quantity > 0;
+      
+      return hasValidName && hasValidCategory && hasValidQuantity;
+    });
   };
 
   // Step validation
@@ -263,45 +389,86 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>物資名稱</Label>
-                      <Select 
-                        value={item.name}
-                        onValueChange={(value) => updateSupplyItem(index, "name", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="選擇物資" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableSupplyNames.map((name) => (
-                            <SelectItem key={name} value={name}>{name}</SelectItem>
-                          ))}
-                          <SelectItem value="new">+ 新增物資</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {item.name === "new" && (
-                        <Input
-                          type="text"
-                          value={item.name === "new" ? "" : item.name}
-                          onChange={(e) => updateSupplyItem(index, "name", e.target.value)}
-                          placeholder="輸入新物資名稱"
-                        />
+                      {item.isNewSupplyName ? (
+                        <div className="flex gap-2">
+                          <Input
+                            type="text"
+                            value={item.name}
+                            onChange={(e) => updateSupplyItem(index, "name", e.target.value)}
+                            placeholder="輸入新物資名稱"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              console.log('🔥 確認按鈕被點擊！index:', index);
+                              confirmNewSupplyName(index);
+                            }}
+                          >
+                            確認
+                          </Button>
+                        </div>
+                      ) : (
+                        <Select 
+                          value={item.name}
+                          onValueChange={(value) => handleSupplyNameSelect(index, value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="選擇物資" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableSupplyNames.map((name) => (
+                              <SelectItem key={name} value={name}>{name}</SelectItem>
+                            ))}
+                            <SelectItem value="new">+ 新增物資</SelectItem>
+                          </SelectContent>
+                        </Select>
                       )}
                     </div>
                     
                     <div className="space-y-2">
                       <Label>品項類別</Label>
-                      <Select 
-                        value={item.category}
-                        onValueChange={(value) => updateSupplyItem(index, "category", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="選擇類別" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableCategories.map((category) => (
-                            <SelectItem key={category} value={category}>{category}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {!item.isNewCategory ? (
+                        <Select 
+                          value={item.category}
+                          onValueChange={(value) => handleCategorySelect(index, value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="選擇類別" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableCategories.map((category) => (
+                              <SelectItem key={category} value={category}>{category}</SelectItem>
+                            ))}
+                            <SelectItem value="new">+ 新增類別</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Input
+                            type="text"
+                            value={item.category}
+                            onChange={(e) => updateSupplyItem(index, "category", e.target.value)}
+                            placeholder="輸入新類別名稱"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              if (item.category.trim()) {
+                                const success = await createNewCategory(item.category.trim());
+                                if (success) {
+                                  handleCategorySelect(index, item.category.trim());
+                                }
+                              }
+                            }}
+                          >
+                            確認
+                          </Button>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="space-y-2">

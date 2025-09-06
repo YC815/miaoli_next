@@ -149,25 +149,38 @@ export default function HomePage() {
   };
 
   const handleAddSupply = async (donorInfo: DonorInfo, supplyItems: SupplyItem[], notes: string) => {
+    console.log('🎯 handleAddSupply called with:');
+    console.log('👤 donorInfo:', donorInfo);
+    console.log('📦 supplyItems:', supplyItems);
+    console.log('📝 notes:', notes);
+    
     try {
+      const requestBody = { donorInfo, supplyItems, notes };
+      console.log('📤 Sending request body:', requestBody);
+      
       const response = await fetch('/api/donations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ donorInfo, supplyItems, notes }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log('📥 Response status:', response.status);
+      
       if (response.ok) {
+        const responseData = await response.json();
+        console.log('✅ Success response:', responseData);
         toast.success("物資新增成功！");
         fetchSupplies(); // Refresh supplies list
         setIsAddSupplyOpen(false);
       } else {
         const errorData = await response.json();
+        console.error('❌ Error response:', errorData);
         toast.error(`新增物資失敗: ${errorData.error || response.statusText}`);
       }
     } catch (error) {
-      console.error("Error adding supply:", error);
+      console.error("💥 Error adding supply:", error);
       toast.error("新增物資失敗");
     }
   };
