@@ -10,6 +10,8 @@ import { BatchPickupModal } from "@/components/modals/BatchPickupModal";
 import { ReceiptModal } from "@/components/modals/ReceiptModal";
 import { ModeToggle } from "@/components/theme-toggle";
 import { StaffManagement } from "@/components/admin/StaffManagement";
+import { DataManagement } from "@/components/admin/DataManagement";
+import { RecordsView } from "@/components/RecordsView";
 import { UserProfile } from "@/components/auth/UserProfile";
 import * as XLSX from 'xlsx';
 import { User } from "@/components/auth/AuthGuard";
@@ -17,7 +19,7 @@ import { toast } from "sonner";
 import { getPermissions } from "@/lib/permissions";
 import { useUser, SignOutButton } from "@clerk/nextjs";
 
-type TabType = "supplies" | "records" | "staff";
+type TabType = "supplies" | "records" | "staff" | "data";
 
 interface Supply {
   id: string;
@@ -435,6 +437,16 @@ export default function HomePage() {
                   人員管理
                 </Button>
               )}
+              {userPermissions?.canManageUsers && (
+                <Button
+                  variant={activeTab === "data" ? "default" : "ghost"}
+                  onClick={() => setActiveTab("data")}
+                  className="rounded-md text-sm px-3 py-2"
+                  size="sm"
+                >
+                  資料管理
+                </Button>
+              )}
             </div>
           </div>
 
@@ -509,18 +521,20 @@ export default function HomePage() {
         )}
 
         {activeTab === "records" && (
-          <div className="flex flex-col items-center justify-center flex-1 space-y-4">
-            <div className="text-6xl">🚧</div>
-            <div className="text-center space-y-2">
-              <h3 className="text-2xl font-semibold">功能開發中</h3>
-              <p className="text-lg text-muted-foreground">紀錄調取功能即將上線，敬請期待</p>
-            </div>
+          <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-6">
+            <RecordsView />
           </div>
         )}
 
         {activeTab === "staff" && (
           <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-6">
             <StaffManagement />
+          </div>
+        )}
+
+        {activeTab === "data" && (
+          <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-6">
+            <DataManagement />
           </div>
         )}
       </main>
