@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     const serialNumber = await generateDonationSerialNumber();
+    console.log('📝 Generated serial number:', serialNumber);
 
     const newDonationRecord = await prisma.donationRecord.create({
       data: {
