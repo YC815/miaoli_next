@@ -3,93 +3,91 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id          String    @id @default(cuid())
-  clerkId     String    @unique
-  email       String    @unique
-  nickname    String?
-  role        Role      @default(VOLUNTEER)
-  isFirstLogin Boolean  @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  lastLoginAt DateTime?
-
-  donationRecords  DonationRecord[]
-  disbursements    Disbursement[]
-  inventoryLogs    InventoryLog[]
+  id              String           @id @default(cuid())
+  clerkId         String           @unique
+  email           String           @unique
+  nickname        String?
+  role            Role             @default(VOLUNTEER) // ✅ enum 不加引號
+  isFirstLogin    Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  lastLoginAt     DateTime?
+  disbursements   Disbursement[]
+  donationRecords DonationRecord[]
+  inventoryLogs   InventoryLog[]
 }
 
 model Supply {
-  id          String    @id @default(cuid())
-  name        String
-  category    String
-  quantity    Int
-  safetyStock Int
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  donationItems     DonationItem[]
+  id                String             @id @default(cuid())
+  name              String
+  category          String
+  quantity          Int
+  safetyStock       Int
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   disbursementItems DisbursementItem[]
+  donationItems     DonationItem[]
   inventoryLogs     InventoryLog[]
 }
 
 model DonationRecord {
-  id          String    @id @default(cuid())
-  donorName   String
-  donorPhone  String?
-  address     String?
-  notes       String?
-  createdAt   DateTime  @default(now())
+  id            String         @id @default(cuid())
+  donorName     String
+  donorPhone    String?
+  address       String?
+  notes         String?
+  createdAt     DateTime       @default(now())
+  userId        String
   donationItems DonationItem[]
-  user        User      @relation(fields: [userId], references: [id])
-  userId      String
+  user          User           @relation(fields: [userId], references: [id])
 }
 
 model DonationItem {
-  id         String          @id @default(cuid())
-  donation   DonationRecord  @relation(fields: [donationId], references: [id])
+  id         String         @id @default(cuid())
   donationId String
-  supply     Supply          @relation(fields: [supplyId], references: [id])
   supplyId   String
   quantity   Int
   expiryDate DateTime?
+  supply     Supply         @relation(fields: [supplyId], references: [id])
+  donation   DonationRecord @relation(fields: [donationId], references: [id])
 }
 
 model Disbursement {
-  id                String    @id @default(cuid())
+  id                String             @id @default(cuid())
   recipientUnit     String
   recipientPhone    String?
   purpose           String?
-  createdAt         DateTime  @default(now())
-  disbursementItems DisbursementItem[]
-  user              User      @relation(fields: [userId], references: [id])
+  createdAt         DateTime           @default(now())
   userId            String
+  user              User               @relation(fields: [userId], references: [id])
+  disbursementItems DisbursementItem[]
 }
 
 model DisbursementItem {
-  id              String        @id @default(cuid())
-  disbursement    Disbursement  @relation(fields: [disbursementId], references: [id])
-  disbursementId  String
-  supply          Supply        @relation(fields: [supplyId], references: [id])
-  supplyId        String
-  quantity        Int
+  id             String       @id @default(cuid())
+  disbursementId String
+  supplyId       String
+  quantity       Int
+  supply         Supply       @relation(fields: [supplyId], references: [id])
+  disbursement   Disbursement @relation(fields: [disbursementId], references: [id])
 }
 
 model InventoryLog {
-  id           String      @id @default(cuid())
-  supply       Supply      @relation(fields: [supplyId], references: [id])
+  id           String     @id @default(cuid())
   supplyId     String
   changeType   ChangeType
   changeAmount Int
   newQuantity  Int
   reason       String
-  createdAt    DateTime    @default(now())
-  user         User        @relation(fields: [userId], references: [id])
+  createdAt    DateTime   @default(now())
   userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  supply       Supply     @relation(fields: [supplyId], references: [id])
 }
 
 enum Role {
