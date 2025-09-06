@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MoreHorizontal, Search, AlertTriangle, Package } from "lucide-react";
+import { MoreHorizontal, Search, AlertTriangle, Package, Copy, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useState } from "react";
 import { EditSupplyModal } from "@/components/modals/EditSupplyModal";
 import { EditQuantityModal } from "@/components/modals/EditQuantityModal";
@@ -37,17 +37,67 @@ interface SuppliesTableProps {
   userPermissions: Permission | null;
 }
 
+type SortField = 'category' | 'name' | 'quantity' | 'safetyStock' | 'status';
+type SortDirection = 'asc' | 'desc' | null;
+
 export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUpdateSafetyStock, userPermissions }: SuppliesTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isEditSupplyOpen, setIsEditSupplyOpen] = useState(false);
   const [isEditQuantityOpen, setIsEditQuantityOpen] = useState(false);
   const [isEditSafetyStockOpen, setIsEditSafetyStockOpen] = useState(false);
   const [selectedSupply, setSelectedSupply] = useState<Supply | null>(null);
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
-  const filteredSupplies = supplies.filter(supply =>
-    supply.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supply.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredAndSortedSupplies = (() => {
+    const filtered = supplies.filter(supply =>
+      supply.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supply.category.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    if (!sortField || !sortDirection) return filtered;
+
+    return [...filtered].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortField) {
+        case 'category':
+          aValue = a.category;
+          bValue = b.category;
+          break;
+        case 'name':
+          aValue = a.name;
+          bValue = b.name;
+          break;
+        case 'quantity':
+          aValue = a.quantity;
+          bValue = b.quantity;
+          break;
+        case 'safetyStock':
+          aValue = a.safetyStock;
+          bValue = b.safetyStock;
+          break;
+        case 'status':
+          const aStatus = getStockStatus(a.quantity, a.safetyStock);
+          const bStatus = getStockStatus(b.quantity, b.safetyStock);
+          aValue = aStatus.label;
+          bValue = bStatus.label;
+          break;
+        default:
+          return 0;
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  })();
 
   const getCategoryColor = (category: string) => {
     const colors = {
@@ -64,6 +114,41 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
     if (quantity < safetyStock) return { label: '庫存不足', color: 'text-orange-600 font-medium' };
     if (quantity === safetyStock) return { label: '剛好達標', color: 'text-yellow-600 font-medium' };
     return { label: '庫存充足', color: 'text-green-600' };
+  };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else if (sortDirection === 'desc') {
+        setSortField(null);
+        setSortDirection(null);
+      } else {
+        setSortDirection('asc');
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return <ArrowUpDown className="h-4 w-4" />;
+    if (sortDirection === 'asc') return <ArrowUp className="h-4 w-4" />;
+    if (sortDirection === 'desc') return <ArrowDown className="h-4 w-4" />;
+    return <ArrowUpDown className="h-4 w-4" />;
+  };
+
+  const copyAvailableItemsToClipboard = () => {
+    const availableItems = filteredAndSortedSupplies
+      .filter(supply => supply.quantity > 1)
+      .map(supply => `• ${supply.name}`)
+      .join('\n');
+    
+    if (availableItems) {
+      navigator.clipboard.writeText(availableItems);
+      // You could add a toast notification here if you have one set up
+    }
   };
 
   const handleEditSupply = (supply: Supply) => {
@@ -88,17 +173,29 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
         <div>
           <h2 className="text-xl font-semibold mb-1">物資庫存清單</h2>
           <p className="text-sm text-muted-foreground">
-            共 {filteredSupplies.length} 項物資
+            共 {filteredAndSortedSupplies.length} 項物資
           </p>
         </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="搜尋物資名稱或類別..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 text-base"
-          />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={copyAvailableItemsToClipboard}
+            className="flex items-center gap-2"
+            disabled={filteredAndSortedSupplies.filter(s => s.quantity > 1).length === 0}
+          >
+            <Copy className="h-4 w-4" />
+            複製有庫存品項
+          </Button>
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="搜尋物資名稱或類別..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 text-base"
+            />
+          </div>
         </div>
       </div>
 
@@ -108,16 +205,66 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
           <Table>
             <TableHeader className="sticky top-0 bg-muted/30 z-10">
               <TableRow>
-                <TableHead className="font-semibold text-base py-4">品項類別</TableHead>
-                <TableHead className="font-semibold text-base py-4">物資名稱</TableHead>
-                <TableHead className="font-semibold text-base py-4 text-center">當前數量</TableHead>
-                <TableHead className="font-semibold text-base py-4 text-center">安全庫存</TableHead>
-                <TableHead className="font-semibold text-base py-4 text-center">庫存狀態</TableHead>
+                <TableHead className="font-semibold text-base py-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-2 hover:bg-transparent p-0 h-auto font-semibold text-base"
+                    onClick={() => handleSort('category')}
+                  >
+                    品項類別
+                    {getSortIcon('category')}
+                  </Button>
+                </TableHead>
+                <TableHead className="font-semibold text-base py-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-2 hover:bg-transparent p-0 h-auto font-semibold text-base"
+                    onClick={() => handleSort('name')}
+                  >
+                    物資名稱
+                    {getSortIcon('name')}
+                  </Button>
+                </TableHead>
+                <TableHead className="font-semibold text-base py-4 text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-2 hover:bg-transparent p-0 h-auto font-semibold text-base mx-auto"
+                    onClick={() => handleSort('quantity')}
+                  >
+                    當前數量
+                    {getSortIcon('quantity')}
+                  </Button>
+                </TableHead>
+                <TableHead className="font-semibold text-base py-4 text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-2 hover:bg-transparent p-0 h-auto font-semibold text-base mx-auto"
+                    onClick={() => handleSort('safetyStock')}
+                  >
+                    安全庫存
+                    {getSortIcon('safetyStock')}
+                  </Button>
+                </TableHead>
+                <TableHead className="font-semibold text-base py-4 text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-2 hover:bg-transparent p-0 h-auto font-semibold text-base mx-auto"
+                    onClick={() => handleSort('status')}
+                  >
+                    庫存狀態
+                    {getSortIcon('status')}
+                  </Button>
+                </TableHead>
                 <TableHead className="w-[80px] text-center font-semibold text-base py-4">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSupplies.length === 0 ? (
+              {filteredAndSortedSupplies.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-32 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -127,7 +274,7 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredSupplies.map((supply) => {
+                filteredAndSortedSupplies.map((supply) => {
                   const status = getStockStatus(supply.quantity, supply.safetyStock);
                   return (
                     <TableRow key={supply.id} className="hover:bg-muted/20 transition-colors">
