@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
+import { generateDonationSerialNumber } from '@/lib/serialNumber';
 
 interface DonorInfo {
   name: string;
@@ -63,8 +64,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'At least one valid supply item is required' }, { status: 400 });
     }
 
+    const serialNumber = await generateDonationSerialNumber();
+
     const newDonationRecord = await prisma.donationRecord.create({
       data: {
+        serialNumber,
         donorName: donorInfo?.name || '匿名捐贈者',
         donorPhone: donorInfo?.phone || null,
         address: donorInfo?.address || null,
@@ -146,6 +150,12 @@ export async function GET() {
         donationItems: {
           include: {
             supply: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            nickname: true,
           },
         },
       },

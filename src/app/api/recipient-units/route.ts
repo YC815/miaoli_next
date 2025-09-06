@@ -85,3 +85,56 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { clerkId },
+    });
+
+    if (!currentUser || currentUser.role !== Role.ADMIN) {
+      return NextResponse.json({ 
+        error: 'Access denied. Admin privileges required.' 
+      }, { status: 403 });
+    }
+
+    const { id } = await request.json();
+
+    if (!id || typeof id !== 'string') {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    }
+
+    // Check if recipient unit exists
+    const existingUnit = await prisma.recipientUnit.findUnique({
+      where: { id },
+    });
+
+    if (!existingUnit) {
+      return NextResponse.json({ 
+        error: 'Recipient unit not found' 
+      }, { status: 404 });
+    }
+
+    // Soft delete by setting isActive to false
+    const deletedUnit = await prisma.recipientUnit.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    return NextResponse.json({ 
+      message: 'Recipient unit deleted successfully',
+      recipientUnit: deletedUnit 
+    });
+  } catch (error) {
+    console.error('Error deleting recipient unit:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

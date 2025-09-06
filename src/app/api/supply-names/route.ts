@@ -82,3 +82,56 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { clerkId },
+    });
+
+    if (!currentUser || currentUser.role !== Role.ADMIN) {
+      return NextResponse.json({ 
+        error: 'Access denied. Admin privileges required.' 
+      }, { status: 403 });
+    }
+
+    const { id } = await request.json();
+
+    if (!id || typeof id !== 'string') {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    }
+
+    // Check if supply name exists
+    const existingSupplyName = await prisma.supplyName.findUnique({
+      where: { id },
+    });
+
+    if (!existingSupplyName) {
+      return NextResponse.json({ 
+        error: 'Supply name not found' 
+      }, { status: 404 });
+    }
+
+    // Soft delete by setting isActive to false
+    const deletedSupplyName = await prisma.supplyName.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    return NextResponse.json({ 
+      message: 'Supply name deleted successfully',
+      supplyName: deletedSupplyName 
+    });
+  } catch (error) {
+    console.error('Error deleting supply name:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

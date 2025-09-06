@@ -84,3 +84,56 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { clerkId },
+    });
+
+    if (!currentUser || currentUser.role !== Role.ADMIN) {
+      return NextResponse.json({ 
+        error: 'Access denied. Admin privileges required.' 
+      }, { status: 403 });
+    }
+
+    const { id } = await request.json();
+
+    if (!id || typeof id !== 'string') {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    }
+
+    // Check if category exists
+    const existingCategory = await prisma.category.findUnique({
+      where: { id },
+    });
+
+    if (!existingCategory) {
+      return NextResponse.json({ 
+        error: 'Category not found' 
+      }, { status: 404 });
+    }
+
+    // Soft delete by setting isActive to false
+    const deletedCategory = await prisma.category.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    return NextResponse.json({ 
+      message: 'Category deleted successfully',
+      category: deletedCategory 
+    });
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

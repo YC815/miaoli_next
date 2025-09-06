@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
+import { generateDisbursementSerialNumber } from '@/lib/serialNumber';
 
 interface PickupInfo {
   unit: string;
@@ -49,8 +50,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const serialNumber = await generateDisbursementSerialNumber();
+
     const newDisbursement = await prisma.disbursement.create({
       data: {
+        serialNumber,
         recipientUnit: pickupInfo.unit,
         recipientPhone: pickupInfo.phone || null,
         purpose: pickupInfo.purpose || null,
@@ -80,6 +84,57 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newDisbursement, { status: 201 });
   } catch (error) {
     console.error('Error creating disbursement:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET() {
+  try {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { clerkId },
+    });
+
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Only admins and staff can view all disbursement records
+    if (currentUser.role !== Role.ADMIN && currentUser.role !== Role.STAFF) {
+      return NextResponse.json({
+        error: 'Access denied. Admin or Staff privileges required.',
+      }, { status: 403 });
+    }
+
+    const disbursementRecords = await prisma.disbursement.findMany({
+      include: {
+        disbursementItems: {
+          include: {
+            supply: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            nickname: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return NextResponse.json(disbursementRecords);
+  } catch (error) {
+    console.error('Error fetching disbursement records:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
