@@ -22,10 +22,9 @@ interface UserProfileProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   dbUser: User | null;
-  onUserUpdate: (updatedUser: User) => void;
 }
 
-export function UserProfile({ open, onOpenChange, dbUser, onUserUpdate }: UserProfileProps) {
+export function UserProfile({ open, onOpenChange, dbUser }: UserProfileProps) {
   const { user: clerkUser } = useUser();
   const [nickname, setNickname] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,12 +56,13 @@ export function UserProfile({ open, onOpenChange, dbUser, onUserUpdate }: UserPr
       });
 
       if (response.ok) {
-        const updatedUser = await response.json();
-        onUserUpdate(updatedUser);
+        await response.json(); // User update will be handled by next AuthGuard sync
         setSuccess('暱稱更新成功！');
         setTimeout(() => {
           setSuccess("");
-        }, 3000);
+          // Close the dialog after successful update
+          onOpenChange(false);
+        }, 2000);
       } else {
         const errorData = await response.json();
         setError(errorData.error || '更新失敗');
