@@ -22,9 +22,10 @@ interface UserProfileProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   dbUser: User | null;
+  onUserUpdate?: (updatedUser: User) => void;
 }
 
-export function UserProfile({ open, onOpenChange, dbUser }: UserProfileProps) {
+export function UserProfile({ open, onOpenChange, dbUser, onUserUpdate }: UserProfileProps) {
   const { user: clerkUser } = useUser();
   const [nickname, setNickname] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,38 +41,75 @@ export function UserProfile({ open, onOpenChange, dbUser }: UserProfileProps) {
   const handleSubmit = async () => {
     if (!dbUser) return;
 
+    console.log('[UserProfile] ===== START NICKNAME UPDATE =====');
+    console.log('[UserProfile] Current state:', {
+      currentNickname: dbUser.nickname,
+      newNickname: nickname.trim(),
+      userId: dbUser.id,
+      email: dbUser.email
+    });
+
     setIsSubmitting(true);
     setError("");
     setSuccess("");
 
     try {
+      const requestData = {
+        nickname: nickname.trim() || undefined,
+      };
+      
+      console.log('[UserProfile] Sending request to /api/users/profile:', requestData);
+      
       const response = await fetch('/api/users/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          nickname: nickname.trim() || undefined,
-        }),
+        body: JSON.stringify(requestData),
       });
 
+      console.log('[UserProfile] API response status:', response.status, response.ok);
+
       if (response.ok) {
-        await response.json(); // User update will be handled by next AuthGuard sync
+        const updatedUserData = await response.json();
+        console.log('[UserProfile] ✅ API response data:', updatedUserData);
+        console.log('[UserProfile] Updated nickname:', {
+          old: dbUser.nickname,
+          new: updatedUserData.nickname
+        });
+        
         setSuccess('暱稱更新成功！');
+        
+        // Update parent component state with new user data
+        console.log('[UserProfile] Updating parent component state...');
+        if (onUserUpdate) {
+          onUserUpdate(updatedUserData);
+          console.log('[UserProfile] Parent state updated via callback');
+        }
+        
+        // Close dialog after showing success message
         setTimeout(() => {
+          console.log('[UserProfile] Closing dialog...');
           setSuccess("");
-          // Close the dialog after successful update
           onOpenChange(false);
-        }, 2000);
+          
+          // Only reload as fallback if no callback provided
+          if (!onUserUpdate) {
+            console.log('[UserProfile] No callback provided, falling back to page reload...');
+            window.location.reload();
+          }
+        }, 1500);
       } else {
         const errorData = await response.json();
+        console.error('[UserProfile] ❌ API error:', errorData);
         setError(errorData.error || '更新失敗');
       }
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error('[UserProfile] ❌ Network/JS error:', error);
       setError('更新暱稱時發生錯誤');
     } finally {
       setIsSubmitting(false);
+      console.log('[UserProfile] ===== END NICKNAME UPDATE =====');
     }
   };
 

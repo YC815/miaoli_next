@@ -84,9 +84,15 @@ interface HomePageProps {
 function HomePage({ dbUser = null }: HomePageProps) {
   console.log('🔍 HomePage Debug:', { dbUser: dbUser?.id });
   const [activeTab, setActiveTab] = useState<TabType>("supplies");
+  const [currentDbUser, setCurrentDbUser] = useState<User | null>(dbUser);
+  
+  // Sync dbUser prop changes to local state
+  useEffect(() => {
+    setCurrentDbUser(dbUser);
+  }, [dbUser]);
   
   // Calculate user permissions
-  const userPermissions = dbUser ? getPermissions(dbUser.role) : null;
+  const userPermissions = currentDbUser ? getPermissions(currentDbUser.role) : null;
   const [isAddSupplyOpen, setIsAddSupplyOpen] = useState(false);
   const [isBatchPickupOpen, setIsBatchPickupOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
@@ -112,10 +118,16 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
 
   useEffect(() => {
-    if (dbUser) { // Only fetch supplies if dbUser is available
+    if (currentDbUser) { // Only fetch supplies if currentDbUser is available
       fetchSupplies();
     }
-  }, [dbUser]); // Add dbUser to dependency array
+  }, [currentDbUser]); // Add currentDbUser to dependency array
+
+  // Handle user profile updates
+  const handleUserUpdate = (updatedUser: User) => {
+    console.log('[HomePage] Updating user data:', updatedUser);
+    setCurrentDbUser(updatedUser);
+  };
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -404,7 +416,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
             {/* Theme Toggle */}
             <ModeToggle />
             
-            {dbUser && (
+            {currentDbUser && (
               <>
                 {/* Divider */}
                 <div className="hidden md:block h-6 w-px bg-border" />
@@ -412,7 +424,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
                 <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
                   {/* Role Badge */}
                   <span className="hidden sm:inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border">
-                    {roleMapping[dbUser.role]}
+                    {roleMapping[currentDbUser.role]}
                   </span>
 
                   {/* User Avatar */}
@@ -421,7 +433,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
                     onClick={() => setIsUserProfileOpen(true)}
                     title="點擊編輯個人資料"
                   >
-                    <span className="text-white font-medium text-xs sm:text-sm">{dbUser.nickname?.[0]}</span>
+                    <span className="text-white font-medium text-xs sm:text-sm">{currentDbUser.nickname?.[0]}</span>
                   </div>
 
                   {/* User Name */}
@@ -430,7 +442,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
                     onClick={() => setIsUserProfileOpen(true)}
                     title="點擊編輯個人資料"
                   >
-                    {dbUser.nickname}
+                    {currentDbUser.nickname}
                   </button>
 
                   {/* Sign Out Button */}
@@ -511,7 +523,8 @@ function HomePage({ dbUser = null }: HomePageProps) {
       <UserProfile
         open={isUserProfileOpen}
         onOpenChange={setIsUserProfileOpen}
-        dbUser={dbUser}
+        dbUser={currentDbUser}
+        onUserUpdate={handleUserUpdate}
       />
 
       {/* Mobile Sidebar */}
@@ -597,15 +610,15 @@ function HomePage({ dbUser = null }: HomePageProps) {
             </div>
 
             {/* User Section in Mobile Sidebar */}
-            {dbUser && (
+            {currentDbUser && (
               <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-muted/30">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
-                    <span className="text-white font-medium text-sm">{dbUser.nickname?.[0]}</span>
+                    <span className="text-white font-medium text-sm">{currentDbUser.nickname?.[0]}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm break-words">{dbUser.nickname}</p>
-                    <p className="text-xs text-muted-foreground">{roleMapping[dbUser.role]}</p>
+                    <p className="font-medium text-sm break-words">{currentDbUser.nickname}</p>
+                    <p className="text-xs text-muted-foreground">{roleMapping[currentDbUser.role]}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">

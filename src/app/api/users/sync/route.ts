@@ -52,11 +52,23 @@ export async function POST() {
       });
       
       console.log(`[/api/users/sync] Updating existing user: ${existingUser.id}`);
+      
+      // 決定是否更新暱稱：只有當數據庫中沒有暱稱時才使用 Clerk 的名稱
+      const shouldUpdateNickname = !existingUser.nickname || existingUser.nickname.trim() === '';
+      const finalNickname = shouldUpdateNickname ? userNickname : existingUser.nickname;
+      
+      console.log(`[/api/users/sync] Nickname update logic:`, {
+        currentNickname: existingUser.nickname,
+        clerkNickname: userNickname,
+        shouldUpdate: shouldUpdateNickname,
+        finalNickname: finalNickname
+      });
+      
       const updatedUser = await prisma.user.update({
         where: { id: existingUser.id },
         data: {
           email: userEmail,
-          nickname: userNickname,
+          nickname: finalNickname,
           lastLoginAt: new Date(),
         },
       });
@@ -64,7 +76,8 @@ export async function POST() {
       console.log(`[/api/users/sync] ✅ User updated:`, {
         id: updatedUser.id,
         email: updatedUser.email,
-        nickname: updatedUser.nickname,
+        oldNickname: existingUser.nickname,
+        newNickname: updatedUser.nickname,
         isFirstLogin: updatedUser.isFirstLogin
       });
       
