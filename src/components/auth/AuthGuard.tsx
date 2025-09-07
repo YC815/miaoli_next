@@ -74,11 +74,17 @@ export function AuthGuard({ children }: AuthGuardProps) {
       if (response.ok) {
         const userData = await response.json();
         console.log('✅ 用戶資料同步成功:', userData);
-        setDbUser(userData);
         
-        if (userData.isFirstLogin || !userData.nickname) {
+        // API 回傳格式是 { ok: true, user: {...} }，所以我們需要取 userData.user
+        const user = userData.user || userData; // 向後兼容
+        console.log('🎯 設置 DB User:', user);
+        setDbUser(user);
+        
+        if (user.isFirstLogin || !user.nickname) {
           console.log('🎯 顯示新用戶歡迎頁面');
           setIsOnboardingOpen(true);
+        } else {
+          console.log('✅ 用戶已完成入職流程 - isFirstLogin:', user.isFirstLogin, 'nickname:', user.nickname);
         }
       } else {
         const errorData = await response.text();
