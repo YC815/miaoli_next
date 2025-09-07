@@ -56,7 +56,7 @@ interface BatchPickupModalProps {
 }
 
 export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies, dbUser }: BatchPickupModalProps) {
-  const { hasPermission } = usePermissions(dbUser);
+  const { hasPermission } = usePermissions(dbUser || null);
   const [currentStep, setCurrentStep] = useState(0);
   const [batchPickupInfo, setBatchPickupInfo] = useState<BatchPickupInfo>({
     unit: "",

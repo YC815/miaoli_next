@@ -51,8 +51,8 @@ export function PermissionGate({ children, permission, dbUser, fallback = null }
   const { hasPermission } = usePermissions(dbUser);
   
   if (!hasPermission(permission)) {
-    return <>{fallback}</>;
+    return fallback as React.ReactElement;
   }
 
-  return <>{children}</>;
+  return children as React.ReactElement;
 }

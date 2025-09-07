@@ -50,7 +50,7 @@ interface AddSupplyModalProps {
 }
 
 export function AddSupplyModal({ open, onOpenChange, onSubmit, dbUser }: AddSupplyModalProps) {
-  const { hasPermission } = usePermissions(dbUser);
+  const { hasPermission } = usePermissions(dbUser || null);
   const [currentStep, setCurrentStep] = useState(0);
   const [donorInfo, setDonorInfo] = useState<DonorInfo>({
     name: "",
