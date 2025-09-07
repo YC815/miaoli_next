@@ -100,6 +100,12 @@ function HomePage({ dbUser = null }: HomePageProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [supplies, setSupplies] = useState<Supply[]>([]);
+  const [stats, setStats] = useState({
+    totalCategories: 0,
+    monthlyDonations: 0,
+    monthlyDistributions: 0,
+    lowStock: 0,
+  });
 
   const fetchSupplies = async () => {
     try {
@@ -107,6 +113,12 @@ function HomePage({ dbUser = null }: HomePageProps) {
       if (response.ok) {
         const data = await response.json();
         setSupplies(data);
+        // Update stats with latest supplies data
+        setStats(prevStats => ({
+          ...prevStats,
+          totalCategories: data.length,
+          lowStock: data.filter((s: Supply) => s.quantity < s.safetyStock).length,
+        }));
       } else {
         toast.error("載入物資失敗");
       }
@@ -116,10 +128,29 @@ function HomePage({ dbUser = null }: HomePageProps) {
     }
   };
 
+  const fetchStatistics = async () => {
+    try {
+      const response = await fetch('/api/statistics');
+      if (response.ok) {
+        const data = await response.json();
+        setStats(prevStats => ({
+          ...prevStats,
+          monthlyDonations: data.monthlyDonations,
+          monthlyDistributions: data.monthlyDistributions,
+        }));
+      } else {
+        console.error("Failed to fetch statistics");
+      }
+    } catch (error) {
+      console.error("Error fetching statistics:", error);
+    }
+  };
+
 
   useEffect(() => {
     if (currentDbUser) { // Only fetch supplies if currentDbUser is available
       fetchSupplies();
+      fetchStatistics();
     }
   }, [currentDbUser]); // Add currentDbUser to dependency array
 
@@ -143,12 +174,6 @@ function HomePage({ dbUser = null }: HomePageProps) {
     };
   }, [isMobileMenuOpen]);
 
-  const stats = {
-    totalCategories: supplies.length,
-    monthlyDonations: 0, // Will be fetched from records later
-    monthlyDistributions: 0, // Will be fetched from records later
-    lowStock: supplies.filter(s => s.quantity < s.safetyStock).length,
-  };
 
   // Note: User updates are now handled by AuthGuard
 
@@ -177,6 +202,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
         console.log('✅ Success response:', responseData);
         toast.success("物資新增成功！");
         fetchSupplies(); // Refresh supplies list
+        fetchStatistics(); // Refresh statistics
         setIsAddSupplyOpen(false);
       } else {
         const errorData = await response.json();
@@ -202,6 +228,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
       if (response.ok) {
         toast.success("批量領取成功！");
         fetchSupplies(); // Refresh supplies list
+        fetchStatistics(); // Refresh statistics
         setIsBatchPickupOpen(false);
       } else {
         const errorData = await response.json();
