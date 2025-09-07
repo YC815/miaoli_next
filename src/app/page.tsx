@@ -536,6 +536,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
         open={isAddSupplyOpen}
         onOpenChange={setIsAddSupplyOpen}
         onSubmit={handleAddSupply}
+        dbUser={dbUser}
       />
       
       <BatchPickupModal
@@ -543,6 +544,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
         onOpenChange={setIsBatchPickupOpen}
         onSubmit={handleBatchPickup}
         supplies={supplies}
+        dbUser={dbUser}
       />
       
       <ReceiptModal

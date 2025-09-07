@@ -6,9 +6,15 @@ export interface Permission {
   // 物資管理相關權限
   canAddSupplies: boolean;           // 新增物資
   canAddCategories: boolean;         // 新增分類品項
+  canAddUnits: boolean;              // 新增物資單位
   canEditSupplyInfo: boolean;        // 編輯物資資訊
   canEditQuantity: boolean;          // 編輯數量
   canEditSafetyStock: boolean;       // 編輯安全庫存量
+  
+  // 領取單位相關權限
+  canAddRecipientUnits: boolean;     // 新增領取單位
+  canEditRecipientUnits: boolean;    // 編輯領取單位
+  canDeleteRecipientUnits: boolean;  // 刪除領取單位
   
   // 報表和記錄相關權限
   canExportReports: boolean;         // 匯出報表
@@ -26,9 +32,13 @@ export const getPermissions = (role: UserRole): Permission => {
       return {
         canAddSupplies: true,
         canAddCategories: true,
+        canAddUnits: true,
         canEditSupplyInfo: true,
         canEditQuantity: true,
         canEditSafetyStock: true,
+        canAddRecipientUnits: true,
+        canEditRecipientUnits: true,
+        canDeleteRecipientUnits: true,
         canExportReports: true,
         canViewRecords: true,
         canPrintReceipts: true,
@@ -40,9 +50,13 @@ export const getPermissions = (role: UserRole): Permission => {
       return {
         canAddSupplies: true,
         canAddCategories: true,
+        canAddUnits: true,
         canEditSupplyInfo: false,
         canEditQuantity: false,
         canEditSafetyStock: false,
+        canAddRecipientUnits: true,
+        canEditRecipientUnits: false,
+        canDeleteRecipientUnits: false,
         canExportReports: true,
         canViewRecords: true,
         canPrintReceipts: true,
@@ -54,9 +68,13 @@ export const getPermissions = (role: UserRole): Permission => {
       return {
         canAddSupplies: true,
         canAddCategories: false,
+        canAddUnits: false,
         canEditSupplyInfo: false,
         canEditQuantity: false,
         canEditSafetyStock: false,
+        canAddRecipientUnits: false,
+        canEditRecipientUnits: false,
+        canDeleteRecipientUnits: false,
         canExportReports: true,
         canViewRecords: false,
         canPrintReceipts: false,
@@ -69,9 +87,13 @@ export const getPermissions = (role: UserRole): Permission => {
       return {
         canAddSupplies: false,
         canAddCategories: false,
+        canAddUnits: false,
         canEditSupplyInfo: false,
         canEditQuantity: false,
         canEditSafetyStock: false,
+        canAddRecipientUnits: false,
+        canEditRecipientUnits: false,
+        canDeleteRecipientUnits: false,
         canExportReports: false,
         canViewRecords: false,
         canPrintReceipts: false,
@@ -91,9 +113,13 @@ export const hasPermission = (role: UserRole, permission: keyof Permission): boo
 export const permissionDescriptions: Record<keyof Permission, string> = {
   canAddSupplies: "新增物資",
   canAddCategories: "新增物資分類",
+  canAddUnits: "新增物資單位",
   canEditSupplyInfo: "編輯物資資訊",
   canEditQuantity: "編輯物資數量",
   canEditSafetyStock: "編輯安全庫存",
+  canAddRecipientUnits: "新增領取單位",
+  canEditRecipientUnits: "編輯領取單位",
+  canDeleteRecipientUnits: "刪除領取單位",
   canExportReports: "匯出報表",
   canViewRecords: "查看記錄",
   canPrintReceipts: "列印收據",

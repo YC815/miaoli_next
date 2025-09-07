@@ -20,6 +20,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { MultiStepWizard, WizardStep } from "@/components/ui/multi-step-wizard";
+import { usePermissions } from "@/hooks/usePermissions";
+import type { User } from "@/components/auth/AuthGuard";
 
 interface BatchPickupInfo {
   unit: string;
@@ -50,9 +52,11 @@ interface BatchPickupModalProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (pickupInfo: BatchPickupInfo, selectedItems: PickupItem[]) => void;
   supplies: Supply[];
+  dbUser?: User | null;
 }
 
-export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: BatchPickupModalProps) {
+export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies, dbUser }: BatchPickupModalProps) {
+  const { hasPermission } = usePermissions(dbUser);
   const [currentStep, setCurrentStep] = useState(0);
   const [batchPickupInfo, setBatchPickupInfo] = useState<BatchPickupInfo>({
     unit: "",
@@ -265,7 +269,9 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
                         {availablePickupUnits.map((unit) => (
                           <SelectItem key={unit} value={unit}>{unit}</SelectItem>
                         ))}
-                        <SelectItem value="new">+ 新增單位</SelectItem>
+                        {hasPermission('canAddRecipientUnits') && (
+                          <SelectItem value="new">+ 新增單位</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   )}
@@ -274,6 +280,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
                   <Label htmlFor="unit-phone">聯絡電話（選填）</Label>
                   <Input 
                     id="unit-phone"
+                    type="tel"
                     value={batchPickupInfo.phone}
                     onChange={(e) => setBatchPickupInfo({...batchPickupInfo, phone: e.target.value})}
                     placeholder="請輸入聯絡電話"

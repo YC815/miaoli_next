@@ -21,6 +21,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { MultiStepWizard, WizardStep } from "@/components/ui/multi-step-wizard";
+import { usePermissions } from "@/hooks/usePermissions";
+import type { User } from "@/components/auth/AuthGuard";
 
 interface SupplyItem {
   name: string;
@@ -44,9 +46,11 @@ interface AddSupplyModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (donorInfo: DonorInfo, supplyItems: SupplyItem[], notes: string) => void;
+  dbUser?: User | null;
 }
 
-export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalProps) {
+export function AddSupplyModal({ open, onOpenChange, onSubmit, dbUser }: AddSupplyModalProps) {
+  const { hasPermission } = usePermissions(dbUser);
   const [currentStep, setCurrentStep] = useState(0);
   const [donorInfo, setDonorInfo] = useState<DonorInfo>({
     name: "",
@@ -403,6 +407,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
                   <Label htmlFor="donor-phone">電話</Label>
                   <Input 
                     id="donor-phone"
+                    type="tel"
                     value={donorInfo.phone}
                     onChange={(e) => setDonorInfo({...donorInfo, phone: e.target.value})}
                     placeholder="請輸入電話號碼"
@@ -413,6 +418,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
                 <Label htmlFor="donor-unified-number">統一編號（選填）</Label>
                 <Input 
                   id="donor-unified-number"
+                  type="number"
                   value={donorInfo.unifiedNumber}
                   onChange={(e) => setDonorInfo({...donorInfo, unifiedNumber: e.target.value})}
                   placeholder="請輸入統一編號"
@@ -521,7 +527,9 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
                             {availableCategories.map((category) => (
                               <SelectItem key={category} value={category}>{category}</SelectItem>
                             ))}
-                            <SelectItem value="new">+ 新增類別</SelectItem>
+                            {hasPermission('canAddCategories') && (
+                              <SelectItem value="new">+ 新增類別</SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                       ) : (
@@ -578,7 +586,9 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
                             {availableUnits.map((unit) => (
                               <SelectItem key={unit} value={unit}>{unit}</SelectItem>
                             ))}
-                            <SelectItem value="new">+ 新增單位</SelectItem>
+                            {hasPermission('canAddUnits') && (
+                              <SelectItem value="new">+ 新增單位</SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                       ) : (
