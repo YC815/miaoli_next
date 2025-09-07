@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -278,9 +279,8 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies, dbUse
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="unit-phone">聯絡電話（選填）</Label>
-                  <Input 
+                  <PhoneInput 
                     id="unit-phone"
-                    type="tel"
                     value={batchPickupInfo.phone}
                     onChange={(e) => setBatchPickupInfo({...batchPickupInfo, phone: e.target.value})}
                     placeholder="請輸入聯絡電話"

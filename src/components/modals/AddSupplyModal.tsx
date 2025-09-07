@@ -16,6 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { TaxIdInput } from "@/components/ui/tax-id-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -405,9 +407,8 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit, dbUser }: AddSupp
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="donor-phone">電話</Label>
-                  <Input 
+                  <PhoneInput 
                     id="donor-phone"
-                    type="tel"
                     value={donorInfo.phone}
                     onChange={(e) => setDonorInfo({...donorInfo, phone: e.target.value})}
                     placeholder="請輸入電話號碼"
@@ -416,9 +417,8 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit, dbUser }: AddSupp
               </div>
               <div className="space-y-2">
                 <Label htmlFor="donor-unified-number">統一編號（選填）</Label>
-                <Input 
+                <TaxIdInput 
                   id="donor-unified-number"
-                  type="number"
                   value={donorInfo.unifiedNumber}
                   onChange={(e) => setDonorInfo({...donorInfo, unifiedNumber: e.target.value})}
                   placeholder="請輸入統一編號"
