@@ -1,62 +1,39 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    console.log('🔍 Sync API: Starting authentication check');
-    const { userId: clerkId } = await auth(); // clerkId can be null if not authenticated
-    console.log('🔍 Sync API: Clerk ID:', clerkId ? `${clerkId.substring(0, 8)}...` : 'null');
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    if (!clerkId) {
-      console.log('❌ Sync API: No clerk ID found - user not authenticated');
-      return NextResponse.json({ error: 'Unauthorized - No authentication found' }, { status: 401 });
-    }
+    const cUser = await currentUser();
+    if (!cUser) return NextResponse.json({ error: 'No Clerk user' }, { status: 401 });
 
-    let email: string | undefined;
-    try {
-      const body = await request.json();
-      email = body.email;
-    } catch {
-      // If JSON parsing fails, we'll try to get email from Clerk later
-      console.log('No JSON body provided, will get email from Clerk');
-    }
-
-    if (!email) {
-      return NextResponse.json({ error: 'Missing email information' }, { status: 400 });
-    }
-
-    const existingUser = await prisma.user.findUnique({
-      where: { clerkId },
+    const user = await prisma.user.upsert({
+      where: { clerkId: userId },
+      update: {
+        email: cUser.emailAddresses?.[0]?.emailAddress ?? null,
+        nickname: `${cUser.firstName ?? ''} ${cUser.lastName ?? ''}`.trim() || cUser.username || null,
+        lastLoginAt: new Date(),
+      },
+      create: {
+        clerkId: userId,
+        email: cUser.emailAddresses?.[0]?.emailAddress ?? '',
+        nickname: `${cUser.firstName ?? ''} ${cUser.lastName ?? ''}`.trim() || cUser.username || null,
+        role: Role.VOLUNTEER,
+        isFirstLogin: true,
+      },
     });
 
-    if (existingUser) {
-      const updatedUser = await prisma.user.update({
-        where: { id: existingUser.id },
-        data: {
-          lastLoginAt: new Date(),
-          email: email, // Update email in case it changed in Clerk
-        },
-      });
-      return NextResponse.json(updatedUser);
-    } else {
-      const newUser = await prisma.user.create({
-        data: {
-          clerkId,
-          email,
-          role: Role.VOLUNTEER, // Default role for new users
-          isFirstLogin: true, // Mark as first login
-        },
-      });
-      return NextResponse.json(newUser, { status: 201 });
-    }
-  } catch (error) {
-    console.error('Error syncing user:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: true, user });
+  } catch (err: unknown) {
+    console.error('[/api/users/sync] ERROR:', err);
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      detail: String((err as Error)?.message ?? err) 
+    }, { status: 500 });
   }
 }
 
