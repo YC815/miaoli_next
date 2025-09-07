@@ -1,69 +1,58 @@
 import prisma from '@/lib/prisma';
 
+async function ensureCounter(type: string, prefix: string) {
+  const existing = await prisma.serialNumberCounter.findUnique({
+    where: { type }
+  });
+  
+  if (!existing) {
+    await prisma.serialNumberCounter.create({
+      data: {
+        type,
+        prefix,
+        counter: 0
+      }
+    });
+  }
+}
+
+async function getNextSerialNumber(type: string): Promise<string> {
+  return await prisma.$transaction(async (tx) => {
+    const counter = await tx.serialNumberCounter.findUnique({
+      where: { type }
+    });
+    
+    if (!counter) {
+      throw new Error(`Counter for type ${type} not found`);
+    }
+    
+    const nextCounter = counter.counter + 1;
+    
+    await tx.serialNumberCounter.update({
+      where: { type },
+      data: { counter: nextCounter }
+    });
+    
+    return `${counter.prefix}${nextCounter.toString().padStart(6, '0')}`;
+  });
+}
+
 export async function generateDonationSerialNumber(): Promise<string> {
   try {
-    const lastRecord = await prisma.donationRecord.findFirst({
-      where: {
-        serialNumber: {
-          not: "",
-          startsWith: "A"
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      select: { serialNumber: true }
-    });
-
-    if (!lastRecord || !lastRecord.serialNumber || lastRecord.serialNumber === "") {
-      return 'A00001';
-    }
-
-    // Extract number from A00001 format
-    const numberPart = lastRecord.serialNumber.substring(1);
-    const lastNumber = parseInt(numberPart);
-    
-    if (isNaN(lastNumber)) {
-      return 'A00001';
-    }
-    
-    const nextNumber = lastNumber + 1;
-    return `A${nextNumber.toString().padStart(5, '0')}`;
+    await ensureCounter('donation', 'DN');
+    return await getNextSerialNumber('donation');
   } catch (error) {
     console.error('Error generating donation serial number:', error);
-    // Fallback to a safe default
-    return `A${Date.now().toString().slice(-5).padStart(5, '0')}`;
+    throw new Error('無法生成捐贈記錄流水號');
   }
 }
 
 export async function generateDisbursementSerialNumber(): Promise<string> {
   try {
-    const lastRecord = await prisma.disbursement.findFirst({
-      where: {
-        serialNumber: {
-          not: "",
-          startsWith: "B"
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      select: { serialNumber: true }
-    });
-
-    if (!lastRecord || !lastRecord.serialNumber || lastRecord.serialNumber === "") {
-      return 'B00001';
-    }
-
-    // Extract number from B00001 format
-    const numberPart = lastRecord.serialNumber.substring(1);
-    const lastNumber = parseInt(numberPart);
-    
-    if (isNaN(lastNumber)) {
-      return 'B00001';
-    }
-    
-    const nextNumber = lastNumber + 1;
-    return `B${nextNumber.toString().padStart(5, '0')}`;
+    await ensureCounter('disbursement', 'DS');
+    return await getNextSerialNumber('disbursement');
   } catch (error) {
     console.error('Error generating disbursement serial number:', error);
-    // Fallback to a safe default
-    return `B${Date.now().toString().slice(-5).padStart(5, '0')}`;
+    throw new Error('無法生成發放記錄流水號');
   }
 }

@@ -153,3 +153,12 @@ enum ChangeType {
   INCREASE
   DECREASE
 }
+
+model SerialNumberCounter {
+  id         String   @id @default(cuid())
+  type       String   @unique // "donation" or "disbursement"
+  counter    Int      @default(0)
+  prefix     String   // "DN" for donation, "DS" for disbursement
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+}
