@@ -15,10 +15,10 @@ import { RecordsView } from "@/components/RecordsView";
 import { UserProfile } from "@/components/auth/UserProfile";
 import * as XLSX from 'xlsx';
 import { generateReceiptsPDF } from '@/lib/receipt-generator';
-import { User } from "@/components/auth/AuthGuard";
+import { User, AuthGuard } from "@/components/auth/AuthGuard";
 import { toast } from "sonner";
 import { getPermissions } from "@/lib/permissions";
-import { useUser, SignOutButton } from "@clerk/nextjs";
+import { SignOutButton } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
 
 type TabType = "supplies" | "records" | "staff" | "data";
@@ -77,11 +77,12 @@ interface DonationRecord {
   date: string;
 }
 
-export default function HomePage() {
-  const { isLoaded, isSignedIn, user: clerkUser } = useUser();
-  const [dbUser, setDbUser] = useState<User | null>(null);
-  
-  console.log('🔍 HomePage Debug:', { isLoaded, isSignedIn, clerkUser: clerkUser?.id });
+interface HomePageProps {
+  dbUser?: User | null;
+}
+
+function HomePage({ dbUser = null }: HomePageProps) {
+  console.log('🔍 HomePage Debug:', { dbUser: dbUser?.id });
   const [activeTab, setActiveTab] = useState<TabType>("supplies");
   
   // Calculate user permissions
@@ -109,33 +110,6 @@ export default function HomePage() {
     }
   };
 
-  // Sync user to database when Clerk loads
-  useEffect(() => {
-    const syncUser = async () => {
-      if (isLoaded && isSignedIn && clerkUser && !dbUser) {
-        console.log('🔄 開始同步用戶資料');
-        try {
-          const response = await fetch('/api/users/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: clerkUser.emailAddresses[0]?.emailAddress,
-            }),
-          });
-          
-          if (response.ok) {
-            const userData = await response.json();
-            console.log('✅ 用戶資料同步成功:', userData);
-            setDbUser(userData);
-          }
-        } catch (error) {
-          console.error('❌ 用戶同步錯誤:', error);
-        }
-      }
-    };
-    
-    syncUser();
-  }, [isLoaded, isSignedIn, clerkUser, dbUser]);
 
   useEffect(() => {
     if (dbUser) { // Only fetch supplies if dbUser is available
@@ -164,9 +138,7 @@ export default function HomePage() {
     lowStock: supplies.filter(s => s.quantity < s.safetyStock).length,
   };
 
-  const handleUserUpdate = (updatedUser: User) => {
-    setDbUser(updatedUser);
-  };
+  // Note: User updates are now handled by AuthGuard
 
   const handleAddSupply = async (donorInfo: DonorInfo, supplyItems: SupplyItem[], notes: string) => {
     console.log('🎯 handleAddSupply called with:');
@@ -353,38 +325,7 @@ export default function HomePage() {
     VOLUNTEER: '志工',
   }
 
-  // Handle loading state
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-          <p className="text-muted-foreground">載入中...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Handle not signed in
-  if (!isSignedIn) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4 text-center max-w-md">
-          <div className="text-4xl mb-4">🔒</div>
-          <h2 className="text-2xl font-semibold">需要登入</h2>
-          <p className="text-muted-foreground mb-6">
-            請登入您的帳戶以使用物資管理系統
-          </p>
-          <button 
-            onClick={() => window.location.href = '/sign-in'}
-            className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-lg font-medium"
-          >
-            前往登入
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Auth handling is now managed by AuthGuard
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex flex-col">
@@ -571,7 +512,6 @@ export default function HomePage() {
         open={isUserProfileOpen}
         onOpenChange={setIsUserProfileOpen}
         dbUser={dbUser}
-        onUserUpdate={handleUserUpdate}
       />
 
       {/* Mobile Sidebar */}
@@ -707,6 +647,15 @@ export default function HomePage() {
         />
       )}
     </div>
+  );
+}
+
+// Wrap HomePage with AuthGuard for authentication management
+export default function App() {
+  return (
+    <AuthGuard>
+      <HomePage />
+    </AuthGuard>
   );
 }
 

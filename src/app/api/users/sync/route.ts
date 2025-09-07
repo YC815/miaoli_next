@@ -5,10 +5,13 @@ import { Role } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔍 Sync API: Starting authentication check');
     const { userId: clerkId } = await auth(); // clerkId can be null if not authenticated
+    console.log('🔍 Sync API: Clerk ID:', clerkId ? `${clerkId.substring(0, 8)}...` : 'null');
 
     if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.log('❌ Sync API: No clerk ID found - user not authenticated');
+      return NextResponse.json({ error: 'Unauthorized - No authentication found' }, { status: 401 });
     }
 
     let email: string | undefined;
