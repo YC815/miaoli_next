@@ -7,6 +7,7 @@ import { generateDonationSerialNumber } from '@/lib/serialNumber';
 interface DonorInfo {
   name: string;
   phone?: string;
+  unifiedNumber?: string;
   address?: string;
 }
 
@@ -14,6 +15,7 @@ interface SupplyItem {
   name: string;
   category: string;
   quantity: number;
+  unit: string;
   expiryDate?: string;
 }
 
@@ -72,6 +74,7 @@ export async function POST(request: NextRequest) {
         serialNumber,
         donorName: donorInfo?.name || '匿名捐贈者',
         donorPhone: donorInfo?.phone || null,
+        unifiedNumber: donorInfo?.unifiedNumber || null,
         address: donorInfo?.address || null,
         notes: notes || null,
         userId: currentUser.id,
@@ -88,15 +91,17 @@ export async function POST(request: NextRequest) {
                   name: item.name,
                   category: item.category,
                   quantity: item.quantity, // Initial quantity
+                  unit: item.unit,
                   safetyStock: 0, // Default safety stock
                 },
               });
             } else {
-              // Update existing supply quantity
+              // Update existing supply quantity and unit
               await prisma.supply.update({
                 where: { id: supply.id },
                 data: {
                   quantity: { increment: item.quantity },
+                  unit: item.unit, // Update unit as well
                 },
               });
             }
@@ -104,6 +109,7 @@ export async function POST(request: NextRequest) {
             return {
               supplyId: supply.id,
               quantity: item.quantity,
+              unit: item.unit,
               expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
             };
           })),

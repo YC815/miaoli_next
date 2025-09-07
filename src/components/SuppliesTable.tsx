@@ -26,6 +26,7 @@ interface Supply {
   category: string;
   name: string;
   quantity: number;
+  unit: string;
   safetyStock: number;
 }
 
@@ -289,7 +290,7 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
                       <TableCell className="py-2 sm:py-4 text-center">
                         <div className="flex items-center justify-center gap-1 sm:gap-2">
                           <span className={`text-sm sm:text-lg font-semibold ${supply.quantity === 0 ? 'text-red-600' : ''}`}>
-                            {supply.quantity.toLocaleString()}
+                            {supply.quantity.toLocaleString()} {supply.unit}
                           </span>
                           {supply.quantity < supply.safetyStock && (
                             <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 text-orange-500 flex-shrink-0" />

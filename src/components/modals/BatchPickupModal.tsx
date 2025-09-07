@@ -33,6 +33,7 @@ interface PickupItem {
   category: string;
   availableQuantity: number;
   requestedQuantity: number;
+  unit: string;
 }
 
 interface Supply {
@@ -40,6 +41,7 @@ interface Supply {
   category: string;
   name: string;
   quantity: number;
+  unit: string;
   safetyStock: number;
 }
 
@@ -75,6 +77,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
       category: supply.category,
       availableQuantity: supply.quantity,
       requestedQuantity: 0,
+      unit: supply.unit,
     }));
     setPickupItems(availableItems);
   }, [supplies]);
@@ -157,7 +160,10 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
       ...batchPickupInfo,
       unit: batchPickupInfo.unit === "new" ? newUnitName : batchPickupInfo.unit
     };
-    const selectedItems = pickupItems.filter(item => item.requestedQuantity > 0);
+    const selectedItems = pickupItems.filter(item => item.requestedQuantity > 0).map(item => ({
+      ...item,
+      unit: item.unit // 確保傳送正確的單位
+    }));
     onSubmit(finalPickupInfo, selectedItems);
     resetForm();
   };
@@ -294,19 +300,19 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
               <h3 className="text-lg font-medium">選擇物資</h3>
               <div className="space-y-3">
                 {pickupItems.map((item) => (
-                  <div key={item.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg gap-3 sm:gap-0">
-                    <div className="flex-1">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  <div key={item.id} className="p-3 border rounded-lg space-y-3">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between">
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-sm">{item.name}</p>
                           <p className="text-xs text-muted-foreground">{item.category}</p>
                         </div>
-                        <div className="text-sm text-muted-foreground sm:text-right">
-                          庫存：{item.availableQuantity} 個
-                        </div>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        庫存：{item.availableQuantity} {item.unit}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 sm:flex-shrink-0">
+                    <div className="flex items-center gap-2">
                       <Label htmlFor={`quantity-${item.id}`} className="text-sm whitespace-nowrap">領取數量：</Label>
                       <Input
                         id={`quantity-${item.id}`}
@@ -359,7 +365,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
                     .map((item) => (
                       <div key={item.id} className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
                         <span className="font-medium sm:font-normal break-words">{item.name}</span>
-                        <span className="text-right">{item.requestedQuantity} 個</span>
+                        <span className="text-right">{item.requestedQuantity} {item.unit}</span>
                       </div>
                     ))
                   }

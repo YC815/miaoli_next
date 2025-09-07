@@ -27,6 +27,7 @@ model Supply {
   name              String
   category          String
   quantity          Int
+  unit              String             @default("個")
   safetyStock       Int
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
@@ -40,6 +41,7 @@ model DonationRecord {
   serialNumber  String         @unique @default("")
   donorName     String
   donorPhone    String?
+  unifiedNumber String?
   address       String?
   notes         String?
   createdAt     DateTime       @default(now())

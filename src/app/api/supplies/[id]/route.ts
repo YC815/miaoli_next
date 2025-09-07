@@ -24,7 +24,7 @@ export async function PUT(
     }
 
     const { id: supplyId } = await params;
-    const { name, category, quantity, safetyStock } = await request.json();
+    const { name, category, quantity, unit, safetyStock } = await request.json();
 
     const existingSupply = await prisma.supply.findUnique({
       where: { id: supplyId },
@@ -40,6 +40,7 @@ export async function PUT(
         name: name ?? existingSupply.name,
         category: category ?? existingSupply.category,
         quantity: quantity ?? existingSupply.quantity,
+        unit: unit ?? existingSupply.unit,
         safetyStock: safetyStock ?? existingSupply.safetyStock,
       },
     });

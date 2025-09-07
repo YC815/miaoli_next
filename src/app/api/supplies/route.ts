@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    const { name, category, quantity, safetyStock } = await request.json();
+    const { name, category, quantity, unit, safetyStock } = await request.json();
 
     if (!name || !category || quantity === undefined || safetyStock === undefined) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
         name,
         category,
         quantity,
+        unit: unit || '個',
         safetyStock,
       },
     });

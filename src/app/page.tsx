@@ -28,6 +28,7 @@ interface Supply {
   category: string;
   name: string;
   quantity: number;
+  unit: string;
   safetyStock: number;
 }
 

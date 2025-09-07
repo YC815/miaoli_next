@@ -14,6 +14,7 @@ interface SelectedItem {
   id: string;
   name: string;
   requestedQuantity: number;
+  unit?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
           create: selectedItems.map((item: SelectedItem) => ({
             supplyId: item.id,
             quantity: item.requestedQuantity,
+            unit: item.unit || '個',
           })),
         },
       },

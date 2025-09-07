@@ -565,6 +565,52 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: AddSupplyModalP
                     </div>
                     
                     <div className="space-y-2">
+                      <Label>單位</Label>
+                      {!item.isNewUnit ? (
+                        <Select 
+                          value={item.unit}
+                          onValueChange={(value) => handleUnitSelect(index, value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="選擇單位" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableUnits.map((unit) => (
+                              <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                            ))}
+                            <SelectItem value="new">+ 新增單位</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Input
+                            type="text"
+                            value={item.unit}
+                            onChange={(e) => updateSupplyItem(index, "unit", e.target.value)}
+                            placeholder="輸入新單位名稱"
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              if (item.unit.trim()) {
+                                const success = await createNewUnit(item.unit.trim());
+                                if (success) {
+                                  handleUnitSelect(index, item.unit.trim());
+                                }
+                              }
+                            }}
+                            className="sm:w-auto w-full min-h-[44px]"
+                          >
+                            確認
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
                       <Label>有效日期（選填）</Label>
                       <Input 
                         type="date"
