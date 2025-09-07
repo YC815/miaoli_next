@@ -304,9 +304,9 @@ function HomePage({ dbUser = null }: HomePageProps) {
   const handlePrintReceipts = async (selectedRecords: DonationRecord[]) => {
     if (selectedRecords.length === 0) return;
 
+    const loadingToast = toast.loading('正在生成收據 PDF...');
+    
     try {
-      toast.loading('正在生成收據 PDF...');
-      
       // 使用新的 PDF 生成器
       const pdfBlob = await generateReceiptsPDF(selectedRecords);
       
@@ -324,10 +324,14 @@ function HomePage({ dbUser = null }: HomePageProps) {
       // 清理 URL
       URL.revokeObjectURL(url);
       
-      toast.success(`已生成 ${selectedRecords.length} 份收據 PDF`);
+      toast.success(`已生成 ${selectedRecords.length} 份收據 PDF`, {
+        id: loadingToast,
+      });
     } catch (error) {
       console.error('生成收據失敗:', error);
-      toast.error('生成收據失敗，請稍後再試');
+      toast.error('生成收據失敗，請稍後再試', {
+        id: loadingToast,
+      });
     }
   };
 
