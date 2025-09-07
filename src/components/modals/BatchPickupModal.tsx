@@ -178,8 +178,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
     const unitValid = isNewUnit 
       ? newUnitName.trim() !== ""
       : batchPickupInfo.unit.trim() !== "";
-    const phoneValid = batchPickupInfo.phone.trim() !== "";
-    return unitValid && phoneValid;
+    return unitValid;
   };
 
   const hasSelectedItems = () => {
@@ -235,7 +234,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
               <h3 className="text-lg font-medium">領取單位資訊</h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>領取單位</Label>
+                  <Label>領取單位 <span className="text-red-500">*</span></Label>
                   {isNewUnit ? (
                     <div className="flex flex-col sm:flex-row gap-2">
                       <Input
@@ -272,7 +271,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies }: Bat
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="unit-phone">聯絡電話</Label>
+                  <Label htmlFor="unit-phone">聯絡電話（選填）</Label>
                   <Input 
                     id="unit-phone"
                     value={batchPickupInfo.phone}
