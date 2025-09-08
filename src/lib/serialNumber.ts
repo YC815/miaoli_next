@@ -56,3 +56,17 @@ export async function generateDisbursementSerialNumber(): Promise<string> {
     throw new Error('無法生成發放記錄流水號');
   }
 }
+
+export async function generateReportId(): Promise<string> {
+  try {
+    await ensureCounter('report', '');
+    const reportId = await getNextSerialNumber('report');
+    // For reports, we want format 00001, 00002, etc. (without prefix)
+    // Extract just the number part
+    const numberPart = reportId.replace(/^\D+/, ''); // Remove any non-digit prefix
+    return numberPart.padStart(5, '0');
+  } catch (error) {
+    console.error('Error generating report ID:', error);
+    throw new Error('無法生成報表ID');
+  }
+}

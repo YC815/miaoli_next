@@ -311,11 +311,9 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
   const handleExportExcel = () => {
     const exportData = supplies.map(supply => ({
-      '品項類別': supply.category,
+      '類別': supply.category,
       '物資名稱': supply.name,
-      '數量': supply.quantity,
-      '安全庫存量': supply.safetyStock,
-      '庫存狀態': supply.quantity < supply.safetyStock ? '不足' : '充足'
+      '當前數量': `${supply.quantity} ${supply.unit}`
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);

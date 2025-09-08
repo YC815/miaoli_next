@@ -150,9 +150,9 @@ enum ChangeType {
 
 model SerialNumberCounter {
   id         String   @id @default(cuid())
-  type       String   @unique // "donation" or "disbursement"
+  type       String   @unique // "donation", "disbursement", or "report"
   counter    Int      @default(0)
-  prefix     String   // "DN" for donation, "DS" for disbursement
+  prefix     String   // "DN" for donation, "DS" for disbursement, "RP" for report
   updatedAt  DateTime @updatedAt
   createdAt  DateTime @default(now())
 }

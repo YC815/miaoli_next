@@ -237,7 +237,7 @@ export class ReceiptGenerator {
     const primaryRecord = namedRecords.length > 0 ? namedRecords[0] : firstRecord;
 
     const receiptData: ReceiptData = {
-      receiptNumber: this.generateReceiptNumber(),
+      receiptNumber: await this.generateReceiptNumber(),
       donorName: primaryRecord.donorName || '無名氏',
       donorAddress: primaryRecord.address,
       donorPhone: primaryRecord.donorPhone,
@@ -261,12 +261,29 @@ export class ReceiptGenerator {
     }
   }
 
-  private generateReceiptNumber(): string {
-    // 生成簡單的流水號：00001, 00002, 00003...
-    const now = new Date();
-    const seed = now.getTime() % 100000; // 使用時間戳後5位作為基數
-    const receiptNum = (seed % 99999) + 1; // 確保在 1-99999 範圍內
-    return receiptNum.toString().padStart(5, '0');
+  private async generateReceiptNumber(): Promise<string> {
+    // 使用API端點產生連續的報表ID：00001, 00002, 00003...
+    try {
+      const response = await fetch('/api/reports/generate-id', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.reportId;
+    } catch (error) {
+      console.error('Failed to generate report ID:', error);
+      // 備用方案：如果API失敗，使用簡單的時間戳
+      const now = new Date();
+      const timestamp = now.getTime().toString().slice(-5);
+      return timestamp.padStart(5, '0');
+    }
   }
 
   private async drawReceiptLayout(data: ReceiptData): Promise<void> {
