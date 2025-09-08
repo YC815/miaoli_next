@@ -22,6 +22,13 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -51,6 +58,15 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
+  
+  // Page size state with browser storage
+  const [pageSize, setPageSize] = React.useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('dataTable-pageSize')
+      return stored ? parseInt(stored, 10) : 50
+    }
+    return 50
+  })
 
   const table = useReactTable({
     data,
@@ -63,6 +79,11 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    initialState: {
+      pagination: {
+        pageSize: pageSize,
+      },
+    },
     state: {
       sorting,
       columnFilters,
@@ -70,6 +91,18 @@ export function DataTable<TData, TValue>({
       rowSelection,
     },
   })
+
+  // Update page size when it changes
+  React.useEffect(() => {
+    table.setPageSize(pageSize)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dataTable-pageSize', pageSize.toString())
+    }
+  }, [pageSize, table])
+
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(parseInt(value, 10))
+  }
 
   // Notify parent of selection changes
   React.useEffect(() => {
@@ -173,8 +206,25 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
       <div className="flex items-center justify-between space-x-2 py-2">
-        <div className="flex-1 text-sm text-muted-foreground">
-          已選擇 {table.getFilteredSelectedRowModel().rows.length} / {table.getFilteredRowModel().rows.length} 項目
+        <div className="flex items-center space-x-4">
+          <div className="text-sm text-muted-foreground">
+            已選擇 {table.getFilteredSelectedRowModel().rows.length} / {table.getFilteredRowModel().rows.length} 項目
+          </div>
+          <div className="flex items-center space-x-2">
+            <p className="text-sm text-muted-foreground">每頁顯示</p>
+            <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue placeholder={pageSize.toString()} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                <SelectItem value="15">15</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="30">30</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">筆</p>
+          </div>
         </div>
         <div className="flex items-center space-x-2">
           <p className="text-sm font-medium text-muted-foreground">
