@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
-import { Trash2, Search } from "lucide-react";
+import { Trash2, Search, Edit } from "lucide-react";
 import { toast } from "sonner";
 
 interface Supply {
@@ -45,6 +45,8 @@ export function DataManagement() {
   const [recipientUnits, setRecipientUnits] = useState<RecipientUnit[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeSection, setActiveSection] = useState<"supplies" | "categories" | "recipient-units">("supplies");
+  const [editingItem, setEditingItem] = useState<{ type: string; id: string; name: string } | null>(null);
+  const [editName, setEditName] = useState("");
 
   useEffect(() => {
     fetchSupplies();
@@ -86,6 +88,66 @@ export function DataManagement() {
     } catch (error) {
       console.error('Error fetching recipient units:', error);
     }
+  };
+
+  const handleEdit = (type: string, id: string, name: string) => {
+    setEditingItem({ type, id, name });
+    setEditName(name);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem || !editName.trim()) {
+      toast.error("請輸入有效的名稱");
+      return;
+    }
+
+    try {
+      let endpoint = "";
+      let body = {};
+
+      if (editingItem.type === "supplies") {
+        endpoint = `/api/supplies/${editingItem.id}`;
+        body = { name: editName.trim() };
+      } else if (editingItem.type === "categories") {
+        endpoint = "/api/categories";
+        body = { id: editingItem.id, name: editName.trim() };
+      } else {
+        endpoint = "/api/recipient-units";
+        body = { id: editingItem.id, name: editName.trim() };
+      }
+      
+      const response = await fetch(endpoint, {
+        method: "PUT",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok) {
+        toast.success(`「${editingItem.name}」已成功更新為「${editName.trim()}」`);
+        
+        // Refresh the appropriate list
+        if (editingItem.type === "supplies") fetchSupplies();
+        else if (editingItem.type === "categories") fetchCategories();
+        else fetchRecipientUnits();
+        
+        // Clear editing state
+        setEditingItem(null);
+        setEditName("");
+      } else {
+        const errorData = await response.json();
+        toast.error(`更新失敗: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error(`Error updating ${editingItem.type}:`, error);
+      toast.error("更新失敗");
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingItem(null);
+    setEditName("");
   };
 
   const handleDelete = async (type: string, id: string, name: string) => {
@@ -155,9 +217,32 @@ export function DataManagement() {
               <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/20">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <div className="font-medium">{item.name}</div>
-                    {'isActive' in item && !item.isActive && (
-                      <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">已停用</span>
+                    {editingItem?.id === item.id ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <Input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="flex-1"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveEdit();
+                            if (e.key === 'Escape') handleCancelEdit();
+                          }}
+                        />
+                        <Button size="sm" onClick={handleSaveEdit} disabled={!editName.trim()}>
+                          儲存
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={handleCancelEdit}>
+                          取消
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="font-medium">{item.name}</div>
+                        {'isActive' in item && !item.isActive && (
+                          <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">已停用</span>
+                        )}
+                      </>
                     )}
                   </div>
                   {'category' in item && (
@@ -175,27 +260,40 @@ export function DataManagement() {
                     建立時間：{new Date(item.createdAt).toLocaleDateString()}
                   </div>
                 </div>
-                {'isActive' in item && item.isActive && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(type, item.id, item.name)}
-                    className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                    title="停用此項目"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-                {!('isActive' in item) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(type, (item as Category | RecipientUnit).id, (item as Category | RecipientUnit).name)}
-                    className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                    title="刪除此項目"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                {editingItem?.id !== item.id && (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(type, item.id, item.name)}
+                      className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                      title="編輯此項目"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    {'isActive' in item && item.isActive && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(type, item.id, item.name)}
+                        className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                        title="停用此項目"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {!('isActive' in item) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(type, (item as Category | RecipientUnit).id, (item as Category | RecipientUnit).name)}
+                        className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                        title="刪除此項目"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             ))
@@ -270,11 +368,12 @@ export function DataManagement() {
       <div className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg">
         <p className="font-medium mb-1">📝 使用說明：</p>
         <ul className="space-y-1 list-disc list-inside ml-2">
+          <li>編輯功能：點擊編輯按鈕可直接修改項目名稱，按 Enter 確認或 Escape 取消</li>
           <li>物資項目：停用操作僅會將項目設為「不活躍」狀態，不會真正從資料庫中移除</li>
           <li>被停用的物資項目將不再顯示在表單下拉選單中，但歷史記錄仍會保留</li>
           <li>新增物資項目可以透過「物資管理」頁面的新增功能進行</li>
           <li>類別和領取單位的刪除是軟刪除，同樣保留歷史記錄</li>
-          <li>只有管理員才能執行停用/刪除操作</li>
+          <li>只有管理員和員工才能執行編輯操作，只有管理員才能執行停用/刪除操作</li>
         </ul>
       </div>
     </div>

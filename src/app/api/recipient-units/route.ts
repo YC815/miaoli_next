@@ -86,6 +86,77 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PUT(request: NextRequest) {
+  try {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { clerkId },
+    });
+
+    if (!currentUser || (currentUser.role !== Role.ADMIN && currentUser.role !== Role.STAFF)) {
+      return NextResponse.json({ 
+        error: 'Access denied. Admin or Staff privileges required.' 
+      }, { status: 403 });
+    }
+
+    const { id, name, phone, sortOrder } = await request.json();
+
+    if (!id || typeof id !== 'string') {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    }
+
+    if (!name || typeof name !== 'string') {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+
+    // Check if recipient unit exists
+    const existingUnit = await prisma.recipientUnit.findUnique({
+      where: { id },
+    });
+
+    if (!existingUnit) {
+      return NextResponse.json({ 
+        error: 'Recipient unit not found' 
+      }, { status: 404 });
+    }
+
+    // Check if another recipient unit with the same name already exists (excluding current unit)
+    const duplicateUnit = await prisma.recipientUnit.findFirst({
+      where: { 
+        name: name.trim(),
+        NOT: { id }
+      },
+    });
+
+    if (duplicateUnit) {
+      return NextResponse.json({ 
+        error: 'Recipient unit with this name already exists' 
+      }, { status: 409 });
+    }
+
+    const updatedUnit = await prisma.recipientUnit.update({
+      where: { id },
+      data: {
+        name: name.trim(),
+        phone: phone ? phone.trim() : existingUnit.phone,
+        sortOrder: sortOrder ?? existingUnit.sortOrder,
+      },
+    });
+
+    return NextResponse.json(updatedUnit);
+  } catch (error) {
+    console.error('Error updating recipient unit:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const { userId: clerkId } = await auth();

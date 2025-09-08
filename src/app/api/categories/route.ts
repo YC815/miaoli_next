@@ -85,6 +85,76 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PUT(request: NextRequest) {
+  try {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { clerkId },
+    });
+
+    if (!currentUser || (currentUser.role !== Role.ADMIN && currentUser.role !== Role.STAFF)) {
+      return NextResponse.json({ 
+        error: 'Access denied. Admin or Staff privileges required.' 
+      }, { status: 403 });
+    }
+
+    const { id, name, sortOrder } = await request.json();
+
+    if (!id || typeof id !== 'string') {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    }
+
+    if (!name || typeof name !== 'string') {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+
+    // Check if category exists
+    const existingCategory = await prisma.category.findUnique({
+      where: { id },
+    });
+
+    if (!existingCategory) {
+      return NextResponse.json({ 
+        error: 'Category not found' 
+      }, { status: 404 });
+    }
+
+    // Check if another category with the same name already exists (excluding current category)
+    const duplicateCategory = await prisma.category.findFirst({
+      where: { 
+        name: name.trim(),
+        NOT: { id }
+      },
+    });
+
+    if (duplicateCategory) {
+      return NextResponse.json({ 
+        error: 'Category with this name already exists' 
+      }, { status: 409 });
+    }
+
+    const updatedCategory = await prisma.category.update({
+      where: { id },
+      data: {
+        name: name.trim(),
+        sortOrder: sortOrder ?? existingCategory.sortOrder,
+      },
+    });
+
+    return NextResponse.json(updatedCategory);
+  } catch (error) {
+    console.error('Error updating category:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const { userId: clerkId } = await auth();
