@@ -54,6 +54,7 @@ export async function POST() {
       console.log(`[/api/users/sync] Updating existing user: ${existingUser.id}`);
       
       // 決定是否更新暱稱：只有當數據庫中沒有暱稱時才使用 Clerk 的名稱
+      // 如果用戶已經有自定義暱稱（非空且非空白），則永遠不覆蓋
       const shouldUpdateNickname = !existingUser.nickname || existingUser.nickname.trim() === '';
       const finalNickname = shouldUpdateNickname ? userNickname : existingUser.nickname;
       
@@ -64,13 +65,24 @@ export async function POST() {
         finalNickname: finalNickname
       });
       
+      // 只更新 email 和 lastLoginAt，暱稱只在需要時更新
+      const updateData: {
+        email: string;
+        lastLoginAt: Date;
+        nickname?: string | null;
+      } = {
+        email: userEmail,
+        lastLoginAt: new Date(),
+      };
+      
+      // 只有在需要更新暱稱時才加入 nickname 欄位
+      if (shouldUpdateNickname) {
+        updateData.nickname = finalNickname;
+      }
+      
       const updatedUser = await prisma.user.update({
         where: { id: existingUser.id },
-        data: {
-          email: userEmail,
-          nickname: finalNickname,
-          lastLoginAt: new Date(),
-        },
+        data: updateData,
       });
       
       console.log(`[/api/users/sync] ✅ User updated:`, {
@@ -95,13 +107,25 @@ export async function POST() {
       if (userWithSameEmail) {
         // Email exists for another user - this could be a re-registration case
         console.log(`[/api/users/sync] Email ${userEmail} already exists for user ${userWithSameEmail.id}, updating clerkId`);
+        // 對於通過 email 找到的用戶，也要保護已有的暱稱
+        const shouldUpdateEmailUserNickname = !userWithSameEmail.nickname || userWithSameEmail.nickname.trim() === '';
+        const emailUpdateData: {
+          clerkId: string;
+          lastLoginAt: Date;
+          nickname?: string | null;
+        } = {
+          clerkId: userId,
+          lastLoginAt: new Date(),
+        };
+        
+        // 只有在沒有暱稱時才使用 Clerk 的名稱
+        if (shouldUpdateEmailUserNickname) {
+          emailUpdateData.nickname = userNickname;
+        }
+        
         const updatedUser = await prisma.user.update({
           where: { id: userWithSameEmail.id },
-          data: {
-            clerkId: userId,
-            nickname: userNickname,
-            lastLoginAt: new Date(),
-          },
+          data: emailUpdateData,
         });
         
         console.log(`[/api/users/sync] ✅ Email user updated with new clerkId:`, {
