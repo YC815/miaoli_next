@@ -72,10 +72,10 @@ export function EditSupplyModal({ open, onOpenChange, onSubmit, supply }: EditSu
 
   const fetchSupplyNames = async () => {
     try {
-      const response = await fetch('/api/supply-names');
+      const response = await fetch('/api/supplies?activeOnly=true&sortBy=sortOrder&namesOnly=true');
       if (response.ok) {
         const data = await response.json();
-        setSupplyNames(data.map((item: { name: string }) => item.name));
+        setSupplyNames(data);
       }
     } catch (error) {
       console.error('Error fetching supply names:', error);
@@ -120,31 +120,14 @@ export function EditSupplyModal({ open, onOpenChange, onSubmit, supply }: EditSu
   const confirmNewSupplyName = async () => {
     if (!newSupplyName.trim()) return;
 
-    try {
-      const response = await fetch('/api/supply-names', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: newSupplyName.trim(),
-        }),
-      });
-
-      if (response.ok || response.status === 409) {
-        const supplyName = newSupplyName.trim();
-        if (!supplyNames.includes(supplyName)) {
-          setSupplyNames(prev => [...prev, supplyName]);
-        }
-        setFormData({...formData, name: supplyName});
-        setIsNewSupplyName(false);
-        setNewSupplyName("");
-      } else {
-        console.error('Failed to create supply name');
-      }
-    } catch (error) {
-      console.error('Error creating supply name:', error);
+    // 添加到本地可用清單（新的物資名稱會在提交時一併處理）
+    const supplyName = newSupplyName.trim();
+    if (!supplyNames.includes(supplyName)) {
+      setSupplyNames(prev => [...prev, supplyName]);
     }
+    setFormData({...formData, name: supplyName});
+    setIsNewSupplyName(false);
+    setNewSupplyName("");
   };
 
   const handleCategorySelect = (value: string) => {

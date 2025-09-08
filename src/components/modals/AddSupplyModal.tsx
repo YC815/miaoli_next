@@ -90,10 +90,10 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit, dbUser }: AddSupp
 
   const fetchSupplyNames = async () => {
     try {
-      const response = await fetch('/api/supply-names');
+      const response = await fetch('/api/supplies?activeOnly=true&sortBy=sortOrder&namesOnly=true');
       if (response.ok) {
         const data = await response.json();
-        setAvailableSupplyNames(data.map((item: { name: string }) => item.name));
+        setAvailableSupplyNames(data);
       }
     } catch (error) {
       console.error('Error fetching supply names:', error);
@@ -158,40 +158,21 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit, dbUser }: AddSupp
     const item = supplyItems[index];
     if (!item.name.trim()) return;
 
-    try {
-      // 呼叫 API 新增物資名稱到資料庫
-      const response = await fetch('/api/supply-names', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: item.name.trim(),
-        }),
-      });
-
-      if (response.ok || response.status === 409) { // 409 表示已存在，也是正常情況
-        // 添加到本地可用清單
-        const newName = item.name.trim();
-        if (!availableSupplyNames.includes(newName)) {
-          setAvailableSupplyNames(prev => [...prev, newName]);
-        }
-        
-        // 更新 UI 狀態，退出新增模式
-        const updatedItems = [...supplyItems];
-        updatedItems[index] = { 
-          ...updatedItems[index], 
-          name: newName,
-          isNewSupplyName: false 
-        };
-        setSupplyItems(updatedItems);
-        console.log('✅ New supply name confirmed and added:', newName);
-      } else {
-        console.error('Failed to create supply name');
-      }
-    } catch (error) {
-      console.error('Error creating supply name:', error);
+    // 添加到本地可用清單（現在新的物資名稱會在提交時一併處理）
+    const newName = item.name.trim();
+    if (!availableSupplyNames.includes(newName)) {
+      setAvailableSupplyNames(prev => [...prev, newName]);
     }
+    
+    // 更新 UI 狀態，退出新增模式
+    const updatedItems = [...supplyItems];
+    updatedItems[index] = { 
+      ...updatedItems[index], 
+      name: newName,
+      isNewSupplyName: false 
+    };
+    setSupplyItems(updatedItems);
+    console.log('✅ New supply name confirmed:', newName);
   };
 
   const handleCategorySelect = (index: number, value: string) => {

@@ -24,7 +24,7 @@ export async function PUT(
     }
 
     const { id: supplyId } = await params;
-    const { name, category, quantity, unit, safetyStock } = await request.json();
+    const { name, category, quantity, unit, safetyStock, isActive, sortOrder } = await request.json();
 
     const existingSupply = await prisma.supply.findUnique({
       where: { id: supplyId },
@@ -34,18 +34,30 @@ export async function PUT(
       return NextResponse.json({ error: 'Supply not found' }, { status: 404 });
     }
 
-    const updatedSupply = await prisma.supply.update({
-      where: { id: supplyId },
-      data: {
-        name: name ?? existingSupply.name,
-        category: category ?? existingSupply.category,
-        quantity: quantity ?? existingSupply.quantity,
-        unit: unit ?? existingSupply.unit,
-        safetyStock: safetyStock ?? existingSupply.safetyStock,
-      },
-    });
+    try {
+      const updatedSupply = await prisma.supply.update({
+        where: { id: supplyId },
+        data: {
+          name: name ?? existingSupply.name,
+          category: category ?? existingSupply.category,
+          quantity: quantity ?? existingSupply.quantity,
+          unit: unit ?? existingSupply.unit,
+          safetyStock: safetyStock ?? existingSupply.safetyStock,
+          isActive: isActive ?? existingSupply.isActive,
+          sortOrder: sortOrder ?? existingSupply.sortOrder,
+        },
+      });
 
-    return NextResponse.json(updatedSupply);
+      return NextResponse.json(updatedSupply);
+    } catch (prismaError: unknown) {
+      // 處理唯一約束錯誤
+      if (typeof prismaError === 'object' && prismaError !== null && 'code' in prismaError && prismaError.code === 'P2002') {
+        return NextResponse.json({ 
+          error: '物資名稱已存在，請使用不同的名稱' 
+        }, { status: 409 });
+      }
+      throw prismaError;
+    }
   } catch (error) {
     console.error('Error updating supply:', error);
     return NextResponse.json(

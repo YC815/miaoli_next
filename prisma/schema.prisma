@@ -24,11 +24,13 @@ model User {
 
 model Supply {
   id                String             @id @default(cuid())
-  name              String
+  name              String             @unique
   category          String
   quantity          Int
   unit              String             @default("個")
   safetyStock       Int
+  isActive          Boolean            @default(true)
+  sortOrder         Int                @default(0)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   disbursementItems DisbursementItem[]
@@ -111,14 +113,6 @@ model Category {
   updatedAt   DateTime @updatedAt
 }
 
-model SupplyName {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  isActive    Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
 
 model RecipientUnit {
   id          String   @id @default(cuid())

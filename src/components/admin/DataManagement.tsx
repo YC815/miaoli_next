@@ -7,9 +7,13 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 
-interface SupplyName {
+interface Supply {
   id: string;
   name: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  safetyStock: number;
   isActive: boolean;
   sortOrder: number;
   createdAt: string;
@@ -36,27 +40,27 @@ interface RecipientUnit {
 }
 
 export function DataManagement() {
-  const [supplyNames, setSupplyNames] = useState<SupplyName[]>([]);
+  const [supplies, setSupplies] = useState<Supply[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [recipientUnits, setRecipientUnits] = useState<RecipientUnit[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeSection, setActiveSection] = useState<"supply-names" | "categories" | "recipient-units">("supply-names");
+  const [activeSection, setActiveSection] = useState<"supplies" | "categories" | "recipient-units">("supplies");
 
   useEffect(() => {
-    fetchSupplyNames();
+    fetchSupplies();
     fetchCategories();
     fetchRecipientUnits();
   }, []);
 
-  const fetchSupplyNames = async () => {
+  const fetchSupplies = async () => {
     try {
-      const response = await fetch('/api/supply-names');
+      const response = await fetch('/api/supplies');
       if (response.ok) {
         const data = await response.json();
-        setSupplyNames(data);
+        setSupplies(data);
       }
     } catch (error) {
-      console.error('Error fetching supply names:', error);
+      console.error('Error fetching supplies:', error);
     }
   };
 
@@ -85,47 +89,57 @@ export function DataManagement() {
   };
 
   const handleDelete = async (type: string, id: string, name: string) => {
-    if (!confirm(`確定要刪除「${name}」嗎？此操作無法復原。`)) {
+    if (!confirm(`確定要停用「${name}」嗎？停用後將不會在選單中顯示。`)) {
       return;
     }
 
     try {
-      const endpoint = type === "supply-names" ? "/api/supply-names" : 
-                     type === "categories" ? "/api/categories" :
-                     "/api/recipient-units";
+      let endpoint = "";
+      let method = "";
+      let body = {};
+
+      if (type === "supplies") {
+        endpoint = `/api/supplies/${id}`;
+        method = "PUT";
+        body = { isActive: false };
+      } else {
+        endpoint = type === "categories" ? "/api/categories" : "/api/recipient-units";
+        method = "DELETE";
+        body = { id };
+      }
       
       const response = await fetch(endpoint, {
-        method: 'DELETE',
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify(body),
       });
 
       if (response.ok) {
-        toast.success(`「${name}」已成功刪除`);
+        toast.success(`「${name}」已成功停用`);
         
         // Refresh the appropriate list
-        if (type === "supply-names") fetchSupplyNames();
+        if (type === "supplies") fetchSupplies();
         else if (type === "categories") fetchCategories();
         else fetchRecipientUnits();
       } else {
         const errorData = await response.json();
-        toast.error(`刪除失敗: ${errorData.error}`);
+        toast.error(`停用失敗: ${errorData.error}`);
       }
     } catch (error) {
-      console.error(`Error deleting ${type}:`, error);
-      toast.error("刪除失敗");
+      console.error(`Error updating ${type}:`, error);
+      toast.error("停用失敗");
     }
   };
 
-  const filterData = (data: (SupplyName | Category | RecipientUnit)[]) => {
+  const filterData = (data: (Supply | Category | RecipientUnit)[]) => {
     return data.filter(item => 
       item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   };
 
-  const DataTable = ({ data, type, title }: { data: (SupplyName | Category | RecipientUnit)[], type: string, title: string }) => (
+  const DataTable = ({ data, type, title }: { data: (Supply | Category | RecipientUnit)[], type: string, title: string }) => (
     <Card>
       <CardHeader>
         <CardTitle className="text-lg font-semibold">{title}</CardTitle>
@@ -140,7 +154,20 @@ export function DataManagement() {
             filterData(data).map((item) => (
               <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/20">
                 <div className="flex-1">
-                  <div className="font-medium">{item.name}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="font-medium">{item.name}</div>
+                    {'isActive' in item && !item.isActive && (
+                      <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">已停用</span>
+                    )}
+                  </div>
+                  {'category' in item && (
+                    <div className="text-sm text-muted-foreground">類別：{item.category}</div>
+                  )}
+                  {'quantity' in item && (
+                    <div className="text-sm text-muted-foreground">
+                      庫存：{item.quantity} {item.unit} / 安全庫存：{item.safetyStock}
+                    </div>
+                  )}
                   {'phone' in item && item.phone && (
                     <div className="text-sm text-muted-foreground">電話：{item.phone}</div>
                   )}
@@ -148,14 +175,28 @@ export function DataManagement() {
                     建立時間：{new Date(item.createdAt).toLocaleDateString()}
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(type, item.id, item.name)}
-                  className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {'isActive' in item && item.isActive && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(type, item.id, item.name)}
+                    className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                    title="停用此項目"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+                {!('isActive' in item) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(type, (item as Category | RecipientUnit).id, (item as Category | RecipientUnit).name)}
+                    className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                    title="刪除此項目"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             ))
           )}
@@ -190,11 +231,11 @@ export function DataManagement() {
       {/* Section Tabs */}
       <div className="flex gap-2 border-b">
         <Button
-          variant={activeSection === "supply-names" ? "default" : "ghost"}
-          onClick={() => setActiveSection("supply-names")}
+          variant={activeSection === "supplies" ? "default" : "ghost"}
+          onClick={() => setActiveSection("supplies")}
           className="rounded-b-none"
         >
-          物資名稱 ({supplyNames.length})
+          物資項目 ({supplies.length})
         </Button>
         <Button
           variant={activeSection === "categories" ? "default" : "ghost"}
@@ -214,8 +255,8 @@ export function DataManagement() {
 
       {/* Data Tables */}
       <div className="min-h-[400px]">
-        {activeSection === "supply-names" && (
-          <DataTable data={supplyNames} type="supply-names" title="物資名稱清單" />
+        {activeSection === "supplies" && (
+          <DataTable data={supplies} type="supplies" title="物資項目清單" />
         )}
         {activeSection === "categories" && (
           <DataTable data={categories} type="categories" title="物資類別清單" />
@@ -229,10 +270,11 @@ export function DataManagement() {
       <div className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg">
         <p className="font-medium mb-1">📝 使用說明：</p>
         <ul className="space-y-1 list-disc list-inside ml-2">
-          <li>刪除操作僅會將項目設為「不活躍」狀態，不會真正從資料庫中移除</li>
-          <li>被刪除的項目將不再顯示在下拉選單中，但歷史記錄仍會保留</li>
-          <li>新增項目可以透過各個表單中的「+ 新增」功能進行</li>
-          <li>只有管理員才能執行刪除操作</li>
+          <li>物資項目：停用操作僅會將項目設為「不活躍」狀態，不會真正從資料庫中移除</li>
+          <li>被停用的物資項目將不再顯示在表單下拉選單中，但歷史記錄仍會保留</li>
+          <li>新增物資項目可以透過「物資管理」頁面的新增功能進行</li>
+          <li>類別和領取單位的刪除是軟刪除，同樣保留歷史記錄</li>
+          <li>只有管理員才能執行停用/刪除操作</li>
         </ul>
       </div>
     </div>
