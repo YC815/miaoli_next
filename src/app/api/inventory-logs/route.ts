@@ -73,3 +73,51 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function GET() {
+  try {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { clerkId },
+    });
+
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const inventoryLogs = await prisma.inventoryLog.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            nickname: true,
+            email: true,
+          },
+        },
+        supply: {
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            unit: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return NextResponse.json(inventoryLogs);
+  } catch (error) {
+    console.error('Error fetching inventory logs:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

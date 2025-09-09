@@ -7,20 +7,24 @@ import { toast } from "sonner";
 import * as XLSX from 'xlsx';
 import { DonationRecordsTable, DonationRecord } from "@/components/tables/DonationRecordsTable";
 import { DisbursementRecordsTable, DisbursementRecord } from "@/components/tables/DisbursementRecordsTable";
+import { InventoryLogsTable, InventoryLog } from "@/components/tables/InventoryLogsTable";
 
-type TabType = "donations" | "disbursements";
+type TabType = "donations" | "disbursements" | "inventory";
 
 export function RecordsView() {
   const [activeTab, setActiveTab] = useState<TabType>("donations");
   const [donationRecords, setDonationRecords] = useState<DonationRecord[]>([]);
   const [disbursementRecords, setDisbursementRecords] = useState<DisbursementRecord[]>([]);
+  const [inventoryLogs, setInventoryLogs] = useState<InventoryLog[]>([]);
   const [selectedDonations, setSelectedDonations] = useState<DonationRecord[]>([]);
   const [selectedDisbursements, setSelectedDisbursements] = useState<DisbursementRecord[]>([]);
+  const [selectedInventoryLogs, setSelectedInventoryLogs] = useState<InventoryLog[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchDonationRecords();
     fetchDisbursementRecords();
+    fetchInventoryLogs();
   }, []);
 
   const fetchDonationRecords = async () => {
@@ -54,6 +58,24 @@ export function RecordsView() {
     } catch (error) {
       console.error("Error fetching disbursement records:", error);
       toast.error("載入發放紀錄失敗");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchInventoryLogs = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/inventory-logs');
+      if (response.ok) {
+        const data = await response.json();
+        setInventoryLogs(data);
+      } else {
+        toast.error("載入異動紀錄失敗");
+      }
+    } catch (error) {
+      console.error("Error fetching inventory logs:", error);
+      toast.error("載入異動紀錄失敗");
     } finally {
       setLoading(false);
     }
@@ -128,7 +150,50 @@ export function RecordsView() {
     toast.success(`已匯出 ${selectedDisbursements.length} 筆發放紀錄`);
   };
 
-  const selectedCount = activeTab === "donations" ? selectedDonations.length : selectedDisbursements.length;
+  const handleExportInventoryLogs = () => {
+    if (selectedInventoryLogs.length === 0) {
+      toast.error("請選擇至少一筆異動紀錄");
+      return;
+    }
+
+    const exportData = selectedInventoryLogs.map(record => ({
+      '異動時間': formatDate(record.createdAt),
+      '物資名稱': record.supply.name,
+      '物資類別': record.supply.category,
+      '異動類型': record.changeType === 'INCREASE' ? '增加' : '減少',
+      '異動數量': record.changeAmount,
+      '異動後數量': record.newQuantity,
+      '單位': record.supply.unit,
+      '異動原因': record.reason,
+      '操作人員': record.user.nickname || record.user.email.split('@')[0],
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "異動紀錄");
+    
+    const now = new Date();
+    const filename = `資料異動紀錄_${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}.xlsx`;
+    
+    XLSX.writeFile(wb, filename);
+    toast.success(`已匯出 ${selectedInventoryLogs.length} 筆異動紀錄`);
+  };
+
+  const selectedCount = activeTab === "donations" 
+    ? selectedDonations.length 
+    : activeTab === "disbursements" 
+    ? selectedDisbursements.length 
+    : selectedInventoryLogs.length;
+    
+  const handleExport = () => {
+    if (activeTab === "donations") {
+      handleExportDonations();
+    } else if (activeTab === "disbursements") {
+      handleExportDisbursements();
+    } else {
+      handleExportInventoryLogs();
+    }
+  };
   
   return (
     <div className="flex flex-col flex-1 space-y-8">
@@ -140,7 +205,7 @@ export function RecordsView() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">紀錄調取</h1>
-            <p className="text-sm text-muted-foreground">查看和匯出物資捐贈及發放紀錄</p>
+            <p className="text-sm text-muted-foreground">查看和匯出物資捐贈、發放及異動紀錄</p>
           </div>
         </div>
         
@@ -148,7 +213,7 @@ export function RecordsView() {
           <Button
             variant="outline"
             size="sm"
-            onClick={activeTab === "donations" ? handleExportDonations : handleExportDisbursements}
+            onClick={handleExport}
             disabled={selectedCount === 0}
             className="h-9 px-4 border-primary/20 hover:bg-primary/5 disabled:opacity-50"
           >
@@ -188,6 +253,18 @@ export function RecordsView() {
         >
           物資發放紀錄
         </Button>
+        <Button
+          variant={activeTab === "inventory" ? "default" : "ghost"}
+          onClick={() => setActiveTab("inventory")}
+          className={`rounded-lg text-sm px-6 py-2.5 font-medium transition-all ${
+            activeTab === "inventory"
+              ? "bg-primary text-primary-foreground shadow-md hover:bg-primary/90"
+              : "text-muted-foreground hover:bg-white/50 dark:hover:bg-card/50 hover:text-foreground"
+          }`}
+          size="sm"
+        >
+          資料異動紀錄
+        </Button>
       </div>
 
       {/* Content */}
@@ -205,10 +282,15 @@ export function RecordsView() {
               data={donationRecords}
               onSelectionChange={setSelectedDonations}
             />
-          ) : (
+          ) : activeTab === "disbursements" ? (
             <DisbursementRecordsTable
               data={disbursementRecords}
               onSelectionChange={setSelectedDisbursements}
+            />
+          ) : (
+            <InventoryLogsTable
+              data={inventoryLogs}
+              onSelectionChange={setSelectedInventoryLogs}
             />
           )}
         </div>
