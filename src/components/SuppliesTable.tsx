@@ -133,7 +133,7 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
 
   const copyAvailableItemsToClipboard = () => {
     const availableItems = filteredAndSortedSupplies
-      .filter(supply => supply.quantity > supply.safetyStock)
+      .filter(supply => supply.quantity > 0)
       .map(supply => `• ${supply.name}: ${supply.quantity} ${supply.unit}`)
       .join('\n');
     
@@ -188,11 +188,11 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
               className={`flex items-center gap-2 self-start sm:self-auto min-h-[44px] px-3 sm:px-4 transition-colors ${
                 isCopied ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : ''
               }`}
-              disabled={filteredAndSortedSupplies.filter(s => s.quantity > s.safetyStock).length === 0}
+              disabled={filteredAndSortedSupplies.filter(s => s.quantity > 0).length === 0}
             >
               {isCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
               <span className="text-xs sm:text-sm">
-                {isCopied ? '已複製' : '複製庫存充足品項'}
+                {isCopied ? '已複製' : '複製庫存清單'}
               </span>
             </Button>
           </div>
@@ -238,13 +238,15 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
                     {getSortIcon('quantity')}
                   </Button>
                 </TableHead>
+                <TableHead className="font-semibold text-base py-4 text-center">安全庫存</TableHead>
+                <TableHead className="font-semibold text-base py-4 text-center">庫存狀態</TableHead>
                 <TableHead className="w-[80px] text-center font-semibold text-base py-4">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredAndSortedSupplies.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-32 text-center">
+                  <TableCell colSpan={6} className="h-32 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <Package className="h-8 w-8" />
                       <p className="text-lg">找不到符合條件的物資</p>
@@ -273,6 +275,16 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
                             <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 text-orange-500 flex-shrink-0" />
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell className="py-2 sm:py-4 text-center">
+                        <span className="text-sm sm:text-base text-muted-foreground">
+                          {supply.safetyStock.toLocaleString()} {supply.unit}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-2 sm:py-4 text-center">
+                        <span className={`inline-flex px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-medium ${status.color}`}>
+                          {status.label}
+                        </span>
                       </TableCell>
                       <TableCell className="py-2 sm:py-4 text-center">
                         <DropdownMenu>

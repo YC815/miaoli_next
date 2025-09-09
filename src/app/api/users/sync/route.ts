@@ -53,10 +53,10 @@ export async function POST() {
       
       console.log(`[/api/users/sync] Updating existing user: ${existingUser.id}`);
       
-      // 決定是否更新暱稱：只有當數據庫中沒有暱稱時才使用 Clerk 的名稱
-      // 如果用戶已經有自定義暱稱（非空且非空白），則永遠不覆蓋
-      const shouldUpdateNickname = !existingUser.nickname || existingUser.nickname.trim() === '';
-      const finalNickname = shouldUpdateNickname ? userNickname : existingUser.nickname;
+      // 決定是否更新暱稱：永遠不自動設定暱稱，讓用戶在 onboarding 流程中自己設定
+      // 如果用戶已經有自定義暱稱，保持不變；如果沒有暱稱，也保持 null 狀態
+      const shouldUpdateNickname = false; // 永遠不在同步時自動更新暱稱
+      const finalNickname = existingUser.nickname; // 保持現有暱稱狀態
       
       console.log(`[/api/users/sync] Nickname update logic:`, {
         currentNickname: existingUser.nickname,
@@ -107,21 +107,17 @@ export async function POST() {
       if (userWithSameEmail) {
         // Email exists for another user - this could be a re-registration case
         console.log(`[/api/users/sync] Email ${userEmail} already exists for user ${userWithSameEmail.id}, updating clerkId`);
-        // 對於通過 email 找到的用戶，也要保護已有的暱稱
-        const shouldUpdateEmailUserNickname = !userWithSameEmail.nickname || userWithSameEmail.nickname.trim() === '';
+        // 對於通過 email 找到的用戶，也保護已有的暱稱，永遠不自動設定
         const emailUpdateData: {
           clerkId: string;
           lastLoginAt: Date;
-          nickname?: string | null;
         } = {
           clerkId: userId,
           lastLoginAt: new Date(),
         };
         
-        // 只有在沒有暱稱時才使用 Clerk 的名稱
-        if (shouldUpdateEmailUserNickname) {
-          emailUpdateData.nickname = userNickname;
-        }
+        // 永遠不在同步時更新暱稱，保持現有狀態
+        // 如果沒有暱稱，會透過 onboarding 流程讓用戶設定
         
         const updatedUser = await prisma.user.update({
           where: { id: userWithSameEmail.id },
@@ -146,7 +142,7 @@ export async function POST() {
       data: {
         clerkId: userId,
         email: userEmail || '',
-        nickname: userNickname,
+        nickname: null, // 新用戶暱稱為空，強制進入 onboarding 流程
         role: Role.VOLUNTEER,
         isFirstLogin: true,
       },
