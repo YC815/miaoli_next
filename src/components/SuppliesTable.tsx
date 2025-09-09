@@ -133,8 +133,11 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
 
   const copyAvailableItemsToClipboard = () => {
     const availableItems = filteredAndSortedSupplies
-      .filter(supply => supply.quantity > 0)
-      .map(supply => `• ${supply.name}: ${supply.quantity} ${supply.unit}`)
+      .filter(supply => {
+        const status = getStockStatus(supply.quantity, supply.safetyStock);
+        return status.label === '庫存充足';
+      })
+      .map(supply => `• ${supply.name}`)
       .join('\n');
     
     if (availableItems) {
