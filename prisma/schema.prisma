@@ -24,7 +24,7 @@ model User {
 
 model Supply {
   id                String             @id @default(cuid())
-  name              String             @unique
+  name              String
   category          String
   quantity          Int
   unit              String             @default("個")
@@ -36,6 +36,8 @@ model Supply {
   disbursementItems DisbursementItem[]
   donationItems     DonationItem[]
   inventoryLogs     InventoryLog[]
+
+  @@unique([name, category])
 }
 
 model DonationRecord {
