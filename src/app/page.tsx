@@ -43,12 +43,6 @@ interface DonationItemData {
   notes?: string;
 }
 
-interface DonorInfo {
-  name: string;
-  phone: string;
-  address: string;
-}
-
 interface BatchPickupInfo {
   unit: string;
   phone: string;
@@ -171,13 +165,13 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
   // Note: User updates are now handled by AuthGuard
 
-  const handleAddSupply = async (donorInfo: DonorInfo, donationItems: DonationItemData[]) => {
+  const handleAddSupply = async (donorId: string, donationItems: DonationItemData[]) => {
     console.log('🎯 handleAddSupply called with:');
-    console.log('👤 donorInfo:', donorInfo);
+    console.log('👤 donorId:', donorId);
     console.log('📦 donationItems:', donationItems);
 
     try {
-      const requestBody = { donorInfo, donationItems };
+      const requestBody = { donorId, donationItems };
       console.log('📤 Sending request body:', requestBody);
 
       const response = await fetch('/api/donations', {

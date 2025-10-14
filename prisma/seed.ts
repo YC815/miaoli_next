@@ -1,4 +1,6 @@
 import { PrismaClient, ChangeType } from '@prisma/client'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
 const prisma = new PrismaClient()
 
@@ -10,13 +12,16 @@ async function main() {
   await prisma.recipientUnit.deleteMany()
   await prisma.unit.deleteMany()
   await prisma.category.deleteMany()
+  // 不清理 StandardItem，使用 upsert 更新
 
   console.log('📦 創建物資類別...')
   const categories = [
-    { name: '生活用品', sortOrder: 1 },
-    { name: '食品', sortOrder: 2 },
-    { name: '衣物', sortOrder: 3 },
-    { name: '醫療用品', sortOrder: 4 },
+    { name: '食品', sortOrder: 1 },
+    { name: '衛生用品', sortOrder: 2 },
+    { name: '清潔用品', sortOrder: 3 },
+    { name: '生活用品', sortOrder: 4 },
+    { name: '衣物', sortOrder: 5 },
+    { name: '醫療用品', sortOrder: 6 },
   ]
 
   for (const category of categories) {
@@ -41,16 +46,19 @@ async function main() {
 
   console.log('📏 創建單位...')
   const units = [
-    { name: '個', sortOrder: 1 },
-    { name: '盒', sortOrder: 2 },
-    { name: '包', sortOrder: 3 },
-    { name: '罐', sortOrder: 4 },
-    { name: '瓶', sortOrder: 5 },
-    { name: '袋', sortOrder: 6 },
-    { name: '件', sortOrder: 7 },
-    { name: '組', sortOrder: 8 },
-    { name: '公斤', sortOrder: 9 },
-    { name: '公升', sortOrder: 10 },
+    { name: '包', sortOrder: 1 },
+    { name: '罐', sortOrder: 2 },
+    { name: '盒', sortOrder: 3 },
+    { name: '瓶', sortOrder: 4 },
+    { name: '個', sortOrder: 5 },
+    { name: '公斤', sortOrder: 6 },
+    { name: '片', sortOrder: 7 },
+    { name: '支', sortOrder: 8 },
+    { name: '條', sortOrder: 9 },
+    { name: '袋', sortOrder: 10 },
+    { name: '件', sortOrder: 11 },
+    { name: '組', sortOrder: 12 },
+    { name: '公升', sortOrder: 13 },
   ]
 
   for (const unit of units) {
@@ -78,19 +86,75 @@ async function main() {
     })
   }
 
-  console.log('✅ 種子數據填充完成！')
-  
+  // 🆕 種子 StandardItem（從 item_list.json）
+  console.log('📦 創建標準物資品項（StandardItem）...')
+  const itemListPath = join(process.cwd(), 'public', 'item_list.json')
+  const itemListData = JSON.parse(readFileSync(itemListPath, 'utf8'))
+
+  let standardItemCount = 0
+  for (const [category, items] of Object.entries(itemListData)) {
+    for (const item of items as Array<{ item: string; units: string[]; defaultUnit: string }>) {
+      await prisma.standardItem.upsert({
+        where: {
+          name_category: {
+            name: item.item,
+            category: category
+          }
+        },
+        create: {
+          name: item.item,
+          category: category,
+          units: item.units,
+          defaultUnit: item.defaultUnit,
+          isActive: true,
+          sortOrder: standardItemCount
+        },
+        update: {
+          units: item.units,
+          defaultUnit: item.defaultUnit,
+          isActive: true
+        }
+      })
+      standardItemCount++
+      console.log(`   ✓ ${category} - ${item.item} (單位: ${item.units.join('/')})`)
+    }
+  }
+
+  // 🆕 建立預設捐贈人
+  console.log('👤 創建預設捐贈人...')
+  const defaultDonor = await prisma.donor.upsert({
+    where: {
+      name: '匿名捐贈者'
+    },
+    create: {
+      name: '匿名捐贈者',
+      phone: null,
+      taxId: null,
+      address: null,
+      isActive: true
+    },
+    update: {
+      isActive: true
+    }
+  })
+  console.log(`   ✓ ${defaultDonor.name}`)
+
+  console.log('\n✅ 種子數據填充完成！')
+
   // 顯示填充結果
   const categoryCount = await prisma.category.count()
   const recipientUnitCount = await prisma.recipientUnit.count()
   const unitCount = await prisma.unit.count()
   const reasonCount = await prisma.inventoryChangeReason.count()
+  const donorCount = await prisma.donor.count()
 
-  console.log(`📊 填充結果:`)
+  console.log(`\n📊 填充結果:`)
   console.log(`   - 物資類別: ${categoryCount} 筆`)
   console.log(`   - 領取單位: ${recipientUnitCount} 筆`)
   console.log(`   - 單位: ${unitCount} 筆`)
   console.log(`   - 庫存變更原因: ${reasonCount} 筆`)
+  console.log(`   - 標準物資品項: ${standardItemCount} 筆`)
+  console.log(`   - 捐贈人: ${donorCount} 筆`)
 }
 
 main()

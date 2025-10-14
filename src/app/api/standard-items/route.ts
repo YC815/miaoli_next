@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/lib/prisma'
-import { readFileSync } from 'fs'
-import { join } from 'path'
 
 export async function GET() {
   try {
@@ -12,23 +10,9 @@ export async function GET() {
       return NextResponse.json({ error: '未授權' }, { status: 401 })
     }
 
-    const itemListPath = join(process.cwd(), 'public', 'item_list.json')
-    const itemListData = JSON.parse(readFileSync(itemListPath, 'utf8'))
-
-    const standardItems: Array<{
-      name: string
-      category: string
-      unit: string
-    }> = []
-
-    Object.entries(itemListData).forEach(([category, items]) => {
-      ;(items as Array<{ item: string; unit: string }>).forEach(({ item, unit }) => {
-        standardItems.push({
-          name: item,
-          category,
-          unit
-        })
-      })
+    const standardItems = await prisma.standardItem.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' }
     })
 
     return NextResponse.json({
@@ -38,7 +22,10 @@ export async function GET() {
   } catch (error) {
     console.error('取得標準物品清單失敗:', error)
     return NextResponse.json(
-      { error: '取得標準物品清單失敗' },
+      {
+        error: '取得標準物品清單失敗',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     )
   }
@@ -66,7 +53,7 @@ export async function POST(request: Request) {
     const { items } = await request.json()
 
     const results = await Promise.all(
-      items.map(async (item: { name: string; category: string; unit: string }) => {
+      items.map(async (item: { name: string; category: string; units: string[]; defaultUnit: string }) => {
         return prisma.standardItem.upsert({
           where: {
             name_category: {
@@ -77,10 +64,12 @@ export async function POST(request: Request) {
           create: {
             name: item.name,
             category: item.category,
-            unit: item.unit
+            units: item.units,
+            defaultUnit: item.defaultUnit
           },
           update: {
-            unit: item.unit,
+            units: item.units,
+            defaultUnit: item.defaultUnit,
             isActive: true
           }
         })

@@ -85,11 +85,15 @@ export async function POST(request: Request) {
       )
     }
 
+    // 將單一單位轉為陣列格式
+    const units = Array.isArray(unit) ? unit : [unit]
+
     const customItem = await prisma.customItem.create({
       data: {
         name,
         category,
-        unit,
+        units: units,
+        defaultUnit: units[0],
         createdBy: user.id
       },
       include: {

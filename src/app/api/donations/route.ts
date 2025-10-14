@@ -4,13 +4,6 @@ import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
 import { generateDonationSerialNumber } from '@/lib/serialNumber';
 
-interface DonorInfo {
-  name: string;
-  phone?: string;
-  unifiedNumber?: string;
-  address?: string;
-}
-
 interface DonationItemData {
   itemName: string;
   itemCategory: string;
@@ -45,11 +38,16 @@ export async function POST(request: NextRequest) {
     const requestBody = await request.json();
     console.log('📥 Request body received:', JSON.stringify(requestBody, null, 2));
 
-    const { donorInfo, donationItems }: { donorInfo: DonorInfo, donationItems: DonationItemData[] } = requestBody;
+    const { donorId, donationItems }: { donorId: string, donationItems: DonationItemData[] } = requestBody;
 
-    console.log('👤 Donor info details:', JSON.stringify(donorInfo, null, 2));
+    console.log('👤 donorId:', donorId);
     console.log('📦 Donation items details:', JSON.stringify(donationItems, null, 2));
-    
+
+    if (!donorId) {
+      console.log('❌ No donor ID provided');
+      return NextResponse.json({ error: 'Donor ID is required' }, { status: 400 });
+    }
+
     if (!donationItems || donationItems.length === 0) {
       console.log('❌ No donation items provided');
       return NextResponse.json({ error: 'Donation items are required' }, { status: 400 });
@@ -73,10 +71,7 @@ export async function POST(request: NextRequest) {
 
     const donationData = {
       serialNumber,
-      donorName: donorInfo?.name || '匿名捐贈者',
-      donorPhone: donorInfo?.phone || null,
-      unifiedNumber: donorInfo?.unifiedNumber || null,
-      address: donorInfo?.address || null,
+      donorId,
       userId: currentUser.id,
       donationItems: {
         create: validDonationItems.map((item: DonationItemData) => ({
@@ -96,7 +91,8 @@ export async function POST(request: NextRequest) {
     const newDonationRecord = await prisma.donationRecord.create({
       data: donationData,
       include: {
-        donationItems: true
+        donationItems: true,
+        donor: true
       },
     });
 

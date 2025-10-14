@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Trash2, Search, Edit } from "lucide-react";
 import { toast } from "sonner";
+import { ItemsManagement } from "@/components/admin/ItemsManagement";
 
 interface Supply {
   id: string;
@@ -44,7 +45,7 @@ export function DataManagement() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [recipientUnits, setRecipientUnits] = useState<RecipientUnit[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeSection, setActiveSection] = useState<"supplies" | "categories" | "recipient-units">("supplies");
+  const [activeSection, setActiveSection] = useState<"supplies" | "categories" | "recipient-units" | "items">("supplies");
   const [editingItem, setEditingItem] = useState<{ type: string; id: string; name: string } | null>(null);
   const [editName, setEditName] = useState("");
 
@@ -329,6 +330,13 @@ export function DataManagement() {
       {/* Section Tabs */}
       <div className="flex gap-2 border-b">
         <Button
+          variant={activeSection === "items" ? "default" : "ghost"}
+          onClick={() => setActiveSection("items")}
+          className="rounded-b-none"
+        >
+          物資品項
+        </Button>
+        <Button
           variant={activeSection === "supplies" ? "default" : "ghost"}
           onClick={() => setActiveSection("supplies")}
           className="rounded-b-none"
@@ -353,6 +361,7 @@ export function DataManagement() {
 
       {/* Data Tables */}
       <div className="min-h-[400px]">
+        {activeSection === "items" && <ItemsManagement />}
         {activeSection === "supplies" && (
           <DataTable data={supplies} type="supplies" title="物資項目清單" />
         )}

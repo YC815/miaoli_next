@@ -20,14 +20,16 @@ import type { User } from "@/components/auth/AuthGuard";
 interface StandardItem {
   name: string;
   category: string;
-  unit: string;
+  units: string[];
+  defaultUnit: string;
 }
 
 interface CustomItem {
   id: string;
   name: string;
   category: string;
-  unit: string;
+  units: string[];
+  defaultUnit: string;
   isHidden: boolean;
 }
 
@@ -35,6 +37,7 @@ interface SelectedItem {
   itemName: string;
   itemCategory: string;
   itemUnit: string;
+  availableUnits?: string[];  // 可選單位清單
   expiryDate?: string;
   isStandard: boolean;
   quantity: number;
@@ -133,12 +136,16 @@ export function ItemSelectionStep({ selectedItems, onItemsChange }: Omit<ItemSel
     const item = availableItems.find(i => i.name === name && i.category === category);
 
     if (item) {
+      // 處理多單位：JSON 陣列或舊格式字串
+      const units = Array.isArray(item.units) ? item.units : [item.units || item.defaultUnit];
+
       const updatedItems = [...selectedItems];
       updatedItems[index] = {
         ...updatedItems[index],
         itemName: item.name,
         itemCategory: item.category,
-        itemUnit: item.unit,
+        itemUnit: item.defaultUnit,
+        availableUnits: units,
         isStandard: item.isStandard
       };
       onItemsChange(updatedItems);
@@ -152,12 +159,15 @@ export function ItemSelectionStep({ selectedItems, onItemsChange }: Omit<ItemSel
     // 自動選擇剛建立的自訂物品到最後一個空的選項
     const emptyIndex = selectedItems.findIndex(item => !item.itemName);
     if (emptyIndex >= 0) {
+      const units = Array.isArray(customItem.units) ? customItem.units : [customItem.units || customItem.defaultUnit];
+
       const updatedItems = [...selectedItems];
       updatedItems[emptyIndex] = {
         ...updatedItems[emptyIndex],
         itemName: customItem.name,
         itemCategory: customItem.category,
-        itemUnit: customItem.unit,
+        itemUnit: customItem.defaultUnit,
+        availableUnits: units,
         isStandard: false,
         quantity: updatedItems[emptyIndex].quantity || 1,
         notes: updatedItems[emptyIndex].notes || ""
@@ -192,8 +202,8 @@ export function ItemSelectionStep({ selectedItems, onItemsChange }: Omit<ItemSel
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2 md:col-span-2">
+              <div className="space-y-4">
+                <div className="space-y-2">
                   <Label className="text-sm font-medium">
                     物品選擇 <span className="text-red-500">*</span>
                   </Label>
@@ -224,9 +234,6 @@ export function ItemSelectionStep({ selectedItems, onItemsChange }: Omit<ItemSel
                                 <div className="flex items-center justify-between w-full">
                                   <span>{availableItem.name}</span>
                                   <div className="flex items-center gap-2 ml-2">
-                                    <span className="text-xs text-muted-foreground">
-                                      {availableItem.unit}
-                                    </span>
                                     <Badge variant={availableItem.isStandard ? "default" : "secondary"} className="text-xs">
                                       {availableItem.isStandard ? "標準" : "自訂"}
                                     </Badge>
@@ -247,17 +254,46 @@ export function ItemSelectionStep({ selectedItems, onItemsChange }: Omit<ItemSel
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">
-                    數量 <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={item.quantity || ""}
-                    onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 1)}
-                    placeholder="1"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      數量 <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={item.quantity || ""}
+                      onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 1)}
+                      placeholder="1"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">單位</Label>
+                    {item.availableUnits && item.availableUnits.length > 1 ? (
+                      <Select
+                        value={item.itemUnit}
+                        onValueChange={(value) => updateItem(index, "itemUnit", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {item.availableUnits.map(unit => (
+                            <SelectItem key={unit} value={unit}>
+                              {unit}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        value={item.itemUnit || ""}
+                        disabled
+                        className="bg-muted"
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
 

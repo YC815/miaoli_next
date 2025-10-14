@@ -1,128 +1,158 @@
 {
-    "食品": [
-        {
-            "item": "麥片",
-            "unit": "包/罐/盒"
-        },
-        {
-            "item": "八寶粥",
-            "unit": "罐"
-        },
-        {
-            "item": "泡麵",
-            "unit": "包"
-        },
-        {
-            "item": "麵",
-            "unit": "包"
-        },
-        {
-            "item": "油",
-            "unit": "瓶"
-        },
-        {
-            "item": "醬油",
-            "unit": "瓶"
-        },
-        {
-            "item": "米",
-            "unit": "公斤"
-        },
-        {
-            "item": "砂糖",
-            "unit": "包"
-        },
-        {
-            "item": "鹽巴",
-            "unit": "包"
-        },
-        {
-            "item": "罐頭",
-            "unit": "個"
-        },
-        {
-            "item": "奶粉",
-            "unit": "包/罐"
-        },
-        {
-            "item": "餅乾.零食",
-            "unit": "包"
-        },
-        {
-            "item": "肉鬆",
-            "unit": "瓶"
-        },
-        {
-            "item": "保久乳",
-            "unit": "瓶"
-        }
-    ],
-    "衛生用品": [
-        {
-            "item": "成人尿布",
-            "unit": "包"
-        },
-        {
-            "item": "兒童尿布",
-            "unit": "包"
-        },
-        {
-            "item": "濕紙巾",
-            "unit": "包"
-        },
-        {
-            "item": "衛生棉",
-            "unit": "包"
-        },
-        {
-            "item": "口罩",
-            "unit": "片"
-        },
-        {
-            "item": "牙刷",
-            "unit": "支"
-        },
-        {
-            "item": "牙膏",
-            "unit": "條"
-        },
-        {
-            "item": "衛生紙",
-            "unit": "包"
-        },
-        {
-            "item": "沐浴露",
-            "unit": "瓶"
-        },
-        {
-            "item": "洗髮露",
-            "unit": "瓶"
-        },
-        {
-            "item": "刮鬍刀",
-            "unit": "支"
-        }
-    ],
-    "清潔用品": [
-        {
-            "item": "洗衣精",
-            "unit": "瓶"
-        },
-        {
-            "item": "肥皂",
-            "unit": "個"
-        },
-        {
-            "item": "洗碗精",
-            "unit": "瓶"
-        },
-        {
-            "item": "漂白水",
-            "unit": "瓶"
-        },
-        {
-            "item": "酒精",
-            "unit": "瓶"
-        }
-    ]
+  "食品": [
+    {
+      "item": "麥片",
+      "units": ["包", "罐", "盒"],
+      "defaultUnit": "包"
+    },
+    {
+      "item": "八寶粥",
+      "units": ["罐"],
+      "defaultUnit": "罐"
+    },
+    {
+      "item": "泡麵",
+      "units": ["包"],
+      "defaultUnit": "包"
+    },
+    {
+      "item": "麵",
+      "units": ["包"],
+      "defaultUnit": "包"
+    },
+    {
+      "item": "油",
+      "units": ["瓶"],
+      "defaultUnit": "瓶"
+    },
+    {
+      "item": "醬油",
+      "units": ["瓶"],
+      "defaultUnit": "瓶"
+    },
+    {
+      "item": "米",
+      "units": ["公斤"],
+      "defaultUnit": "公斤"
+    },
+    {
+      "item": "砂糖",
+      "units": ["包"],
+      "defaultUnit": "包"
+    },
+    {
+      "item": "鹽巴",
+      "units": ["包"],
+      "defaultUnit": "包"
+    },
+    {
+      "item": "罐頭",
+      "units": ["個"],
+      "defaultUnit": "個"
+    },
+    {
+      "item": "奶粉",
+      "units": ["包", "罐"],
+      "defaultUnit": "罐"
+    },
+    {
+      "item": "餅乾.零食",
+      "units": ["包"],
+      "defaultUnit": "包"
+    },
+    {
+      "item": "肉鬆",
+      "units": ["瓶"],
+      "defaultUnit": "瓶"
+    },
+    {
+      "item": "保久乳",
+      "units": ["瓶"],
+      "defaultUnit": "瓶"
+    }
+  ],
+  "衛生用品": [
+    {
+      "item": "成人尿布",
+      "units": ["包"],
+      "defaultUnit": "包"
+    },
+    {
+      "item": "兒童尿布",
+      "units": ["包"],
+      "defaultUnit": "包"
+    },
+    {
+      "item": "濕紙巾",
+      "units": ["包"],
+      "defaultUnit": "包"
+    },
+    {
+      "item": "衛生棉",
+      "units": ["包"],
+      "defaultUnit": "包"
+    },
+    {
+      "item": "口罩",
+      "units": ["片"],
+      "defaultUnit": "片"
+    },
+    {
+      "item": "牙刷",
+      "units": ["支"],
+      "defaultUnit": "支"
+    },
+    {
+      "item": "牙膏",
+      "units": ["條"],
+      "defaultUnit": "條"
+    },
+    {
+      "item": "刮鬍刀",
+      "units": ["支"],
+      "defaultUnit": "支"
+    }
+  ],
+  "清潔用品": [
+    {
+      "item": "衛生紙",
+      "units": ["包"],
+      "defaultUnit": "包"
+    },
+    {
+      "item": "沐浴露",
+      "units": ["瓶"],
+      "defaultUnit": "瓶"
+    },
+    {
+      "item": "洗髮露",
+      "units": ["瓶"],
+      "defaultUnit": "瓶"
+    },
+    {
+      "item": "洗衣精",
+      "units": ["瓶"],
+      "defaultUnit": "瓶"
+    },
+    {
+      "item": "肥皂",
+      "units": ["個"],
+      "defaultUnit": "個"
+    },
+    {
+      "item": "洗碗精",
+      "units": ["瓶"],
+      "defaultUnit": "瓶"
+    },
+    {
+      "item": "漂白水",
+      "units": ["瓶"],
+      "defaultUnit": "瓶"
+    },
+    {
+      "item": "酒精",
+      "units": ["瓶"],
+      "defaultUnit": "瓶"
+    }
+  ]
 }

@@ -25,28 +25,16 @@ interface DonationItemData {
   notes?: string;
 }
 
-interface DonorInfo {
-  name: string;
-  phone: string;
-  unifiedNumber: string;
-  address: string;
-}
-
 interface AddSupplyModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (donorInfo: DonorInfo, donationItems: DonationItemData[]) => void;
+  onSubmit: (donorId: string, donationItems: DonationItemData[]) => void;
   dbUser?: User | null;
 }
 
 export function AddSupplyModal({ open, onOpenChange, onSubmit }: Omit<AddSupplyModalProps, 'dbUser'>) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [donorInfo, setDonorInfo] = useState<DonorInfo>({
-    name: "",
-    phone: "",
-    unifiedNumber: "",
-    address: "",
-  });
+  const [selectedDonorId, setSelectedDonorId] = useState<string | null>(null);
 
   // 選中的物品清單
   const [selectedItems, setSelectedItems] = useState<Array<{
@@ -62,7 +50,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: Omit<AddSupplyM
   const canAdvanceToStep = (stepIndex: number): boolean => {
     switch (stepIndex) {
       case 0: // 捐贈者資訊
-        return donorInfo.name.trim() !== "";
+        return selectedDonorId !== null;
       case 1: // 物品選擇
         return selectedItems.length > 0 && selectedItems.every(item =>
           item.itemName.trim() !== "" && item.quantity > 0
@@ -80,16 +68,19 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: Omit<AddSupplyM
 
   const resetForm = () => {
     setCurrentStep(0);
-    setDonorInfo({
-      name: "",
-      phone: "",
-      unifiedNumber: "",
-      address: "",
-    });
+    setSelectedDonorId(null);
     setSelectedItems([]);
   };
 
+  const handleDonorSelect = (donorId: string) => {
+    setSelectedDonorId(donorId);
+  };
+
   const handleSubmit = () => {
+    if (!selectedDonorId) {
+      return;
+    }
+
     // 構建提交資料
     const donationItems: DonationItemData[] = selectedItems.map(item => ({
       itemName: item.itemName,
@@ -101,7 +92,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: Omit<AddSupplyM
       notes: item.notes
     }));
 
-    onSubmit(donorInfo, donationItems);
+    onSubmit(selectedDonorId, donationItems);
     resetForm();
     onOpenChange(false);
   };
@@ -146,8 +137,8 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: Omit<AddSupplyM
           {/* 步驟1：捐贈者資訊 */}
           <WizardStep title="捐贈者資訊">
             <DonorInfoStep
-              donorInfo={donorInfo}
-              onDonorInfoChange={setDonorInfo}
+              selectedDonorId={selectedDonorId}
+              onDonorSelect={handleDonorSelect}
             />
           </WizardStep>
 

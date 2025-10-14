@@ -25,7 +25,8 @@ interface CustomItem {
   id: string;
   name: string;
   category: string;
-  unit: string;
+  units: string[];
+  defaultUnit: string;
   isHidden: boolean;
 }
 
