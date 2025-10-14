@@ -11,12 +11,14 @@ interface DonorInfo {
   address?: string;
 }
 
-interface SupplyItem {
-  name: string;
-  category: string;
-  quantity: number;
-  unit: string;
+interface DonationItemData {
+  itemName: string;
+  itemCategory: string;
+  itemUnit: string;
   expiryDate?: string;
+  isStandard: boolean;
+  quantity: number;
+  notes?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -41,90 +43,80 @@ export async function POST(request: NextRequest) {
     }
 
     const requestBody = await request.json();
-    console.log('📥 Request body received:', requestBody);
-    
-    const { donorInfo, supplyItems, notes }: { donorInfo: DonorInfo, supplyItems: SupplyItem[], notes: string } = requestBody;
+    console.log('📥 Request body received:', JSON.stringify(requestBody, null, 2));
 
-    console.log('📦 Supply items received:', supplyItems);
+    const { donorInfo, donationItems }: { donorInfo: DonorInfo, donationItems: DonationItemData[] } = requestBody;
+
+    console.log('👤 Donor info details:', JSON.stringify(donorInfo, null, 2));
+    console.log('📦 Donation items details:', JSON.stringify(donationItems, null, 2));
     
-    if (!supplyItems || supplyItems.length === 0) {
-      console.log('❌ No supply items provided');
-      return NextResponse.json({ error: 'Supply items are required' }, { status: 400 });
+    if (!donationItems || donationItems.length === 0) {
+      console.log('❌ No donation items provided');
+      return NextResponse.json({ error: 'Donation items are required' }, { status: 400 });
     }
 
-    // Validate that at least one supply item is valid
-    const validSupplyItems = supplyItems.filter(item => 
-      item.name && item.name.trim() !== '' && 
-      item.category && item.category.trim() !== '' && 
-      item.quantity > 0
+    // Validate that at least one donation item is valid
+    const validDonationItems = donationItems.filter(item =>
+      item.itemName && item.itemName.trim() !== '' &&
+      item.itemCategory && item.itemCategory.trim() !== ''
     );
 
-    console.log('✅ Valid supply items:', validSupplyItems);
+    console.log('✅ Valid donation items:', validDonationItems);
 
-    if (validSupplyItems.length === 0) {
-      console.log('❌ No valid supply items found');
-      return NextResponse.json({ error: 'At least one valid supply item is required' }, { status: 400 });
+    if (validDonationItems.length === 0) {
+      console.log('❌ No valid donation items found');
+      return NextResponse.json({ error: 'At least one valid donation item is required' }, { status: 400 });
     }
 
     const serialNumber = await generateDonationSerialNumber();
     console.log('📝 Generated serial number:', serialNumber);
 
-    const newDonationRecord = await prisma.donationRecord.create({
-      data: {
-        serialNumber,
-        donorName: donorInfo?.name || '匿名捐贈者',
-        donorPhone: donorInfo?.phone || null,
-        unifiedNumber: donorInfo?.unifiedNumber || null,
-        address: donorInfo?.address || null,
-        notes: notes || null,
-        userId: currentUser.id,
-        donationItems: {
-          create: await Promise.all(validSupplyItems.map(async (item: SupplyItem) => {
-            // Find or create supply
-            let supply = await prisma.supply.findFirst({
-              where: { name: item.name, category: item.category },
-            });
-
-            if (!supply) {
-              supply = await prisma.supply.create({
-                data: {
-                  name: item.name,
-                  category: item.category,
-                  quantity: item.quantity, // Initial quantity
-                  unit: item.unit,
-                  safetyStock: 0, // Default safety stock
-                },
-              });
-            } else {
-              // Update existing supply quantity and unit
-              await prisma.supply.update({
-                where: { id: supply.id },
-                data: {
-                  quantity: { increment: item.quantity },
-                  unit: item.unit, // Update unit as well
-                },
-              });
-            }
-
-            return {
-              supplyId: supply.id,
-              quantity: item.quantity,
-              unit: item.unit,
-              expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
-            };
-          })),
-        },
+    const donationData = {
+      serialNumber,
+      donorName: donorInfo?.name || '匿名捐贈者',
+      donorPhone: donorInfo?.phone || null,
+      unifiedNumber: donorInfo?.unifiedNumber || null,
+      address: donorInfo?.address || null,
+      userId: currentUser.id,
+      donationItems: {
+        create: validDonationItems.map((item: DonationItemData) => ({
+          itemName: item.itemName,
+          itemCategory: item.itemCategory,
+          itemUnit: item.itemUnit,
+          expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+          isStandard: Boolean(item.isStandard),
+          quantity: Number(item.quantity),
+          notes: item.notes || null
+        })),
       },
+    };
+
+    console.log('🗄️ Creating donation record with data:', JSON.stringify(donationData, null, 2));
+
+    const newDonationRecord = await prisma.donationRecord.create({
+      data: donationData,
       include: {
-        donationItems: true,
+        donationItems: true
       },
     });
 
+    console.log('✅ Donation record created successfully:', newDonationRecord.id);
     return NextResponse.json(newDonationRecord, { status: 201 });
   } catch (error) {
-    console.error('Error creating donation:', error);
+    console.error('💥 Error creating donation:', error);
+    console.error('💥 Error details:', JSON.stringify(error, null, 2));
+
+    // 檢查是否為 Prisma 錯誤
+    if (error instanceof Error) {
+      console.error('💥 Error message:', error.message);
+      console.error('💥 Error stack:', error.stack);
+    }
+
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
@@ -156,8 +148,8 @@ export async function GET() {
       include: {
         donationItems: {
           include: {
-            supply: true,
-          },
+            itemConditions: true
+          }
         },
         user: {
           select: {

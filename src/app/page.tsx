@@ -32,11 +32,15 @@ interface Supply {
   safetyStock: number;
 }
 
-interface SupplyItem {
-  name: string;
-  category: string;
-  quantity: number;
+
+interface DonationItemData {
+  itemName: string;
+  itemCategory: string;
+  itemUnit: string;
   expiryDate?: string;
+  isStandard: boolean;
+  quantity: number;
+  notes?: string;
 }
 
 interface DonorInfo {
@@ -59,19 +63,9 @@ interface PickupItem {
   requestedQuantity: number;
 }
 
-interface DonationRecord {
-  id: string;
-  donorName: string;
-  donorPhone?: string;
-  address?: string;
-  notes?: string;
-  createdAt: string;
-  donationItems: {
-    quantity: number;
-    supply: {
-      name: string;
-    };
-  }[];
+import type { DonationRecord as BaseDonationRecord } from "@/types/donation";
+
+interface DonationRecord extends BaseDonationRecord {
   selected: boolean;
   items: string;
   date: string;
@@ -177,16 +171,15 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
   // Note: User updates are now handled by AuthGuard
 
-  const handleAddSupply = async (donorInfo: DonorInfo, supplyItems: SupplyItem[], notes: string) => {
+  const handleAddSupply = async (donorInfo: DonorInfo, donationItems: DonationItemData[]) => {
     console.log('🎯 handleAddSupply called with:');
     console.log('👤 donorInfo:', donorInfo);
-    console.log('📦 supplyItems:', supplyItems);
-    console.log('📝 notes:', notes);
-    
+    console.log('📦 donationItems:', donationItems);
+
     try {
-      const requestBody = { donorInfo, supplyItems, notes };
+      const requestBody = { donorInfo, donationItems };
       console.log('📤 Sending request body:', requestBody);
-      
+
       const response = await fetch('/api/donations', {
         method: 'POST',
         headers: {
@@ -196,22 +189,22 @@ function HomePage({ dbUser = null }: HomePageProps) {
       });
 
       console.log('📥 Response status:', response.status);
-      
+
       if (response.ok) {
         const responseData = await response.json();
         console.log('✅ Success response:', responseData);
-        toast.success("物資新增成功！");
+        toast.success("物資捐贈新增成功！");
         fetchSupplies(); // Refresh supplies list
         fetchStatistics(); // Refresh statistics
         setIsAddSupplyOpen(false);
       } else {
         const errorData = await response.json();
         console.error('❌ Error response:', errorData);
-        toast.error(`新增物資失敗: ${errorData.error || response.statusText}`);
+        toast.error(`新增捐贈失敗: ${errorData.error || response.statusText}`);
       }
     } catch (error) {
-      console.error("💥 Error adding supply:", error);
-      toast.error("新增物資失敗");
+      console.error("💥 Error adding donation:", error);
+      toast.error("新增捐贈失敗");
     }
   };
 
@@ -530,11 +523,10 @@ function HomePage({ dbUser = null }: HomePageProps) {
       </main>
 
       {/* Modals */}
-      <AddSupplyModal 
+      <AddSupplyModal
         open={isAddSupplyOpen}
         onOpenChange={setIsAddSupplyOpen}
         onSubmit={handleAddSupply}
-        dbUser={dbUser}
       />
       
       <BatchPickupModal

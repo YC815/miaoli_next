@@ -8,25 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { DataTable } from "@/components/ui/data-table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-export interface DonationRecord {
-  id: string
-  serialNumber: string
-  donorName: string
-  donorPhone: string | null
-  address: string | null
-  notes: string | null
-  createdAt: string
-  user: {
-    id: string
-    nickname: string | null
-  }
-  donationItems: {
-    quantity: number
-    supply: {
-      name: string
-    }
-  }[]
-}
+import { DonationRecord } from "@/types/donation"
+
+export type { DonationRecord }
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleString('zh-TW', {
@@ -38,8 +22,11 @@ const formatDate = (dateString: string) => {
   });
 };
 
-const formatSupplyItems = (items: { quantity: number; supply: { name: string } }[]) => {
-  return items.map(item => `${item.supply.name} x ${item.quantity}`).join(', ');
+const formatSupplyItems = (items: { itemName: string; quantity: number }[]) => {
+  return items
+    .filter(item => item.itemName)
+    .map(item => `${item.itemName} x ${item.quantity}`)
+    .join(', ');
 };
 
 const columns: ColumnDef<DonationRecord>[] = [

@@ -12,21 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-interface DonationItem {
-  quantity: number;
-  supply: {
-    name: string;
-  };
-}
+import type { DonationRecord as BaseDonationRecord } from "@/types/donation";
 
-interface DonationRecord {
-  id: string;
-  donorName: string;
-  donorPhone?: string;
-  address?: string;
-  notes?: string;
-  createdAt: string;
-  donationItems: DonationItem[];
+interface DonationRecord extends BaseDonationRecord {
   selected: boolean;
   items: string;  // Transformed display string
   date: string;   // Formatted date string
@@ -38,20 +26,7 @@ interface ReceiptModalProps {
   onPrint: (selectedRecords: DonationRecord[]) => void;
 }
 
-interface FetchedDonationRecord {
-  id: string;
-  donorName: string;
-  donorPhone?: string;
-  address?: string;
-  notes?: string;
-  createdAt: string;
-  donationItems: {
-    quantity: number;
-    supply: {
-      name: string;
-    };
-  }[];
-}
+type FetchedDonationRecord = BaseDonationRecord;
 
 export function ReceiptModal({ open, onOpenChange, onPrint }: ReceiptModalProps) {
   const [donationRecords, setDonationRecords] = useState<DonationRecord[]>([]);
@@ -67,7 +42,7 @@ export function ReceiptModal({ open, onOpenChange, onPrint }: ReceiptModalProps)
           ...record,
           selected: false,
           // Format items for display
-          items: record.donationItems.map((item) => `${item.supply.name} x${item.quantity}`).join(', '),
+          items: record.donationItems.map((item) => `${item.itemName} x${item.quantity}`).join(', '),
           date: new Date(record.createdAt).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }),
         })));
       } else {

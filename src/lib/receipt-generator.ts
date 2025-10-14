@@ -1,22 +1,7 @@
 import { jsPDF } from 'jspdf';
 // 讓我們嘗試強制設定 UTF-8 編碼
 
-interface DonationItem {
-  quantity: number;
-  supply: {
-    name: string;
-  };
-}
-
-interface DonationRecord {
-  id: string;
-  donorName: string;
-  donorPhone?: string;
-  address?: string;
-  notes?: string;
-  createdAt: string;
-  donationItems: DonationItem[];
-}
+import type { DonationRecord } from "@/types/donation";
 
 interface ReceiptData {
   receiptNumber: string;
@@ -224,10 +209,10 @@ export class ReceiptGenerator {
       console.log(`📝 處理記錄 ${index + 1}:`, record.donorName, '物品數量:', record.donationItems.length);
       record.donationItems.forEach(item => {
         allItems.push({
-          name: item.supply.name,
+          name: item.itemName,
           quantity: item.quantity,
-          unit: '個',
-          notes: ''
+          unit: item.itemUnit,
+          notes: item.notes ?? ''
         });
       });
     });
@@ -239,8 +224,8 @@ export class ReceiptGenerator {
     const receiptData: ReceiptData = {
       receiptNumber: await this.generateReceiptNumber(),
       donorName: primaryRecord.donorName || '無名氏',
-      donorAddress: primaryRecord.address,
-      donorPhone: primaryRecord.donorPhone,
+      donorAddress: primaryRecord.address ?? undefined,
+      donorPhone: primaryRecord.donorPhone ?? undefined,
       items: allItems,
       date: new Date(primaryRecord.createdAt)
     };

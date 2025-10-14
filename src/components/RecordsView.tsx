@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { FileDown, Package } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from 'xlsx';
-import { DonationRecordsTable, DonationRecord } from "@/components/tables/DonationRecordsTable";
+import { DonationRecordsTable } from "@/components/tables/DonationRecordsTable";
+import type { DonationRecord } from "@/types/donation";
 import { DisbursementRecordsTable, DisbursementRecord } from "@/components/tables/DisbursementRecordsTable";
 import { InventoryLogsTable, InventoryLog } from "@/components/tables/InventoryLogsTable";
 
@@ -91,8 +92,18 @@ export function RecordsView() {
     });
   };
 
-  const formatSupplyItems = (items: { quantity: number; supply: { name: string } }[]) => {
-    return items.map(item => `${item.supply.name} x ${item.quantity}`).join(', ');
+  const formatSupplyItems = (items: { itemName: string; quantity: number }[]) => {
+    return items
+      .filter(item => item.itemName)
+      .map(item => `${item.itemName} x ${item.quantity}`)
+      .join(', ');
+  };
+
+  const formatDisbursementItems = (items: { quantity: number; supply: { name: string } }[]) => {
+    return items
+      .filter(item => item.supply?.name)
+      .map(item => `${item.supply.name} x ${item.quantity}`)
+      .join(', ');
   };
 
   const handleExportDonations = () => {
@@ -132,7 +143,7 @@ export function RecordsView() {
     const exportData = selectedDisbursements.map(record => ({
       '發放日期': formatDate(record.createdAt),
       '流水號': record.serialNumber,
-      '物資名稱': formatSupplyItems(record.disbursementItems),
+      '物資名稱': formatDisbursementItems(record.disbursementItems),
       '受贈單位': record.recipientUnit,
       '聯絡電話': record.recipientPhone || '',
       '用途': record.purpose || '',

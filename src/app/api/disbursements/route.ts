@@ -7,14 +7,19 @@ import { generateDisbursementSerialNumber } from '@/lib/serialNumber';
 interface PickupInfo {
   unit: string;
   phone?: string;
-  purpose?: string;
 }
 
-interface SelectedItem {
-  id: string;
-  name: string;
+interface ItemConditionSelection {
+  condition: string;
   requestedQuantity: number;
-  unit?: string;
+  notes?: string;
+}
+
+interface SelectedItemData {
+  itemName: string;
+  itemCategory: string;
+  itemUnit: string;
+  conditionSelections: ItemConditionSelection[];
 }
 
 export async function POST(request: NextRequest) {
@@ -34,20 +39,66 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-        const { pickupInfo, selectedItems }: { pickupInfo: PickupInfo, selectedItems: SelectedItem[] } = await request.json();
+        const { pickupInfo, selectedItems }: { pickupInfo: PickupInfo, selectedItems: SelectedItemData[] } = await request.json();
 
     if (!pickupInfo || !pickupInfo.unit || !selectedItems || selectedItems.length === 0) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Check if quantities are available
+    // Validate that each item has valid condition selections
     for (const item of selectedItems) {
-      const supply = await prisma.supply.findUnique({
-        where: { id: item.id },
+      if (!item.conditionSelections || item.conditionSelections.length === 0) {
+        return NextResponse.json({
+          error: `No condition selections for item: ${item.itemName}`
+        }, { status: 400 });
+      }
+
+      for (const selection of item.conditionSelections) {
+        if (selection.requestedQuantity <= 0) {
+          return NextResponse.json({
+            error: `Invalid quantity for ${item.itemName} (${selection.condition})`
+          }, { status: 400 });
+        }
+      }
+    }
+
+    // Check if quantities are available by looking at ItemConditions from donation records
+    for (const item of selectedItems) {
+      const itemStock = await prisma.itemStock.findUnique({
+        where: {
+          itemName_itemCategory: {
+            itemName: item.itemName,
+            itemCategory: item.itemCategory
+          }
+        }
       });
 
-      if (!supply || supply.quantity < item.requestedQuantity) {
-        return NextResponse.json({ error: `Insufficient quantity for ${item.name}` }, { status: 400 });
+      if (!itemStock) {
+        return NextResponse.json({
+          error: `Item not found: ${item.itemName}`
+        }, { status: 400 });
+      }
+
+      // Check available quantities for each condition
+      for (const selection of item.conditionSelections) {
+        const availableConditions = await prisma.itemCondition.findMany({
+          where: {
+            donationItem: {
+              itemName: item.itemName,
+              itemCategory: item.itemCategory
+            },
+            condition: selection.condition,
+            disbursementItemId: null // Not yet disbursed
+          }
+        });
+
+        const totalAvailable = availableConditions.reduce((sum, cond) => sum + cond.quantity, 0);
+
+        if (totalAvailable < selection.requestedQuantity) {
+          return NextResponse.json({
+            error: `Insufficient quantity for ${item.itemName} (${selection.condition}): requested ${selection.requestedQuantity}, available ${totalAvailable}`
+          }, { status: 400 });
+        }
       }
     }
 
@@ -58,29 +109,103 @@ export async function POST(request: NextRequest) {
         serialNumber,
         recipientUnit: pickupInfo.unit,
         recipientPhone: pickupInfo.phone || null,
-        purpose: pickupInfo.purpose || null,
         userId: currentUser.id,
         disbursementItems: {
-          create: selectedItems.map((item: SelectedItem) => ({
-            supplyId: item.id,
-            quantity: item.requestedQuantity,
-            unit: item.unit || '個',
+          create: selectedItems.map((item: SelectedItemData) => ({
+            itemName: item.itemName,
+            itemCategory: item.itemCategory,
+            itemUnit: item.itemUnit,
+            itemConditions: {
+              create: item.conditionSelections.map(selection => ({
+                condition: selection.condition,
+                quantity: selection.requestedQuantity,
+                notes: selection.notes || null
+              }))
+            }
           })),
         },
       },
       include: {
-        disbursementItems: true,
+        disbursementItems: {
+          include: {
+            itemConditions: true
+          }
+        },
       },
     });
 
-    // Deduct quantities from supplies
+    // Mark ItemConditions as disbursed and update item stock
     for (const item of selectedItems) {
-      await prisma.supply.update({
-        where: { id: item.id },
-        data: {
-          quantity: { decrement: item.requestedQuantity },
-        },
-      });
+      const disbursementItem = newDisbursement.disbursementItems.find(
+        di => di.itemName === item.itemName && di.itemCategory === item.itemCategory
+      );
+
+      if (disbursementItem) {
+        for (const selection of item.conditionSelections) {
+          // Find available donation conditions to mark as disbursed
+          const availableConditions = await prisma.itemCondition.findMany({
+            where: {
+              donationItem: {
+                itemName: item.itemName,
+                itemCategory: item.itemCategory
+              },
+              condition: selection.condition,
+              disbursementItemId: null
+            },
+            orderBy: { createdAt: 'asc' } // FIFO
+          });
+
+          let remainingQuantity = selection.requestedQuantity;
+          for (const availableCondition of availableConditions) {
+            if (remainingQuantity <= 0) break;
+
+            const quantityToTake = Math.min(remainingQuantity, availableCondition.quantity);
+
+            if (quantityToTake === availableCondition.quantity) {
+              // Take the entire condition
+              await prisma.itemCondition.update({
+                where: { id: availableCondition.id },
+                data: { disbursementItemId: disbursementItem.id }
+              });
+            } else {
+              // Split the condition
+              await prisma.itemCondition.update({
+                where: { id: availableCondition.id },
+                data: { quantity: availableCondition.quantity - quantityToTake }
+              });
+
+              // Create a new condition record for the disbursed part
+              await prisma.itemCondition.create({
+                data: {
+                  condition: availableCondition.condition,
+                  quantity: quantityToTake,
+                  notes: availableCondition.notes,
+                  disbursementItemId: disbursementItem.id
+                }
+              });
+            }
+
+            remainingQuantity -= quantityToTake;
+          }
+        }
+
+        // Update item stock
+        const totalQuantityTaken = item.conditionSelections.reduce(
+          (sum, selection) => sum + selection.requestedQuantity, 0
+        );
+
+        await prisma.itemStock.update({
+          where: {
+            itemName_itemCategory: {
+              itemName: item.itemName,
+              itemCategory: item.itemCategory
+            }
+          },
+          data: {
+            totalStock: { decrement: totalQuantityTaken }
+          }
+        });
+      }
     }
 
     return NextResponse.json(newDisbursement, { status: 201 });
@@ -119,8 +244,8 @@ export async function GET() {
       include: {
         disbursementItems: {
           include: {
-            supply: true,
-          },
+            itemConditions: true
+          }
         },
         user: {
           select: {
