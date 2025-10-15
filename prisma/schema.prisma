@@ -12,15 +12,15 @@ model User {
   clerkId         String           @unique
   email           String           @unique
   nickname        String?
-  role            Role             @default(VOLUNTEER) // ✅ enum 不加引號
+  role            Role             @default(VOLUNTEER)
   isFirstLogin    Boolean          @default(true)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   lastLoginAt     DateTime?
+  customItems     CustomItem[]
   disbursements   Disbursement[]
   donationRecords DonationRecord[]
   inventoryLogs   InventoryLog[]
-  customItems     CustomItem[]
 }
 
 model Supply {
@@ -28,12 +28,12 @@ model Supply {
   name          String
   category      String
   quantity      Int
-  unit          String         @default("個")
   safetyStock   Int
-  isActive      Boolean        @default(true)
-  sortOrder     Int            @default(0)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  isActive      Boolean        @default(true)
+  sortOrder     Int            @default(0)
+  unit          String         @default("個")
   inventoryLogs InventoryLog[]
 
   @@unique([name, category])
@@ -53,71 +53,65 @@ model Donor {
 
 model DonationRecord {
   id            String         @id @default(cuid())
-  serialNumber  String         @unique @default("")
-  donorId       String
-  donor         Donor          @relation(fields: [donorId], references: [id])
   createdAt     DateTime       @default(now())
   userId        String
+  donorId       String
+  serialNumber  String         @unique @default("")
   donationItems DonationItem[]
+  donor         Donor          @relation(fields: [donorId], references: [id])
   user          User           @relation(fields: [userId], references: [id])
 }
 
 model DonationItem {
-  id           String         @id @default(cuid())
-  donationId   String
-  itemName     String
-  itemCategory String
-  itemUnit     String
-  quantity     Int            @default(1)
-  expiryDate   DateTime?
-  isStandard   Boolean        @default(false)
-  notes        String?
-  donation     DonationRecord @relation(fields: [donationId], references: [id])
+  id            String          @id @default(cuid())
+  donationId    String
+  quantity      Int             @default(1)
+  expiryDate    DateTime?
+  isStandard    Boolean         @default(false)
+  itemCategory  String
+  itemName      String
+  itemUnit      String
+  notes         String?
+  donation      DonationRecord  @relation(fields: [donationId], references: [id])
+  ItemCondition ItemCondition[]
 }
 
 model Disbursement {
-  id                String             @id @default(cuid())
-  serialNumber      String             @unique @default("")
-  recipientUnitName String
-  recipientUnitId   String?
-  recipientPhone    String?
-  recipientAddress  String?
-  createdAt         DateTime           @default(now())
-  userId            String
-  user              User               @relation(fields: [userId], references: [id])
-  disbursementItems DisbursementItem[]
-  recipientUnit     RecipientUnit?     @relation(fields: [recipientUnitId], references: [id])
+  id                 String             @id @default(cuid())
+  recipientUnitName  String
+  recipientUnitId    String?
+  recipientPhone     String?
+  recipientAddress   String?
+  createdAt          DateTime           @default(now())
+  userId             String
+  serialNumber       String             @unique @default("")
+  user               User               @relation(fields: [userId], references: [id])
+  recipientUnit      RecipientUnit?     @relation(fields: [recipientUnitId], references: [id])
+  disbursementItems  DisbursementItem[]
 }
 
 model DisbursementItem {
-  id             String       @id @default(cuid())
+  id             String          @id @default(cuid())
   disbursementId String
-  itemName       String
   itemCategory   String
+  itemName       String
   itemUnit       String
-  quantity       Int
-  disbursement   Disbursement @relation(fields: [disbursementId], references: [id])
+  quantity       Int             @default(1)
+  disbursement   Disbursement    @relation(fields: [disbursementId], references: [id])
+  ItemCondition  ItemCondition[]
 }
 
 model InventoryLog {
   id           String     @id @default(cuid())
-  itemStockId  String
+  supplyId     String
   changeType   ChangeType
   changeAmount Int
   newQuantity  Int
   reason       String
   createdAt    DateTime   @default(now())
   userId       String
+  Supply       Supply     @relation(fields: [supplyId], references: [id])
   user         User       @relation(fields: [userId], references: [id])
-  itemStock    ItemStock  @relation(fields: [itemStockId], references: [id])
-  Supply       Supply?    @relation(fields: [supplyId], references: [id])
-  supplyId     String?
-}
-
-enum Role {
-  ADMIN
-  STAFF
-  VOLUNTEER
 }
 
 model Category {
@@ -160,26 +154,20 @@ model Unit {
   updatedAt DateTime @updatedAt
 }
 
-enum ChangeType {
-  INCREASE
-  DECREASE
-}
-
 model SerialNumberCounter {
   id        String   @id @default(cuid())
-  type      String   @unique // "donation", "disbursement", or "report"
+  type      String   @unique
   counter   Int      @default(0)
-  prefix    String // "DN" for donation, "DS" for disbursement, "RP" for report
+  prefix    String
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
 }
 
-// 標準物品定義（對應 public/item_list.json）
 model StandardItem {
   id          String  @id @default(cuid())
   name        String
   category    String
-  units       Json // ["包", "罐", "盒"]
+  units       Json
   defaultUnit String
   isActive    Boolean @default(true)
   sortOrder   Int     @default(0)
@@ -187,15 +175,14 @@ model StandardItem {
   @@unique([name, category])
 }
 
-// 自訂物品（使用者新增的物品）
 model CustomItem {
   id          String   @id @default(cuid())
   name        String
   category    String
-  units       Json // ["個"]
+  units       Json
   defaultUnit String
-  isActive    Boolean  @default(true) // 支援隱藏功能
-  isHidden    Boolean  @default(false) // 隱藏狀態
+  isActive    Boolean  @default(true)
+  isHidden    Boolean  @default(false)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   createdBy   String
@@ -204,18 +191,39 @@ model CustomItem {
   @@unique([name, category])
 }
 
-// 物品庫存聚合（用於庫存顯示）
 model ItemStock {
-  id           String         @id @default(cuid())
+  id           String   @id @default(cuid())
   itemName     String
   itemCategory String
   itemUnit     String
-  totalStock   Int // 總庫存數量
-  safetyStock  Int            @default(0)
-  isStandard   Boolean        @default(false) // 是否為標準物品
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  InventoryLog InventoryLog[]
+  totalStock   Int
+  safetyStock  Int      @default(0)
+  isStandard   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@unique([itemName, itemCategory])
+}
+
+model ItemCondition {
+  id                 String            @id
+  condition          String
+  quantity           Int
+  notes              String?
+  createdAt          DateTime          @default(now())
+  donationItemId     String?
+  disbursementItemId String?
+  DisbursementItem   DisbursementItem? @relation(fields: [disbursementItemId], references: [id])
+  DonationItem       DonationItem?     @relation(fields: [donationItemId], references: [id])
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  VOLUNTEER
+}
+
+enum ChangeType {
+  INCREASE
+  DECREASE
 }

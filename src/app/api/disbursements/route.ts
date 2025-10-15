@@ -158,6 +158,7 @@ export async function POST(request: NextRequest) {
               itemName: item.itemName,
               itemCategory: item.itemCategory,
               itemUnit: item.itemUnit,
+              quantity: item.quantity,
             })),
           },
         },

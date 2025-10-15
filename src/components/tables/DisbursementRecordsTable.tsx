@@ -11,19 +11,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 export interface DisbursementRecord {
   id: string
   serialNumber: string
-  recipientUnit: string
+  recipientUnitName: string
   recipientPhone: string | null
-  purpose: string | null
+  recipientAddress: string | null
   createdAt: string
   user: {
     id: string
     nickname: string | null
   }
   disbursementItems: {
+    id: string
+    itemName: string
+    itemCategory: string
+    itemUnit: string
     quantity: number
-    supply: {
-      name: string
-    }
   }[]
 }
 
@@ -37,8 +38,8 @@ const formatDate = (dateString: string) => {
   });
 };
 
-const formatSupplyItems = (items: { quantity: number; supply: { name: string } }[]) => {
-  return items.map(item => `${item.supply.name} x ${item.quantity}`).join(', ');
+const formatSupplyItems = (items: { itemName: string; quantity: number }[]) => {
+  return items.map(item => `${item.itemName} x ${item.quantity}`).join(', ');
 };
 
 const columns: ColumnDef<DisbursementRecord>[] = [
@@ -115,7 +116,7 @@ const columns: ColumnDef<DisbursementRecord>[] = [
     },
   },
   {
-    accessorKey: "recipientUnit",
+    accessorKey: "recipientUnitName",
     header: ({ column }) => {
       return (
         <Button
@@ -182,7 +183,7 @@ export function DisbursementRecordsTable({
         <DataTable
           columns={columns}
           data={data}
-          searchKey="recipientUnit"
+          searchKey="recipientUnitName"
           searchPlaceholder="搜尋受贈單位..."
           onSelectionChange={onSelectionChange}
         />

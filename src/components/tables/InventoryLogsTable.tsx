@@ -215,7 +215,7 @@ export function InventoryLogsTable({ data, onSelectionChange }: InventoryLogsTab
           columns={columns}
           data={data}
           onSelectionChange={onSelectionChange}
-          searchKey="supply.name"
+          searchKey="supply"
           searchPlaceholder="搜尋物資名稱..."
         />
       </CardContent>
