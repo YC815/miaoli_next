@@ -73,7 +73,7 @@ export function RecipientUnitSelect({ selectedRecipientId, onRecipientChange, ca
     <div className="space-y-4">
       <div className="space-y-2">
         <Label className="text-sm font-medium">
-          領取單位 <span className="text-red-500">*</span>
+          領取單位 <span className="text-muted-foreground text-xs">(可選)</span>
         </Label>
         <div className="flex gap-2">
           <Select
@@ -82,7 +82,7 @@ export function RecipientUnitSelect({ selectedRecipientId, onRecipientChange, ca
             disabled={loading}
           >
             <SelectTrigger className="flex-1 min-h-[44px]">
-              <SelectValue placeholder="請選擇領取單位" />
+              <SelectValue placeholder="請選擇領取單位（可留空）" />
             </SelectTrigger>
             <SelectContent>
               {recipientUnits.map(unit => (

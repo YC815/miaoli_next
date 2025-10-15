@@ -53,6 +53,8 @@ import {
   InventoryLogsTable,
   InventoryLog,
 } from "@/components/tables/InventoryLogsTable";
+import { EditDonationModal } from "@/components/modals/EditDonationModal";
+import { EditDisbursementModal } from "@/components/modals/EditDisbursementModal";
 
 type TabType = "donations" | "disbursements" | "inventory";
 
@@ -193,7 +195,7 @@ const RecordDetails = ({ record }: { record: DeletableRecord | null }) => {
       return (
         <>
           <p className="font-medium">流水號: {donation.serialNumber}</p>
-          <p className="text-sm">捐贈者: {donation.donor.name}</p>
+          <p className="text-sm">捐贈者: {donation.donor ? donation.donor.name : "匿名"}</p>
           <p className="text-sm">
             物品:{" "}
             {donation.donationItems.map((item) => item.itemName).join(", ")}
@@ -316,6 +318,12 @@ export function RecordsView() {
   const [recordToDelete, setRecordToDelete] =
     React.useState<DeletableRecord | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+
+  const [donationToEdit, setDonationToEdit] = React.useState<DonationRecord | null>(null);
+  const [isEditDonationModalOpen, setIsEditDonationModalOpen] = React.useState(false);
+
+  const [disbursementToEdit, setDisbursementToEdit] = React.useState<DisbursementRecord | null>(null);
+  const [isEditDisbursementModalOpen, setIsEditDisbursementModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     const fetchCategories = async () => {
@@ -479,6 +487,25 @@ export function RecordsView() {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleEditDonation = (record: DonationRecord) => {
+    setDonationToEdit(record);
+    setIsEditDonationModalOpen(true);
+  };
+
+  const handleEditDisbursement = (record: DisbursementRecord) => {
+    setDisbursementToEdit(record);
+    setIsEditDisbursementModalOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+    // Refresh the appropriate list based on active tab
+    if (activeTab === "donations") {
+      setDonationsRefreshKey((key) => key + 1);
+    } else if (activeTab === "disbursements") {
+      setDisbursementsRefreshKey((key) => key + 1);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!recordToDelete) return;
 
@@ -591,6 +618,7 @@ export function RecordsView() {
                 key={`donation-${donationData?.page ?? 1}`}
                 data={donationData?.items ?? []}
                 onSelectionChange={setSelectedDonations}
+                onEdit={handleEditDonation}
                 onDelete={(record) => handleDeleteRecord(record, "donations")}
               />
             </DataSection>
@@ -629,6 +657,7 @@ export function RecordsView() {
                 key={`disbursement-${disbursementData?.page ?? 1}`}
                 data={disbursementData?.items ?? []}
                 onSelectionChange={setSelectedDisbursements}
+                onEdit={handleEditDisbursement}
                 onDelete={(record) => handleDeleteRecord(record, "disbursements")}
               />
             </DataSection>
@@ -711,6 +740,20 @@ export function RecordsView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <EditDonationModal
+        open={isEditDonationModalOpen}
+        onOpenChange={setIsEditDonationModalOpen}
+        record={donationToEdit}
+        onSuccess={handleEditSuccess}
+      />
+
+      <EditDisbursementModal
+        open={isEditDisbursementModalOpen}
+        onOpenChange={setIsEditDisbursementModalOpen}
+        record={disbursementToEdit}
+        onSuccess={handleEditSuccess}
+      />
     </div>
   );
 }
@@ -1445,9 +1488,9 @@ const handleExportDonations = (records: DonationRecord[]) => {
       物資名稱: item.itemName,
       數量: `${item.quantity} ${item.itemUnit}`,
       備註: item.notes ?? "",
-      捐贈者: index === 0 ? record.donor.name : "",
-      聯絡電話: index === 0 ? record.donor.phone ?? "" : "",
-      地址: index === 0 ? record.donor.address ?? "" : "",
+      捐贈者: index === 0 ? (record.donor ? record.donor.name : "匿名") : "",
+      聯絡電話: index === 0 ? (record.donor ? record.donor.phone ?? "" : "") : "",
+      地址: index === 0 ? (record.donor ? record.donor.address ?? "" : "") : "",
       操作者: index === 0 ? record.user.nickname ?? "" : "",
     }))
   );

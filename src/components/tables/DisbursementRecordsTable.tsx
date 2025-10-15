@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Package, Trash2 } from "lucide-react"
+import { Package, Trash2, Edit } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 export interface DisbursementRecord {
   id: string
   serialNumber: string
+  recipientUnitId: string | null
   recipientUnitName: string
   recipientPhone: string | null
   recipientAddress: string | null
@@ -50,12 +51,14 @@ interface DisbursementRecordsTableProps {
   data: DisbursementRecord[]
   onSelectionChange?: (selectedRecords: DisbursementRecord[]) => void
   onDelete?: (record: DisbursementRecord) => void
+  onEdit?: (record: DisbursementRecord) => void
 }
 
-export function DisbursementRecordsTable({ 
-  data, 
-  onSelectionChange, 
-  onDelete
+export function DisbursementRecordsTable({
+  data,
+  onSelectionChange,
+  onDelete,
+  onEdit
 }: DisbursementRecordsTableProps) {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [selectedRecordIds, setSelectedRecordIds] = React.useState<Set<string>>(new Set());
@@ -213,18 +216,32 @@ export function DisbursementRecordsTable({
                       ) : null}
                       {itemIndex === 0 ? (
                         <td className="p-4 align-top text-center" rowSpan={items.length}>
-                          {onDelete && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onDelete(record)}
-                              className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
-                              title="刪除"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="sr-only">刪除</span>
-                            </Button>
-                          )}
+                          <div className="flex items-center justify-center gap-1">
+                            {onEdit && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onEdit(record)}
+                                className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600"
+                                title="編輯"
+                              >
+                                <Edit className="h-4 w-4" />
+                                <span className="sr-only">編輯</span>
+                              </Button>
+                            )}
+                            {onDelete && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onDelete(record)}
+                                className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                                title="刪除"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">刪除</span>
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       ) : null}
                     </tr>

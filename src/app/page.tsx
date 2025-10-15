@@ -180,7 +180,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
   // Note: User updates are now handled by AuthGuard
 
-  const handleAddSupply = async (donorId: string, donationItems: DonationItemData[]) => {
+  const handleAddSupply = async (donorId: string | null, donationItems: DonationItemData[]) => {
     console.log('🎯 handleAddSupply called with:');
     console.log('👤 donorId:', donorId);
     console.log('📦 donationItems:', donationItems);
@@ -218,10 +218,6 @@ function HomePage({ dbUser = null }: HomePageProps) {
   };
 
   const handleBatchPickup = async (pickupInfo: BatchPickupInfo, selectedItems: DisbursementItem[]) => {
-    if (!pickupInfo.unitName) {
-      toast.error("請選擇領取單位");
-      return;
-    }
 
     if (selectedItems.length === 0) {
       toast.error("請選擇至少一項物資");

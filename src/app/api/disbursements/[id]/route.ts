@@ -3,6 +3,77 @@ import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  try {
+    const { id } = params as { id: string };
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { clerkId },
+    });
+
+    if (!currentUser || currentUser.role !== Role.ADMIN) {
+      return NextResponse.json(
+        { error: "Access denied. Admin privileges required." },
+        { status: 403 },
+      );
+    }
+
+    const body = await request.json();
+    const { recipientUnitId, recipientUnitName, recipientPhone, recipientAddress } = body;
+
+    // Check if the disbursement record exists
+    const existingRecord = await prisma.disbursement.findUnique({
+      where: { id },
+      include: {
+        disbursementItems: true,
+      },
+    });
+
+    if (!existingRecord) {
+      return NextResponse.json(
+        { error: "Disbursement record not found" },
+        { status: 404 }
+      );
+    }
+
+    // Update disbursement record
+    const updatedRecord = await prisma.disbursement.update({
+      where: { id },
+      data: {
+        recipientUnitId: recipientUnitId !== undefined ? (recipientUnitId || null) : undefined,
+        recipientUnitName: recipientUnitName !== undefined ? recipientUnitName : undefined,
+        recipientPhone: recipientPhone !== undefined ? (recipientPhone || null) : undefined,
+        recipientAddress: recipientAddress !== undefined ? (recipientAddress || null) : undefined,
+      },
+      include: {
+        disbursementItems: true,
+        recipientUnit: true,
+        user: {
+          select: {
+            id: true,
+            nickname: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(updatedRecord, { status: 200 });
+  } catch (error) {
+    console.error("Error updating disbursement record:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } },

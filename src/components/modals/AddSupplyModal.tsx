@@ -28,7 +28,7 @@ interface DonationItemData {
 interface AddSupplyModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (donorId: string, donationItems: DonationItemData[]) => void;
+  onSubmit: (donorId: string | null, donationItems: DonationItemData[]) => void;
   dbUser?: User | null;
 }
 
@@ -50,7 +50,8 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: Omit<AddSupplyM
   const canAdvanceToStep = (stepIndex: number): boolean => {
     switch (stepIndex) {
       case 0:
-        return selectedDonorId !== null;
+        // 捐贈者可選，不強制要求
+        return true;
       case 1:
         return selectedItems.length > 0 && selectedItems.every(item =>
           item.itemName.trim() !== "" && item.quantity > 0
@@ -72,15 +73,11 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: Omit<AddSupplyM
     setSelectedItems([]);
   };
 
-  const handleDonorSelect = (donorId: string) => {
+  const handleDonorSelect = (donorId: string | null) => {
     setSelectedDonorId(donorId);
   };
 
   const handleSubmit = () => {
-    if (!selectedDonorId) {
-      return;
-    }
-
     const donationItems: DonationItemData[] = selectedItems.map(item => ({
       itemName: item.itemName,
       itemCategory: item.itemCategory,

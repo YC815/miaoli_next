@@ -97,7 +97,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, items, dbUser }
   const handleComplete = () => {
     const finalPickupInfo: BatchPickupInfo = {
       unitId: selectedRecipient?.id ?? null,
-      unitName: selectedRecipient?.name ?? "",
+      unitName: selectedRecipient?.name ?? "臨時領取",
       phone: selectedRecipient?.phone ?? null,
       address: selectedRecipient?.address ?? null,
       purpose,
@@ -121,7 +121,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, items, dbUser }
   };
 
   // Validation functions
-  const isPickupInfoValid = () => selectedRecipient !== null;
+  const isPickupInfoValid = () => true; // 領取單位可選，不強制要求
 
   const hasSelectedItems = () => {
     return pickupItems.some(item => item.requestedQuantity > 0);

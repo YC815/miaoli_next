@@ -206,7 +206,7 @@ export class ReceiptGenerator {
     
     // 收集所有物品
     records.forEach((record, index) => {
-      console.log(`📝 處理記錄 ${index + 1}:`, record.donor.name, '物品數量:', record.donationItems.length);
+      console.log(`📝 處理記錄 ${index + 1}:`, record.donor?.name || '匿名', '物品數量:', record.donationItems.length);
       record.donationItems.forEach(item => {
         allItems.push({
           name: item.itemName,
@@ -218,14 +218,14 @@ export class ReceiptGenerator {
     });
 
     // 找出主要捐贈者（具名捐贈者，如果都是無名氏則用第一個）
-    const namedRecords = records.filter(r => r.donor.name?.trim());
+    const namedRecords = records.filter(r => r.donor && r.donor.name?.trim());
     const primaryRecord = namedRecords.length > 0 ? namedRecords[0] : firstRecord;
 
     const receiptData: ReceiptData = {
       receiptNumber: await this.generateReceiptNumber(),
-      donorName: primaryRecord.donor.name || '無名氏',
-      donorAddress: primaryRecord.donor.address ?? undefined,
-      donorPhone: primaryRecord.donor.phone ?? undefined,
+      donorName: primaryRecord.donor?.name || '無名氏',
+      donorAddress: primaryRecord.donor?.address ?? undefined,
+      donorPhone: primaryRecord.donor?.phone ?? undefined,
       items: allItems,
       date: new Date(primaryRecord.createdAt)
     };

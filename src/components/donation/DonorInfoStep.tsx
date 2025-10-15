@@ -13,7 +13,7 @@ interface Donor {
 
 interface DonorInfoStepProps {
   selectedDonorId: string | null;
-  onDonorSelect: (donorId: string, donor: Donor | null) => void;
+  onDonorSelect: (donorId: string | null, donor: Donor | null) => void;
 }
 
 export function DonorInfoStep({ selectedDonorId, onDonorSelect }: DonorInfoStepProps) {

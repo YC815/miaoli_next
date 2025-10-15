@@ -12,12 +12,13 @@ export interface DonationItem {
 export interface DonationRecord {
   id: string;
   serialNumber: string;
+  donorId: string | null;
   donor: {
     id: string;
     name: string;
     phone: string | null;
     address: string | null;
-  };
+  } | null;
   createdAt: string;
   user: {
     id: string;

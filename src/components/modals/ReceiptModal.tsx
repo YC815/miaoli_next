@@ -76,8 +76,8 @@ export function ReceiptModal({ open, onOpenChange, onPrint }: ReceiptModalProps)
 
       // 如果要勾選，需要檢查邏輯互鎖
       const selectedRecords = records.filter(record => record.selected);
-      const targetDonorName = targetRecord.donor.name?.trim();
-      const isTargetAnonymous = !targetDonorName || targetDonorName === '';
+      const targetDonorName = targetRecord.donor?.name?.trim();
+      const isTargetAnonymous = !targetRecord.donor || !targetDonorName || targetDonorName === '';
 
       if (selectedRecords.length === 0) {
         // 沒有已選記錄，可以自由勾選
@@ -87,7 +87,7 @@ export function ReceiptModal({ open, onOpenChange, onPrint }: ReceiptModalProps)
       }
 
       // 找出已選記錄的捐贈者類型
-      const selectedDonorNames = selectedRecords.map(r => r.donor.name?.trim()).filter(name => name);
+      const selectedDonorNames = selectedRecords.map(r => r.donor?.name?.trim()).filter((name): name is string => Boolean(name));
       const hasNamedDonor = selectedDonorNames.length > 0;
       const uniqueDonorNames = [...new Set(selectedDonorNames)];
 
@@ -141,16 +141,16 @@ export function ReceiptModal({ open, onOpenChange, onPrint }: ReceiptModalProps)
     const selectedRecords = donationRecords.filter(r => r.selected);
     if (selectedRecords.length === 0) return true; // 沒有選中任何記錄時都可以選
 
-    const recordDonorName = record.donor.name?.trim();
-    const isRecordAnonymous = !recordDonorName || recordDonorName === '';
+    const recordDonorName = record.donor?.name?.trim();
+    const isRecordAnonymous = !record.donor || !recordDonorName || recordDonorName === '';
 
     // 無名氏記錄總是可以加入
     if (isRecordAnonymous) return true;
 
     // 檢查已選記錄的捐贈者
     const selectedDonorNames = selectedRecords
-      .map(r => r.donor.name?.trim())
-      .filter(name => name);
+      .map(r => r.donor?.name?.trim())
+      .filter((name): name is string => Boolean(name));
 
     if (selectedDonorNames.length === 0) {
       // 只選了無名氏記錄，可以加入具名捐贈者
@@ -241,8 +241,8 @@ export function ReceiptModal({ open, onOpenChange, onPrint }: ReceiptModalProps)
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium text-sm break-words">{record.donor.name}</p>
-                          <p className="text-xs text-muted-foreground break-all">{record.donor.phone}</p>
+                          <p className="font-medium text-sm break-words">{record.donor?.name || "匿名"}</p>
+                          <p className="text-xs text-muted-foreground break-all">{record.donor?.phone || "-"}</p>
                         </div>
                         <div className="text-left sm:text-right flex-shrink-0">
                           <p className="text-xs sm:text-sm font-medium sm:font-normal">{record.date}</p>

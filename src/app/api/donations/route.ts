@@ -38,15 +38,10 @@ export async function POST(request: NextRequest) {
     const requestBody = await request.json();
     console.log('📥 Request body received:', JSON.stringify(requestBody, null, 2));
 
-    const { donorId, donationItems }: { donorId: string, donationItems: DonationItemData[] } = requestBody;
+    const { donorId, donationItems }: { donorId?: string | null, donationItems: DonationItemData[] } = requestBody;
 
-    console.log('👤 donorId:', donorId);
+    console.log('👤 donorId:', donorId ?? 'Anonymous');
     console.log('📦 Donation items details:', JSON.stringify(donationItems, null, 2));
-
-    if (!donorId) {
-      console.log('❌ No donor ID provided');
-      return NextResponse.json({ error: 'Donor ID is required' }, { status: 400 });
-    }
 
     if (!donationItems || donationItems.length === 0) {
       console.log('❌ No donation items provided');
@@ -98,7 +93,7 @@ export async function POST(request: NextRequest) {
       const donationRecord = await tx.donationRecord.create({
         data: {
           serialNumber,
-          donorId,
+          donorId: donorId || null,
           userId: currentUser.id,
           donationItems: {
             create: normalizedDonationItems.map(item => ({

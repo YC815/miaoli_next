@@ -24,7 +24,7 @@ interface Donor {
 
 interface DonorSelectProps {
   selectedDonorId: string | null;
-  onDonorChange: (donorId: string, donor: Donor | null) => void;
+  onDonorChange: (donorId: string | null, donor: Donor | null) => void;
 }
 
 export function DonorSelect({ selectedDonorId, onDonorChange }: DonorSelectProps) {
@@ -60,9 +60,14 @@ export function DonorSelect({ selectedDonorId, onDonorChange }: DonorSelectProps
   };
 
   const handleDonorSelect = (donorId: string) => {
-    const donor = donors.find(d => d.id === donorId);
-    setSelectedDonor(donor || null);
-    onDonorChange(donorId, donor || null);
+    if (donorId === "anonymous") {
+      setSelectedDonor(null);
+      onDonorChange(null, null);
+    } else {
+      const donor = donors.find(d => d.id === donorId);
+      setSelectedDonor(donor || null);
+      onDonorChange(donorId, donor || null);
+    }
   };
 
   const handleDonorCreated = (newDonor: Donor) => {
@@ -76,7 +81,7 @@ export function DonorSelect({ selectedDonorId, onDonorChange }: DonorSelectProps
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="donor-select" className="text-sm font-medium">
-          選擇捐贈人 <span className="text-red-500">*</span>
+          選擇捐贈人 <span className="text-muted-foreground text-xs">(可選)</span>
         </Label>
         <div className="flex gap-2">
           <Select
@@ -85,9 +90,12 @@ export function DonorSelect({ selectedDonorId, onDonorChange }: DonorSelectProps
             disabled={loading}
           >
             <SelectTrigger className="flex-1">
-              <SelectValue placeholder="請選擇捐贈人" />
+              <SelectValue placeholder="請選擇捐贈人（可留空）" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="anonymous">
+                <span className="text-muted-foreground">匿名捐贈</span>
+              </SelectItem>
               {donors.map((donor) => (
                 <SelectItem key={donor.id} value={donor.id}>
                   {donor.name}

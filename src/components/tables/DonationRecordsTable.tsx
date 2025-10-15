@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Calendar, Trash2 } from "lucide-react"
+import { Calendar, Trash2, Edit } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -24,12 +24,14 @@ interface DonationRecordsTableProps {
   data: DonationRecord[]
   onSelectionChange?: (selectedRecords: DonationRecord[]) => void
   onDelete?: (record: DonationRecord) => void
+  onEdit?: (record: DonationRecord) => void
 }
 
 export function DonationRecordsTable({
   data,
   onSelectionChange,
-  onDelete
+  onDelete,
+  onEdit
 }: DonationRecordsTableProps) {
   const [selectedRecordIds, setSelectedRecordIds] = React.useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -39,8 +41,8 @@ export function DonationRecordsTable({
     if (!searchTerm) return data;
     const lowerSearch = searchTerm.toLowerCase();
     return data.filter(record =>
-      record.donor.name.toLowerCase().includes(lowerSearch) ||
-      record.donor.phone?.toLowerCase().includes(lowerSearch) ||
+      (record.donor && record.donor.name.toLowerCase().includes(lowerSearch)) ||
+      (record.donor && record.donor.phone?.toLowerCase().includes(lowerSearch)) ||
       record.serialNumber.toLowerCase().includes(lowerSearch)
     );
   }, [data, searchTerm]);
@@ -178,23 +180,31 @@ export function DonationRecordsTable({
                       {/* Donor Name - only show on first row */}
                       {itemIndex === 0 ? (
                         <td className="p-4 align-top" rowSpan={items.length}>
-                          {record.donor.name}
+                          {record.donor ? (
+                            record.donor.name
+                          ) : (
+                            <span className="text-muted-foreground italic">匿名</span>
+                          )}
                         </td>
                       ) : null}
 
                       {/* Donor Phone - only show on first row */}
                       {itemIndex === 0 ? (
                         <td className="p-4 align-top" rowSpan={items.length}>
-                          {record.donor.phone || "-"}
+                          {record.donor ? (record.donor.phone || "-") : "-"}
                         </td>
                       ) : null}
 
                       {/* Donor Address - only show on first row */}
                       {itemIndex === 0 ? (
                         <td className="p-4 align-top max-w-xs" rowSpan={items.length}>
-                          <div className="truncate" title={record.donor.address || ""}>
-                            {record.donor.address || "-"}
-                          </div>
+                          {record.donor ? (
+                            <div className="truncate" title={record.donor.address || ""}>
+                              {record.donor.address || "-"}
+                            </div>
+                          ) : (
+                            "-"
+                          )}
                         </td>
                       ) : null}
 
@@ -208,18 +218,32 @@ export function DonationRecordsTable({
                       {/* Actions - only show on first row */}
                       {itemIndex === 0 ? (
                         <td className="p-4 align-top text-center" rowSpan={items.length}>
-                          {onDelete && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onDelete(record)}
-                              className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
-                              title="刪除"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="sr-only">刪除</span>
-                            </Button>
-                          )}
+                          <div className="flex items-center justify-center gap-1">
+                            {onEdit && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onEdit(record)}
+                                className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600"
+                                title="編輯"
+                              >
+                                <Edit className="h-4 w-4" />
+                                <span className="sr-only">編輯</span>
+                              </Button>
+                            )}
+                            {onDelete && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onDelete(record)}
+                                className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                                title="刪除"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">刪除</span>
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       ) : null}
                     </tr>

@@ -61,10 +61,7 @@ export async function POST(request: NextRequest) {
       throw createValidationError('Missing selected items');
     }
 
-    const unitName = (pickupInfo.unitName ?? pickupInfo.unit ?? '').trim();
-    if (!unitName) {
-      throw createValidationError('領取單位為必填欄位');
-    }
+    const unitName = (pickupInfo.unitName ?? pickupInfo.unit ?? '').trim() || '臨時領取';
 
     const normalizedItems: NormalizedSelectedItem[] = selectedItems
       .map(item => {

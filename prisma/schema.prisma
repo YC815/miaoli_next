@@ -54,10 +54,10 @@ model DonationRecord {
   id            String         @id @default(cuid())
   createdAt     DateTime       @default(now())
   userId        String
-  donorId       String
+  donorId       String?
   serialNumber  String         @unique @default("")
   donationItems DonationItem[]
-  donor         Donor          @relation(fields: [donorId], references: [id])
+  donor         Donor?         @relation(fields: [donorId], references: [id])
   user          User           @relation(fields: [userId], references: [id])
 }
 

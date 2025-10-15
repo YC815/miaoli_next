@@ -3,6 +3,101 @@ import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { clerkId },
+    });
+
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Only admins and staff can edit donation records
+    if (currentUser.role !== Role.ADMIN && currentUser.role !== Role.STAFF) {
+      return NextResponse.json({
+        error: 'Access denied. Admin or Staff privileges required.',
+      }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const body = await request.json();
+    const { donorId, itemNotes } = body;
+
+    // Check if the donation record exists
+    const existingRecord = await prisma.donationRecord.findUnique({
+      where: { id },
+      include: {
+        donationItems: true,
+      },
+    });
+
+    if (!existingRecord) {
+      return NextResponse.json(
+        { error: 'Donation record not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update donation record
+    const updatedRecord = await prisma.$transaction(async (tx) => {
+      // Update donor if provided
+      const updateData: { donorId?: string | null } = {};
+      if (donorId !== undefined) {
+        updateData.donorId = donorId || null;
+      }
+
+      const record = await tx.donationRecord.update({
+        where: { id },
+        data: updateData,
+        include: {
+          donationItems: true,
+          donor: true,
+          user: {
+            select: {
+              id: true,
+              nickname: true,
+            },
+          },
+        },
+      });
+
+      // Update notes for specific items if provided
+      if (itemNotes && typeof itemNotes === 'object') {
+        for (const [itemId, notes] of Object.entries(itemNotes)) {
+          if (typeof notes === 'string') {
+            await tx.donationItem.update({
+              where: { id: itemId },
+              data: { notes: notes.trim() || null },
+            });
+          }
+        }
+      }
+
+      return record;
+    });
+
+    return NextResponse.json(updatedRecord, { status: 200 });
+  } catch (error) {
+    console.error('Error updating donation record:', error);
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
