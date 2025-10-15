@@ -8,7 +8,7 @@ export interface Permission {
   canAddCategories: boolean;         // 新增分類品項
   canAddUnits: boolean;              // 新增物資單位
   canEditSupplyInfo: boolean;        // 編輯物資資訊
-  canEditQuantity: boolean;          // 編輯數量
+  canEditQuantity: boolean;          // 物資盤點
   canEditSafetyStock: boolean;       // 編輯安全庫存量
   
   // 領取單位相關權限
@@ -115,7 +115,7 @@ export const permissionDescriptions: Record<keyof Permission, string> = {
   canAddCategories: "新增物資分類",
   canAddUnits: "新增物資單位",
   canEditSupplyInfo: "編輯物資資訊",
-  canEditQuantity: "編輯物資數量",
+  canEditQuantity: "物資盤點",
   canEditSafetyStock: "編輯安全庫存",
   canAddRecipientUnits: "新增領取單位",
   canEditRecipientUnits: "編輯領取單位",

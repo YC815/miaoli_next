@@ -13,6 +13,7 @@ export interface InventoryLog {
   id: string
   changeType: 'INCREASE' | 'DECREASE'
   changeAmount: number
+  previousQuantity: number
   newQuantity: number
   reason: string
   createdAt: string
@@ -21,11 +22,11 @@ export interface InventoryLog {
     nickname: string | null
     email: string
   }
-  supply: {
+  itemStock: {
     id: string
-    name: string
-    category: string
-    unit: string
+    itemName: string
+    itemCategory: string
+    itemUnit: string
   }
 }
 
@@ -93,7 +94,7 @@ const columns: ColumnDef<InventoryLog>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="h-8 px-2 lg:px-3"
       >
-        異動時間
+        盤點時間
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
@@ -105,23 +106,24 @@ const columns: ColumnDef<InventoryLog>[] = [
     size: 150,
   },
   {
-    accessorKey: "supply",
+    id: "itemStockName",
+    accessorFn: (row) => row.itemStock.itemName,
     header: "物資資訊",
     cell: ({ row }) => {
-      const supply = row.getValue("supply") as InventoryLog['supply'];
+      const { itemStock } = row.original;
       return (
         <div className="flex flex-col gap-1">
-          <div className="font-medium text-sm">{supply.name}</div>
-          <Badge 
-            variant="secondary" 
-            className={`w-fit text-xs ${getCategoryColor(supply.category)}`}
+          <div className="font-medium text-sm">{itemStock.itemName}</div>
+          <Badge
+            variant="secondary"
+            className={`w-fit text-xs ${getCategoryColor(itemStock.itemCategory)}`}
           >
-            {supply.category}
+            {itemStock.itemCategory}
           </Badge>
         </div>
       );
     },
-    size: 180,
+    size: 200,
   },
   {
     accessorKey: "changeType",
@@ -131,7 +133,7 @@ const columns: ColumnDef<InventoryLog>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="h-8 px-2 lg:px-3"
       >
-        異動類型
+        盤點調整
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
@@ -145,12 +147,31 @@ const columns: ColumnDef<InventoryLog>[] = [
         <div className={`flex items-center gap-2 px-2 py-1 rounded-md ${display.bgColor} w-fit`}>
           <Icon className={`h-4 w-4 ${display.color}`} />
           <span className={`text-sm font-medium ${display.color}`}>
-            {display.text} {row.original.supply.unit}
+            {display.text} {row.original.itemStock.itemUnit}
           </span>
         </div>
       );
     },
     size: 120,
+  },
+  {
+    accessorKey: "previousQuantity",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="h-8 px-2 lg:px-3"
+      >
+        盤點前
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm font-medium">
+        {row.getValue("previousQuantity")} {row.original.itemStock.itemUnit}
+      </div>
+    ),
+    size: 110,
   },
   {
     accessorKey: "newQuantity",
@@ -160,20 +181,20 @@ const columns: ColumnDef<InventoryLog>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="h-8 px-2 lg:px-3"
       >
-        異動後數量
+        盤點後
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
     cell: ({ row }) => (
       <div className="text-sm font-medium">
-        {row.getValue("newQuantity")} {row.original.supply.unit}
+        {row.getValue("newQuantity")} {row.original.itemStock.itemUnit}
       </div>
     ),
     size: 100,
   },
   {
     accessorKey: "reason",
-    header: "異動原因",
+    header: "盤點原因",
     cell: ({ row }) => (
       <div className="text-sm max-w-[200px] truncate" title={row.getValue("reason")}>
         {row.getValue("reason")}
@@ -207,7 +228,7 @@ export function InventoryLogsTable({ data, onSelectionChange }: InventoryLogsTab
       <CardHeader className="px-0 pb-4">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <TrendingUp className="h-5 w-5" />
-          資料異動紀錄
+          盤點紀錄
         </CardTitle>
       </CardHeader>
       <CardContent className="px-0">
@@ -215,7 +236,7 @@ export function InventoryLogsTable({ data, onSelectionChange }: InventoryLogsTab
           columns={columns}
           data={data}
           onSelectionChange={onSelectionChange}
-          searchKey="supply"
+          searchKey="itemStockName"
           searchPlaceholder="搜尋物資名稱..."
         />
       </CardContent>

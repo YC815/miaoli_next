@@ -34,7 +34,6 @@ model Supply {
   isActive      Boolean        @default(true)
   sortOrder     Int            @default(0)
   unit          String         @default("個")
-  inventoryLogs InventoryLog[]
 
   @@unique([name, category])
 }
@@ -103,14 +102,15 @@ model DisbursementItem {
 
 model InventoryLog {
   id           String     @id @default(cuid())
-  supplyId     String
+  itemStockId  String
   changeType   ChangeType
   changeAmount Int
+  previousQuantity Int
   newQuantity  Int
   reason       String
   createdAt    DateTime   @default(now())
   userId       String
-  Supply       Supply     @relation(fields: [supplyId], references: [id])
+  itemStock    ItemStock  @relation(fields: [itemStockId], references: [id])
   user         User       @relation(fields: [userId], references: [id])
 }
 
@@ -201,6 +201,7 @@ model ItemStock {
   isStandard   Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  inventoryLogs InventoryLog[]
 
   @@unique([itemName, itemCategory])
 }

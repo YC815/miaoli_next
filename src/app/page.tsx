@@ -280,7 +280,12 @@ function HomePage({ dbUser = null }: HomePageProps) {
     }
   };
 
-  const handleUpdateQuantity = async (id: string, newQuantity: number, changeType: string, reason: string) => {
+  const handleInventoryCount = async (
+    id: string,
+    newQuantity: number,
+    changeType: "INCREASE" | "DECREASE",
+    reason: string
+  ) => {
     try {
       const currentSupply = supplies.find(s => s.id === id);
       if (!currentSupply) {
@@ -291,7 +296,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
       const changeAmount = Math.abs(newQuantity - currentSupply.totalStock);
 
       if (changeAmount === 0) {
-        toast.info("庫存數量未變更");
+        toast.info("此次盤點沒有調整數量");
         return;
       }
 
@@ -309,15 +314,15 @@ function HomePage({ dbUser = null }: HomePageProps) {
       });
 
       if (response.ok) {
-        toast.success("庫存數量更新成功！");
+        toast.success("盤點紀錄已更新！");
         fetchSupplies(); // Refresh supplies list
       } else {
         const errorData = await response.json();
-        toast.error(`更新庫存失敗: ${errorData.error || response.statusText}`);
+        toast.error(`盤點失敗: ${errorData.error || response.statusText}`);
       }
     } catch (error) {
-      console.error("Error updating quantity:", error);
-      toast.error("更新庫存失敗");
+      console.error("Error performing inventory count:", error);
+      toast.error("盤點失敗，請稍後再試");
     }
   };
 
@@ -539,7 +544,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
               <SuppliesTable 
                 supplies={supplies}
                 onUpdateSupply={handleUpdateSupply}
-                onUpdateQuantity={handleUpdateQuantity}
+                onPerformInventory={handleInventoryCount}
                 onUpdateSafetyStock={handleUpdateSafetyStock}
                 userPermissions={userPermissions}
               />

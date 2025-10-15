@@ -15,58 +15,102 @@ export async function POST(request: NextRequest) {
     });
 
     if (!currentUser || (currentUser.role !== Role.ADMIN && currentUser.role !== Role.STAFF)) {
-      return NextResponse.json({ 
-        error: 'Access denied. Admin or Staff privileges required.' 
+      return NextResponse.json({
+        error: 'Access denied. Admin or Staff privileges required.',
       }, { status: 403 });
     }
 
-    const { itemStockId, supplyId, changeType, changeAmount, reason } = await request.json();
-    const targetItemStockId = itemStockId || supplyId;
+    const { itemStockId, changeType, changeAmount, reason } = await request.json();
 
-    if (!targetItemStockId || !changeType || changeAmount === undefined || !reason) {
+    if (!itemStockId || !changeType || changeAmount === undefined || changeAmount === null || !reason) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const itemStock = await prisma.itemStock.findUnique({
-      where: { id: targetItemStockId },
-    });
-
-    if (!itemStock) {
-      return NextResponse.json({ error: 'Item stock not found' }, { status: 404 });
+    if (!Object.values(ChangeType).includes(changeType)) {
+      return NextResponse.json({ error: 'Invalid change type' }, { status: 400 });
     }
 
-    let newQuantity = itemStock.totalStock;
-    if (changeType === ChangeType.INCREASE) {
-      newQuantity += changeAmount;
-    } else if (changeType === ChangeType.DECREASE) {
-      newQuantity -= changeAmount;
+    if (typeof changeAmount !== 'number' || changeAmount <= 0) {
+      return NextResponse.json({ error: 'Change amount must be greater than zero' }, { status: 400 });
     }
 
-    if (newQuantity < 0) {
-      return NextResponse.json({ error: 'Quantity cannot be negative' }, { status: 400 });
-    }
+    const result = await prisma.$transaction(async (tx) => {
+      const itemStock = await tx.itemStock.findUnique({
+        where: { id: itemStockId },
+        select: {
+          id: true,
+          itemName: true,
+          itemCategory: true,
+          itemUnit: true,
+          totalStock: true,
+        },
+      });
 
-    // Update item stock quantity
-    await prisma.itemStock.update({
-      where: { id: targetItemStockId },
-      data: {
-        totalStock: newQuantity,
-      },
+      if (!itemStock) {
+        throw new Error('ITEM_STOCK_NOT_FOUND');
+      }
+
+      const previousQuantity = itemStock.totalStock;
+
+      const newQuantity = changeType === ChangeType.INCREASE
+        ? previousQuantity + changeAmount
+        : previousQuantity - changeAmount;
+
+      if (newQuantity < 0) {
+        throw new Error('NEGATIVE_QUANTITY');
+      }
+
+      await tx.itemStock.update({
+        where: { id: itemStockId },
+        data: {
+          totalStock: newQuantity,
+        },
+      });
+
+      const log = await tx.inventoryLog.create({
+        data: {
+          itemStockId,
+          changeType,
+          changeAmount,
+          previousQuantity,
+          newQuantity,
+          reason,
+          userId: currentUser.id,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              nickname: true,
+              email: true,
+            },
+          },
+          itemStock: {
+            select: {
+              id: true,
+              itemName: true,
+              itemCategory: true,
+              itemUnit: true,
+            },
+          },
+        },
+      });
+
+      return log;
     });
 
-    const newLog = await prisma.inventoryLog.create({
-      data: {
-        itemStockId: targetItemStockId,
-        changeType,
-        changeAmount,
-        newQuantity,
-        reason,
-        userId: currentUser.id,
-      },
-    });
-
-    return NextResponse.json(newLog, { status: 201 });
+    return NextResponse.json(result, { status: 201 });
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'ITEM_STOCK_NOT_FOUND') {
+        return NextResponse.json({ error: 'Item stock not found' }, { status: 404 });
+      }
+
+      if (error.message === 'NEGATIVE_QUANTITY') {
+        return NextResponse.json({ error: 'Quantity cannot be negative' }, { status: 400 });
+      }
+    }
+
     console.error('Error creating inventory log:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

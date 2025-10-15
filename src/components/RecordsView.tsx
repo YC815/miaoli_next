@@ -84,11 +84,11 @@ export function RecordsView() {
         const data = await response.json();
         setInventoryLogs(data);
       } else {
-        toast.error("載入異動紀錄失敗");
+        toast.error("載入盤點紀錄失敗");
       }
     } catch (error) {
       console.error("Error fetching inventory logs:", error);
-      toast.error("載入異動紀錄失敗");
+      toast.error("載入盤點紀錄失敗");
     } finally {
       setLoading(false);
     }
@@ -105,11 +105,13 @@ export function RecordsView() {
   };
 
 
-  const formatDisbursementItems = (items: { quantity: number; supply: { name: string } }[]) => {
+  const formatDisbursementItems = (
+    items: { itemName: string; itemUnit: string; quantity: number }[]
+  ) => {
     return items
-      .filter(item => item.supply?.name)
-      .map(item => `${item.supply.name} x ${item.quantity}`)
-      .join(', ');
+      .filter(item => item.itemName)
+      .map(item => `${item.itemName} x ${item.quantity} ${item.itemUnit}`)
+      .join('\n');
   };
 
   const handleExportDonations = () => {
@@ -154,7 +156,7 @@ export function RecordsView() {
       '發放日期': formatDate(record.createdAt),
       '流水號': record.serialNumber,
       '物資名稱': formatDisbursementItems(record.disbursementItems),
-      '受贈單位': record.recipientUnit,
+      '受贈單位': record.recipientUnitName,
       '聯絡電話': record.recipientPhone || '',
       '用途': record.purpose || '',
       '操作者': record.user.nickname || '',
@@ -173,31 +175,32 @@ export function RecordsView() {
 
   const handleExportInventoryLogs = () => {
     if (selectedInventoryLogs.length === 0) {
-      toast.error("請選擇至少一筆異動紀錄");
+      toast.error("請選擇至少一筆盤點紀錄");
       return;
     }
 
     const exportData = selectedInventoryLogs.map(record => ({
-      '異動時間': formatDate(record.createdAt),
-      '物資名稱': record.supply.name,
-      '物資類別': record.supply.category,
-      '異動類型': record.changeType === 'INCREASE' ? '增加' : '減少',
-      '異動數量': record.changeAmount,
-      '異動後數量': record.newQuantity,
-      '單位': record.supply.unit,
-      '異動原因': record.reason,
+      '盤點時間': formatDate(record.createdAt),
+      '物資名稱': record.itemStock.itemName,
+      '物資類別': record.itemStock.itemCategory,
+      '盤點調整': record.changeType === 'INCREASE' ? '增加' : '減少',
+      '調整數量': record.changeAmount,
+      '盤點前數量': record.previousQuantity,
+      '盤點後數量': record.newQuantity,
+      '單位': record.itemStock.itemUnit,
+      '盤點原因': record.reason,
       '操作人員': record.user.nickname || record.user.email.split('@')[0],
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "異動紀錄");
+    XLSX.utils.book_append_sheet(wb, ws, "盤點紀錄");
     
     const now = new Date();
-    const filename = `資料異動紀錄_${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}.xlsx`;
+    const filename = `盤點紀錄_${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}.xlsx`;
     
     XLSX.writeFile(wb, filename);
-    toast.success(`已匯出 ${selectedInventoryLogs.length} 筆異動紀錄`);
+    toast.success(`已匯出 ${selectedInventoryLogs.length} 筆盤點紀錄`);
   };
 
   const selectedCount = activeTab === "donations"
@@ -254,7 +257,7 @@ export function RecordsView() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">紀錄調取</h1>
-            <p className="text-sm text-muted-foreground">查看和匯出物資捐贈、發放及異動紀錄</p>
+            <p className="text-sm text-muted-foreground">查看和匯出物資捐贈、發放及盤點紀錄</p>
           </div>
         </div>
         
@@ -312,7 +315,7 @@ export function RecordsView() {
           }`}
           size="sm"
         >
-          資料異動紀錄
+          盤點紀錄
         </Button>
       </div>
 
