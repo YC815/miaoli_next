@@ -1,13 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, Calendar } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Calendar, Trash2 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
-import { DataTable } from "@/components/ui/data-table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { DonationRecord } from "@/types/donation"
 
 export type { DonationRecord }
@@ -22,154 +20,60 @@ const formatDate = (dateString: string) => {
   });
 };
 
-const formatSupplyItems = (items: { itemName: string; quantity: number }[]) => {
-  return items
-    .filter(item => item.itemName)
-    .map(item => `${item.itemName} x ${item.quantity}`)
-    .join(', ');
-};
-
-const columns: ColumnDef<DonationRecord>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="全選"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="選擇行"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "createdAt",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 font-medium"
-        >
-          捐贈日期
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      )
-    },
-    cell: ({ row }) => {
-      return (
-        <div className="font-mono text-sm">
-          {formatDate(row.getValue("createdAt"))}
-        </div>
-      )
-    },
-  },
-  {
-    accessorKey: "serialNumber",
-    header: "流水號",
-    cell: ({ row }) => {
-      const serialNumber = row.getValue("serialNumber") as string;
-      return (
-        <div className="flex items-center">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 font-mono tracking-wide">
-            {serialNumber}
-          </span>
-        </div>
-      )
-    },
-  },
-  {
-    id: "supplyItems",
-    header: "物資名稱",
-    cell: ({ row }) => {
-      const items = row.original.donationItems;
-      return (
-        <div className="max-w-xs">
-          <div className="truncate" title={formatSupplyItems(items)}>
-            {formatSupplyItems(items)}
-          </div>
-        </div>
-      )
-    },
-  },
-  {
-    accessorKey: "donorName",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 font-medium"
-        >
-          捐贈者
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      )
-    },
-  },
-  {
-    accessorKey: "donorPhone",
-    header: "聯絡電話",
-    cell: ({ row }) => {
-      return row.getValue("donorPhone") || "-";
-    },
-  },
-  {
-    accessorKey: "address",
-    header: "地址",
-    cell: ({ row }) => {
-      const address = row.getValue("address") as string;
-      return (
-        <div className="max-w-xs">
-          <div className="truncate" title={address || ""}>
-            {address || "-"}
-          </div>
-        </div>
-      )
-    },
-  },
-  {
-    accessorKey: "notes",
-    header: "備注",
-    cell: ({ row }) => {
-      const notes = row.getValue("notes") as string;
-      return (
-        <div className="max-w-xs">
-          <div className="truncate" title={notes || ""}>
-            {notes || "-"}
-          </div>
-        </div>
-      )
-    },
-  },
-  {
-    id: "operator",
-    header: "操作者",
-    cell: ({ row }) => {
-      return row.original.user.nickname || "-";
-    },
-  },
-]
-
 interface DonationRecordsTableProps {
   data: DonationRecord[]
   onSelectionChange?: (selectedRecords: DonationRecord[]) => void
+  onDelete?: (record: DonationRecord) => void
 }
 
-export function DonationRecordsTable({ 
-  data, 
-  onSelectionChange 
+export function DonationRecordsTable({
+  data,
+  onSelectionChange,
+  onDelete
 }: DonationRecordsTableProps) {
+  const [selectedRecordIds, setSelectedRecordIds] = React.useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = React.useState("");
+
+  // Filter data based on search term
+  const filteredData = React.useMemo(() => {
+    if (!searchTerm) return data;
+    const lowerSearch = searchTerm.toLowerCase();
+    return data.filter(record =>
+      record.donor.name.toLowerCase().includes(lowerSearch) ||
+      record.donor.phone?.toLowerCase().includes(lowerSearch) ||
+      record.serialNumber.toLowerCase().includes(lowerSearch)
+    );
+  }, [data, searchTerm]);
+
+  // Handle selection changes
+  React.useEffect(() => {
+    if (onSelectionChange) {
+      const selectedRecords = data.filter(record => selectedRecordIds.has(record.id));
+      onSelectionChange(selectedRecords);
+    }
+  }, [selectedRecordIds, data, onSelectionChange]);
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedRecordIds(new Set(filteredData.map(r => r.id)));
+    } else {
+      setSelectedRecordIds(new Set());
+    }
+  };
+
+  const handleSelectRecord = (recordId: string, checked: boolean) => {
+    const newSelection = new Set(selectedRecordIds);
+    if (checked) {
+      newSelection.add(recordId);
+    } else {
+      newSelection.delete(recordId);
+    }
+    setSelectedRecordIds(newSelection);
+  };
+
+  const allSelected = filteredData.length > 0 && filteredData.every(r => selectedRecordIds.has(r.id));
+  const someSelected = filteredData.some(r => selectedRecordIds.has(r.id)) && !allSelected;
+
   return (
     <Card className="border-0 shadow-md bg-card">
       <CardHeader className="pb-4">
@@ -181,13 +85,150 @@ export function DonationRecordsTable({
         </CardTitle>
       </CardHeader>
       <CardContent className="px-6 pb-6">
-        <DataTable
-          columns={columns}
-          data={data}
-          searchKey="donorName"
-          searchPlaceholder="搜尋捐贈者..."
-          onSelectionChange={onSelectionChange}
-        />
+        {/* Search Input */}
+        <div className="mb-4">
+          <Input
+            placeholder="搜尋捐贈者..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
+        </div>
+
+        {/* Custom Table */}
+        <div className="rounded-md border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="h-12 px-4 text-left align-middle font-medium">
+                  <Checkbox
+                    checked={allSelected || (someSelected && "indeterminate")}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="全選"
+                  />
+                </th>
+                <th className="h-12 px-4 text-left align-middle font-medium">捐贈日期</th>
+                <th className="h-12 px-4 text-left align-middle font-medium">流水號</th>
+                <th className="h-12 px-4 text-left align-middle font-medium">物資名稱</th>
+                <th className="h-12 px-4 text-left align-middle font-medium">數量</th>
+                <th className="h-12 px-4 text-left align-middle font-medium">備註</th>
+                <th className="h-12 px-4 text-left align-middle font-medium">捐贈者</th>
+                <th className="h-12 px-4 text-left align-middle font-medium">聯絡電話</th>
+                <th className="h-12 px-4 text-left align-middle font-medium">地址</th>
+                <th className="h-12 px-4 text-left align-middle font-medium">操作者</th>
+                <th className="h-12 px-4 text-center align-middle font-medium">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.length === 0 ? (
+                <tr>
+                  <td colSpan={11} className="h-24 text-center">
+                    沒有找到任何紀錄
+                  </td>
+                </tr>
+              ) : (
+                filteredData.map((record) => {
+                  const items = record.donationItems;
+                  return items.map((item, itemIndex) => (
+                    <tr key={`${record.id}-${itemIndex}`} className="border-b">
+                      {/* Checkbox - only show on first row */}
+                      {itemIndex === 0 ? (
+                        <td className="p-4 align-top" rowSpan={items.length}>
+                          <Checkbox
+                            checked={selectedRecordIds.has(record.id)}
+                            onCheckedChange={(checked) => handleSelectRecord(record.id, !!checked)}
+                            aria-label="選擇行"
+                          />
+                        </td>
+                      ) : null}
+
+                      {/* Date - only show on first row */}
+                      {itemIndex === 0 ? (
+                        <td className="p-4 align-top font-mono text-sm" rowSpan={items.length}>
+                          {formatDate(record.createdAt)}
+                        </td>
+                      ) : null}
+
+                      {/* Serial Number - only show on first row */}
+                      {itemIndex === 0 ? (
+                        <td className="p-4 align-top" rowSpan={items.length}>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 font-mono tracking-wide">
+                            {record.serialNumber}
+                          </span>
+                        </td>
+                      ) : null}
+
+                      {/* Item Name */}
+                      <td className="p-4 align-top">
+                        {item.itemName}
+                      </td>
+
+                      {/* Quantity */}
+                      <td className="p-4 align-top">
+                        {item.quantity} {item.itemUnit}
+                      </td>
+
+                      {/* Item Notes */}
+                      <td className="p-4 align-top max-w-xs">
+                        <div className="truncate" title={item.notes || ""}>
+                          {item.notes || "-"}
+                        </div>
+                      </td>
+
+                      {/* Donor Name - only show on first row */}
+                      {itemIndex === 0 ? (
+                        <td className="p-4 align-top" rowSpan={items.length}>
+                          {record.donor.name}
+                        </td>
+                      ) : null}
+
+                      {/* Donor Phone - only show on first row */}
+                      {itemIndex === 0 ? (
+                        <td className="p-4 align-top" rowSpan={items.length}>
+                          {record.donor.phone || "-"}
+                        </td>
+                      ) : null}
+
+                      {/* Donor Address - only show on first row */}
+                      {itemIndex === 0 ? (
+                        <td className="p-4 align-top max-w-xs" rowSpan={items.length}>
+                          <div className="truncate" title={record.donor.address || ""}>
+                            {record.donor.address || "-"}
+                          </div>
+                        </td>
+                      ) : null}
+
+                      {/* Operator - only show on first row */}
+                      {itemIndex === 0 ? (
+                        <td className="p-4 align-top" rowSpan={items.length}>
+                          {record.user.nickname || "-"}
+                        </td>
+                      ) : null}
+
+                      {/* Actions - only show on first row */}
+                      {itemIndex === 0 ? (
+                        <td className="p-4 align-top text-center" rowSpan={items.length}>
+                          {onDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onDelete(record)}
+                              className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                              title="刪除"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">刪除</span>
+                            </Button>
+                          )}
+                        </td>
+                      ) : null}
+                    </tr>
+                  ));
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </CardContent>
     </Card>
   )

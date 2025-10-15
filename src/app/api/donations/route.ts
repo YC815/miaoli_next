@@ -195,6 +195,7 @@ export async function GET() {
     const donationRecords = await prisma.donationRecord.findMany({
       include: {
         donationItems: true,
+        donor: true,
         user: {
           select: {
             id: true,

@@ -9,6 +9,16 @@ import { DonationRecordsTable } from "@/components/tables/DonationRecordsTable";
 import type { DonationRecord } from "@/types/donation";
 import { DisbursementRecordsTable, DisbursementRecord } from "@/components/tables/DisbursementRecordsTable";
 import { InventoryLogsTable, InventoryLog } from "@/components/tables/InventoryLogsTable";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type TabType = "donations" | "disbursements" | "inventory";
 
@@ -21,6 +31,8 @@ export function RecordsView() {
   const [selectedDisbursements, setSelectedDisbursements] = useState<DisbursementRecord[]>([]);
   const [selectedInventoryLogs, setSelectedInventoryLogs] = useState<InventoryLog[]>([]);
   const [loading, setLoading] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState<DonationRecord | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchDonationRecords();
@@ -92,12 +104,6 @@ export function RecordsView() {
     });
   };
 
-  const formatSupplyItems = (items: { itemName: string; quantity: number }[]) => {
-    return items
-      .filter(item => item.itemName)
-      .map(item => `${item.itemName} x ${item.quantity}`)
-      .join(', ');
-  };
 
   const formatDisbursementItems = (items: { quantity: number; supply: { name: string } }[]) => {
     return items
@@ -112,24 +118,28 @@ export function RecordsView() {
       return;
     }
 
-    const exportData = selectedDonations.map(record => ({
-      '捐贈日期': formatDate(record.createdAt),
-      '流水號': record.serialNumber,
-      '物資名稱': formatSupplyItems(record.donationItems),
-      '捐贈者': record.donorName,
-      '聯絡電話': record.donorPhone || '',
-      '地址': record.address || '',
-      '備注': record.notes || '',
-      '操作者': record.user.nickname || '',
-    }));
+    // Expand each donation record to show one row per item
+    const exportData = selectedDonations.flatMap(record =>
+      record.donationItems.map((item, index) => ({
+        '捐贈日期': index === 0 ? formatDate(record.createdAt) : '',
+        '流水號': index === 0 ? record.serialNumber : '',
+        '物資名稱': item.itemName,
+        '數量': `${item.quantity} ${item.itemUnit}`,
+        '備註': item.notes || '',
+        '捐贈者': index === 0 ? record.donor.name : '',
+        '聯絡電話': index === 0 ? (record.donor.phone || '') : '',
+        '地址': index === 0 ? (record.donor.address || '') : '',
+        '操作者': index === 0 ? (record.user.nickname || '') : '',
+      }))
+    );
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "捐贈紀錄");
-    
+
     const now = new Date();
     const filename = `捐贈紀錄_${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}.xlsx`;
-    
+
     XLSX.writeFile(wb, filename);
     toast.success(`已匯出 ${selectedDonations.length} 筆捐贈紀錄`);
   };
@@ -190,12 +200,12 @@ export function RecordsView() {
     toast.success(`已匯出 ${selectedInventoryLogs.length} 筆異動紀錄`);
   };
 
-  const selectedCount = activeTab === "donations" 
-    ? selectedDonations.length 
-    : activeTab === "disbursements" 
-    ? selectedDisbursements.length 
+  const selectedCount = activeTab === "donations"
+    ? selectedDonations.length
+    : activeTab === "disbursements"
+    ? selectedDisbursements.length
     : selectedInventoryLogs.length;
-    
+
   const handleExport = () => {
     if (activeTab === "donations") {
       handleExportDonations();
@@ -203,6 +213,34 @@ export function RecordsView() {
       handleExportDisbursements();
     } else {
       handleExportInventoryLogs();
+    }
+  };
+
+  const handleDeleteDonation = (record: DonationRecord) => {
+    setRecordToDelete(record);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!recordToDelete) return;
+
+    try {
+      const response = await fetch(`/api/donations/${recordToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast.success("捐贈紀錄已刪除");
+        fetchDonationRecords(); // Refresh the list
+        setIsDeleteDialogOpen(false);
+        setRecordToDelete(null);
+      } else {
+        const errorData = await response.json();
+        toast.error(`刪除失敗: ${errorData.error || response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Error deleting donation record:", error);
+      toast.error("刪除失敗");
     }
   };
   
@@ -292,6 +330,7 @@ export function RecordsView() {
             <DonationRecordsTable
               data={donationRecords}
               onSelectionChange={setSelectedDonations}
+              onDelete={handleDeleteDonation}
             />
           ) : activeTab === "disbursements" ? (
             <DisbursementRecordsTable
@@ -306,6 +345,33 @@ export function RecordsView() {
           )}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>確認刪除</AlertDialogTitle>
+            <AlertDialogDescription>
+              確定要刪除此捐贈紀錄嗎？此操作無法復原。
+              {recordToDelete && (
+                <div className="mt-3 p-3 bg-muted rounded-md">
+                  <p className="font-medium">流水號: {recordToDelete.serialNumber}</p>
+                  <p className="text-sm">捐贈者: {recordToDelete.donor.name}</p>
+                  <p className="text-sm">
+                    物品: {recordToDelete.donationItems.map(item => item.itemName).join(', ')}
+                  </p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+              確認刪除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
