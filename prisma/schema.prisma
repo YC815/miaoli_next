@@ -40,15 +40,15 @@ model Supply {
 }
 
 model Donor {
-  id            String           @id @default(cuid())
-  name          String           @unique
-  phone         String?
-  taxId         String?
-  address       String?
-  isActive      Boolean          @default(true)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  donations     DonationRecord[]
+  id        String           @id @default(cuid())
+  name      String           @unique
+  phone     String?
+  taxId     String?
+  address   String?
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  donations DonationRecord[]
 }
 
 model DonationRecord {
@@ -63,43 +63,45 @@ model DonationRecord {
 }
 
 model DonationItem {
-  id             String           @id @default(cuid())
-  donationId     String
-  itemName       String
-  itemCategory   String
-  itemUnit       String
-  quantity       Int              @default(1)
-  expiryDate     DateTime?
-  isStandard     Boolean          @default(false)
-  notes          String?
-  donation       DonationRecord   @relation(fields: [donationId], references: [id])
-  itemConditions ItemCondition[]
+  id           String         @id @default(cuid())
+  donationId   String
+  itemName     String
+  itemCategory String
+  itemUnit     String
+  quantity     Int            @default(1)
+  expiryDate   DateTime?
+  isStandard   Boolean        @default(false)
+  notes        String?
+  donation     DonationRecord @relation(fields: [donationId], references: [id])
 }
 
 model Disbursement {
   id                String             @id @default(cuid())
   serialNumber      String             @unique @default("")
-  recipientUnit     String
+  recipientUnitName String
+  recipientUnitId   String?
   recipientPhone    String?
+  recipientAddress  String?
   createdAt         DateTime           @default(now())
   userId            String
   user              User               @relation(fields: [userId], references: [id])
   disbursementItems DisbursementItem[]
+  recipientUnit     RecipientUnit?     @relation(fields: [recipientUnitId], references: [id])
 }
 
 model DisbursementItem {
-  id               String           @id @default(cuid())
-  disbursementId   String
-  itemName         String
-  itemCategory     String
-  itemUnit         String
-  disbursement     Disbursement     @relation(fields: [disbursementId], references: [id])
-  itemConditions   ItemCondition[]
+  id             String       @id @default(cuid())
+  disbursementId String
+  itemName       String
+  itemCategory   String
+  itemUnit       String
+  quantity       Int
+  disbursement   Disbursement @relation(fields: [disbursementId], references: [id])
 }
 
 model InventoryLog {
   id           String     @id @default(cuid())
-  supplyId     String
+  itemStockId  String
   changeType   ChangeType
   changeAmount Int
   newQuantity  Int
@@ -107,7 +109,9 @@ model InventoryLog {
   createdAt    DateTime   @default(now())
   userId       String
   user         User       @relation(fields: [userId], references: [id])
-  supply       Supply     @relation(fields: [supplyId], references: [id])
+  itemStock    ItemStock  @relation(fields: [itemStockId], references: [id])
+  Supply       Supply?    @relation(fields: [supplyId], references: [id])
+  supplyId     String?
 }
 
 enum Role {
@@ -117,42 +121,43 @@ enum Role {
 }
 
 model Category {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  isActive    Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-
 model RecipientUnit {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  phone       String?
-  isActive    Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String         @id @default(cuid())
+  name          String         @unique
+  phone         String?
+  address       String?
+  isActive      Boolean        @default(true)
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  disbursements Disbursement[]
 }
 
 model InventoryChangeReason {
-  id          String    @id @default(cuid())
-  reason      String
-  changeType  ChangeType
-  isActive    Boolean   @default(true)
-  sortOrder   Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         String     @id @default(cuid())
+  reason     String
+  changeType ChangeType
+  isActive   Boolean    @default(true)
+  sortOrder  Int        @default(0)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 }
 
 model Unit {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  isActive    Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum ChangeType {
@@ -161,12 +166,12 @@ enum ChangeType {
 }
 
 model SerialNumberCounter {
-  id         String   @id @default(cuid())
-  type       String   @unique // "donation", "disbursement", or "report"
-  counter    Int      @default(0)
-  prefix     String   // "DN" for donation, "DS" for disbursement, "RP" for report
-  updatedAt  DateTime @updatedAt
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  type      String   @unique // "donation", "disbursement", or "report"
+  counter   Int      @default(0)
+  prefix    String // "DN" for donation, "DS" for disbursement, "RP" for report
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
 }
 
 // 標準物品定義（對應 public/item_list.json）
@@ -174,7 +179,7 @@ model StandardItem {
   id          String  @id @default(cuid())
   name        String
   category    String
-  units       Json    // ["包", "罐", "盒"]
+  units       Json // ["包", "罐", "盒"]
   defaultUnit String
   isActive    Boolean @default(true)
   sortOrder   Int     @default(0)
@@ -187,9 +192,9 @@ model CustomItem {
   id          String   @id @default(cuid())
   name        String
   category    String
-  units       Json     // ["個"]
+  units       Json // ["個"]
   defaultUnit String
-  isActive    Boolean  @default(true)  // 支援隱藏功能
+  isActive    Boolean  @default(true) // 支援隱藏功能
   isHidden    Boolean  @default(false) // 隱藏狀態
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
@@ -199,34 +204,18 @@ model CustomItem {
   @@unique([name, category])
 }
 
-// 品相條件（每個捐贈/領取物品的品相、數量、備註）
-model ItemCondition {
-  id                 String            @id @default(cuid())
-  condition          String            // 品相描述（全新、二手、損壞等）
-  quantity           Int               // 數量
-  notes              String?           // 品相備註
-  createdAt          DateTime          @default(now())
-
-  // 關聯到捐贈項目
-  donationItemId     String?
-  donationItem       DonationItem?     @relation(fields: [donationItemId], references: [id])
-
-  // 關聯到領取項目
-  disbursementItemId String?
-  disbursementItem   DisbursementItem? @relation(fields: [disbursementItemId], references: [id])
-}
-
 // 物品庫存聚合（用於庫存顯示）
 model ItemStock {
-  id           String   @id @default(cuid())
+  id           String         @id @default(cuid())
   itemName     String
   itemCategory String
   itemUnit     String
-  totalStock   Int      // 總庫存數量
-  safetyStock  Int      @default(0)
-  isStandard   Boolean  @default(false) // 是否為標準物品
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  totalStock   Int // 總庫存數量
+  safetyStock  Int            @default(0)
+  isStandard   Boolean        @default(false) // 是否為標準物品
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  InventoryLog InventoryLog[]
 
   @@unique([itemName, itemCategory])
 }

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal, Search, AlertTriangle, Package, Copy, ArrowUpDown, ArrowUp, ArrowDown, Check } from "lucide-react";
 import { useState } from "react";
 import { EditSupplyModal } from "@/components/modals/EditSupplyModal";
@@ -21,18 +22,19 @@ import { EditQuantityModal } from "@/components/modals/EditQuantityModal";
 import { EditSafetyStockModal } from "@/components/modals/EditSafetyStockModal";
 import { Permission } from "@/lib/permissions";
 
-interface Supply {
+interface ItemStock {
   id: string;
   category: string;
   name: string;
-  quantity: number;
+  totalStock: number;
   unit: string;
   safetyStock: number;
+  isStandard: boolean;
 }
 
 interface SuppliesTableProps {
-  supplies: Supply[];
-  onUpdateSupply: (updatedSupply: Supply) => void;
+  supplies: ItemStock[];
+  onUpdateSupply: (updatedSupply: ItemStock) => void;
   onUpdateQuantity: (id: string, newQuantity: number, changeType: string, reason: string) => void;
   onUpdateSafetyStock: (id: string, newSafetyStock: number) => void;
   userPermissions: Permission | null;
@@ -46,7 +48,7 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
   const [isEditSupplyOpen, setIsEditSupplyOpen] = useState(false);
   const [isEditQuantityOpen, setIsEditQuantityOpen] = useState(false);
   const [isEditSafetyStockOpen, setIsEditSafetyStockOpen] = useState(false);
-  const [selectedSupply, setSelectedSupply] = useState<Supply | null>(null);
+  const [selectedSupply, setSelectedSupply] = useState<ItemStock | null>(null);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [isCopied, setIsCopied] = useState(false);
@@ -73,8 +75,8 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
           bValue = b.name;
           break;
         case 'quantity':
-          aValue = a.quantity;
-          bValue = b.quantity;
+          aValue = a.totalStock;
+          bValue = b.totalStock;
           break;
         default:
           return 0;
@@ -134,7 +136,7 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
   const copyAvailableItemsToClipboard = () => {
     const availableItems = filteredAndSortedSupplies
       .filter(supply => {
-        const status = getStockStatus(supply.quantity, supply.safetyStock);
+        const status = getStockStatus(supply.totalStock, supply.safetyStock);
         return status.label === '庫存充足';
       })
       .map(supply => `• ${supply.name}`)
@@ -148,17 +150,17 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
   };
 
 
-  const handleEditSupply = (supply: Supply) => {
+  const handleEditSupply = (supply: ItemStock) => {
     setSelectedSupply(supply);
     setIsEditSupplyOpen(true);
   };
 
-  const handleEditQuantity = (supply: Supply) => {
+  const handleEditQuantity = (supply: ItemStock) => {
     setSelectedSupply(supply);
     setIsEditQuantityOpen(true);
   };
 
-  const handleEditSafetyStock = (supply: Supply) => {
+  const handleEditSafetyStock = (supply: ItemStock) => {
     setSelectedSupply(supply);
     setIsEditSafetyStockOpen(true);
   };
@@ -191,7 +193,7 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
               className={`flex items-center gap-2 self-start sm:self-auto min-h-[44px] px-3 sm:px-4 transition-colors ${
                 isCopied ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : ''
               }`}
-              disabled={filteredAndSortedSupplies.filter(s => s.quantity > 0).length === 0}
+              disabled={filteredAndSortedSupplies.filter(s => s.totalStock > 0).length === 0}
             >
               {isCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
               <span className="text-xs sm:text-sm">
@@ -258,7 +260,7 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
                 </TableRow>
               ) : (
                 filteredAndSortedSupplies.map((supply) => {
-                  const status = getStockStatus(supply.quantity, supply.safetyStock);
+                  const status = getStockStatus(supply.totalStock, supply.safetyStock);
                   return (
                     <TableRow key={supply.id} className="hover:bg-muted/20 transition-colors">
                       <TableCell className="py-2 sm:py-4">
@@ -268,13 +270,18 @@ export function SuppliesTable({ supplies, onUpdateSupply, onUpdateQuantity, onUp
                       </TableCell>
                       <TableCell className="py-2 sm:py-4">
                         <div className="font-medium text-sm sm:text-base break-words">{supply.name}</div>
+                        <div className="mt-1">
+                          <Badge variant={supply.isStandard ? "secondary" : "outline"} className="text-[10px] sm:text-xs">
+                            {supply.isStandard ? '標準品項' : '自訂品項'}
+                          </Badge>
+                        </div>
                       </TableCell>
                       <TableCell className="py-2 sm:py-4 text-center">
                         <div className="flex items-center justify-center gap-1 sm:gap-2">
-                          <span className={`text-sm sm:text-lg font-semibold ${supply.quantity === 0 ? 'text-red-600' : ''}`}>
-                            {supply.quantity.toLocaleString()} {supply.unit}
+                          <span className={`text-sm sm:text-lg font-semibold ${supply.totalStock === 0 ? 'text-red-600' : ''}`}>
+                            {supply.totalStock.toLocaleString()} {supply.unit}
                           </span>
-                          {supply.quantity < supply.safetyStock && (
+                          {supply.totalStock < supply.safetyStock && (
                             <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 text-orange-500 flex-shrink-0" />
                           )}
                         </div>

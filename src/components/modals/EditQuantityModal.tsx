@@ -22,11 +22,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Plus, Minus } from "lucide-react";
 
-interface Supply {
+interface ItemStock {
   id: string;
   category: string;
   name: string;
-  quantity: number;
+  totalStock: number;
+  unit: string;
   safetyStock: number;
 }
 
@@ -34,7 +35,7 @@ interface EditQuantityModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (id: string, newQuantity: number, changeType: "INCREASE" | "DECREASE", reason: string) => void;
-  supply: Supply | null;
+  supply: ItemStock | null;
 }
 
 export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: EditQuantityModalProps) {
@@ -80,8 +81,8 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
     if (supply && changeAmount > 0 && (reason !== "其他（請說明）" ? reason : customReason)) {
       const finalReason = reason === "其他（請說明）" ? customReason : reason;
       const newQuantity = changeType === "increase" 
-        ? supply.quantity + changeAmount 
-        : Math.max(0, supply.quantity - changeAmount);
+        ? supply.totalStock + changeAmount 
+        : Math.max(0, supply.totalStock - changeAmount);
       
       onSubmit(supply.id, newQuantity, changeType.toUpperCase() as "INCREASE" | "DECREASE", finalReason);
       onOpenChange(false);
@@ -95,8 +96,8 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
   const getNewQuantity = () => {
     if (!supply) return 0;
     return changeType === "increase" 
-      ? supply.quantity + changeAmount 
-      : Math.max(0, supply.quantity - changeAmount);
+      ? supply.totalStock + changeAmount 
+      : Math.max(0, supply.totalStock - changeAmount);
   };
 
   return (
@@ -105,7 +106,7 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">修改庫存數量</DialogTitle>
           <DialogDescription className="text-sm">
-            {supply && `${supply.name} - 目前庫存：${supply.quantity} 個`}
+            {supply && `${supply.name} - 目前庫存：${supply.totalStock} ${supply.unit}`}
           </DialogDescription>
         </DialogHeader>
         
@@ -144,12 +145,12 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
               id="change-amount"
               type="number"
               min="1"
-              max={changeType === "decrease" ? supply?.quantity : undefined}
+              max={changeType === "decrease" ? supply?.totalStock : undefined}
               value={changeAmount}
               onChange={(e) => setChangeAmount(parseInt(e.target.value) || 0)}
               placeholder={`請輸入要${changeType === "increase" ? "增加" : "減少"}的數量`}
             />
-            {changeType === "decrease" && supply && changeAmount > supply.quantity && (
+            {changeType === "decrease" && supply && changeAmount > supply.totalStock && (
               <p className="text-sm text-destructive">
                 減少數量不能超過目前庫存數量
               </p>
@@ -193,7 +194,7 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
               <div className="text-xs sm:text-sm">
                 <p className="font-medium mb-1">變更預覽：</p>
                 <p className="text-muted-foreground break-words">
-                  {supply?.quantity} → {getNewQuantity()} 個
+                  {supply?.totalStock} → {getNewQuantity()} 個
                   <span className={`ml-2 font-medium ${
                     changeType === "increase" ? "text-green-600" : "text-red-600"
                   }`}>
@@ -213,14 +214,14 @@ export function EditQuantityModal({ open, onOpenChange, onSubmit, supply }: Edit
           >
             取消
           </Button>
-          <Button 
+          <Button
             onClick={handleSubmit}
             disabled={
-              !changeAmount || 
-              changeAmount <= 0 || 
-              !reason || 
+              !changeAmount ||
+              changeAmount <= 0 ||
+              !reason ||
               (reason === "其他（請說明）" && !customReason.trim()) ||
-              !!(changeType === "decrease" && supply && changeAmount > supply.quantity)
+              !!(changeType === "decrease" && supply && changeAmount > supply.totalStock)
             }
             className="w-full sm:w-auto min-h-[44px]"
           >

@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    const { name, phone, sortOrder } = await request.json();
+    const { name, phone, address, sortOrder } = await request.json();
 
     if (!name || typeof name !== 'string') {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: name.trim(),
         phone: phone ? phone.trim() : null,
+        address: address ? address.trim() : null,
         sortOrder: finalSortOrder,
       },
     });
@@ -103,7 +104,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 403 });
     }
 
-    const { id, name, phone, sortOrder } = await request.json();
+    const { id, name, phone, address, sortOrder } = await request.json();
 
     if (!id || typeof id !== 'string') {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
@@ -143,6 +144,7 @@ export async function PUT(request: NextRequest) {
       data: {
         name: name.trim(),
         phone: phone ? phone.trim() : existingUnit.phone,
+        address: address ? address.trim() : existingUnit.address,
         sortOrder: sortOrder ?? existingUnit.sortOrder,
       },
     });

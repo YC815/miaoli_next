@@ -39,37 +39,51 @@ export async function GET(request: NextRequest) {
     const activeOnly = searchParams.get('activeOnly') !== 'false'; // 預設為 true
 
     // 建立查詢條件
-    const whereClause: { isActive?: boolean; category?: string } = {};
+    const whereClause: {
+      itemCategory?: string;
+      AND?: Array<Record<string, unknown>>;
+    } = {};
 
-    if (activeOnly) {
-      whereClause.isActive = true;
-    }
+    const andConditions: Array<Record<string, unknown>> = [];
 
     if (categoryFilter) {
-      whereClause.category = categoryFilter;
+      whereClause.itemCategory = categoryFilter;
+    }
+
+    if (activeOnly) {
+      andConditions.push({ totalStock: { gt: 0 } });
+    }
+
+    if (andConditions.length > 0) {
+      whereClause.AND = andConditions;
     }
 
     // 查詢所有符合條件的物資
-    const supplies = await prisma.supply.findMany({
+    const supplies = await prisma.itemStock.findMany({
       where: whereClause,
       select: {
         id: true,
-        name: true,
-        category: true,
-        quantity: true,
+        itemName: true,
+        itemCategory: true,
+        totalStock: true,
         safetyStock: true,
-        unit: true,
+        itemUnit: true,
       },
       orderBy: [
-        { category: 'asc' },
-        { name: 'asc' }
+        { itemCategory: 'asc' },
+        { itemName: 'asc' }
       ],
     });
 
     // 計算庫存狀態
     const suppliesWithStatus: SupplyWithStatus[] = supplies.map(supply => ({
-      ...supply,
-      status: calculateStatus(supply.quantity, supply.safetyStock),
+      id: supply.id,
+      name: supply.itemName,
+      category: supply.itemCategory,
+      quantity: supply.totalStock,
+      safetyStock: supply.safetyStock,
+      unit: supply.itemUnit,
+      status: calculateStatus(supply.totalStock, supply.safetyStock),
     }));
 
     // 根據狀態過濾

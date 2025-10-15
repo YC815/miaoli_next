@@ -22,6 +22,7 @@ interface Donor {
   phone: string | null;
   taxId: string | null;
   address: string | null;
+  isActive: boolean;
 }
 
 interface AddDonorDialogProps {

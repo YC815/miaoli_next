@@ -3,6 +3,25 @@ import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
 
+const transformItemStock = (item: {
+  id: string;
+  itemName: string;
+  itemCategory: string;
+  itemUnit: string;
+  totalStock: number;
+  safetyStock: number;
+  isStandard: boolean;
+}) => ({
+  id: item.id,
+  name: item.itemName,
+  category: item.itemCategory,
+  unit: item.itemUnit,
+  quantity: item.totalStock,
+  totalStock: item.totalStock,
+  safetyStock: item.safetyStock,
+  isStandard: item.isStandard,
+});
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -23,41 +42,74 @@ export async function PUT(
       }, { status: 403 });
     }
 
-    const { id: supplyId } = await params;
-    const { name, category, quantity, unit, safetyStock, isActive, sortOrder } = await request.json();
+    const { id: itemStockId } = await params;
+    const {
+      name,
+      category,
+      unit,
+      quantity,
+      totalStock,
+      safetyStock,
+      isStandard,
+    } = await request.json();
 
-    const existingSupply = await prisma.supply.findUnique({
-      where: { id: supplyId },
+    const existingItem = await prisma.itemStock.findUnique({
+      where: { id: itemStockId },
     });
 
-    if (!existingSupply) {
-      return NextResponse.json({ error: 'Supply not found' }, { status: 404 });
+    if (!existingItem) {
+      return NextResponse.json({ error: 'Item stock not found' }, { status: 404 });
     }
 
-    try {
-      const updatedSupply = await prisma.supply.update({
-        where: { id: supplyId },
-        data: {
-          name: name ?? existingSupply.name,
-          category: category ?? existingSupply.category,
-          quantity: quantity ?? existingSupply.quantity,
-          unit: unit ?? existingSupply.unit,
-          safetyStock: safetyStock ?? existingSupply.safetyStock,
-          isActive: isActive ?? existingSupply.isActive,
-          sortOrder: sortOrder ?? existingSupply.sortOrder,
+    const updatedName = name ? String(name).trim() : existingItem.itemName;
+    const updatedCategory = category ? String(category).trim() : existingItem.itemCategory;
+
+    // Ensure unique name/category combination
+    if (updatedName !== existingItem.itemName || updatedCategory !== existingItem.itemCategory) {
+      const duplicate = await prisma.itemStock.findFirst({
+        where: {
+          itemName: updatedName,
+          itemCategory: updatedCategory,
+          NOT: { id: itemStockId },
         },
       });
 
-      return NextResponse.json(updatedSupply);
-    } catch (prismaError: unknown) {
-      // 處理唯一約束錯誤
-      if (typeof prismaError === 'object' && prismaError !== null && 'code' in prismaError && prismaError.code === 'P2002') {
-        return NextResponse.json({ 
-          error: '物資名稱已存在，請使用不同的名稱' 
-        }, { status: 409 });
+      if (duplicate) {
+        return NextResponse.json(
+          { error: '物資名稱與分類的組合已存在，請使用不同的名稱或分類' },
+          { status: 409 }
+        );
       }
-      throw prismaError;
     }
+
+    const normalizedQuantity = totalStock ?? quantity;
+    const normalizedSafetyStock = safetyStock !== undefined ? Number(safetyStock) : undefined;
+
+    if (normalizedQuantity !== undefined && !Number.isFinite(Number(normalizedQuantity))) {
+      return NextResponse.json({ error: 'Quantity must be a number' }, { status: 400 });
+    }
+
+    if (normalizedSafetyStock !== undefined && !Number.isFinite(normalizedSafetyStock)) {
+      return NextResponse.json({ error: 'Safety stock must be a number' }, { status: 400 });
+    }
+
+    const updatedItem = await prisma.itemStock.update({
+      where: { id: itemStockId },
+      data: {
+        itemName: updatedName,
+        itemCategory: updatedCategory,
+        itemUnit: unit ? String(unit).trim() : existingItem.itemUnit,
+        ...(normalizedQuantity !== undefined
+          ? { totalStock: Number(normalizedQuantity) }
+          : {}),
+        ...(normalizedSafetyStock !== undefined
+          ? { safetyStock: normalizedSafetyStock }
+          : {}),
+        ...(isStandard !== undefined ? { isStandard: Boolean(isStandard) } : {}),
+      },
+    });
+
+    return NextResponse.json(transformItemStock(updatedItem));
   } catch (error) {
     console.error('Error updating supply:', error);
     return NextResponse.json(

@@ -6,6 +6,7 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Eye, EyeOff, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { CustomItemDialog } from "@/components/donation/CustomItemDialog";
@@ -42,10 +43,15 @@ export function ItemsManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showHidden, setShowHidden] = useState(false);
   const [showCustomItemDialog, setShowCustomItemDialog] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadStandardItems();
-    loadCustomItems();
+    const loadAll = async () => {
+      setLoading(true);
+      await Promise.all([loadStandardItems(), loadCustomItems()]);
+      setLoading(false);
+    };
+    loadAll();
   }, []);
 
   const loadStandardItems = async () => {
@@ -125,6 +131,26 @@ export function ItemsManagement() {
     });
     return grouped;
   };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64 mt-2" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-10 w-full max-w-md" />
+          <Skeleton className="h-12 w-full max-w-md" />
+          <div className="space-y-3 mt-6">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">

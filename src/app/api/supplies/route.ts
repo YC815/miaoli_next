@@ -3,6 +3,25 @@ import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
 
+const transformItemStock = (item: {
+  id: string;
+  itemName: string;
+  itemCategory: string;
+  itemUnit: string;
+  totalStock: number;
+  safetyStock: number;
+  isStandard: boolean;
+}) => ({
+  id: item.id,
+  name: item.itemName,
+  category: item.itemCategory,
+  unit: item.itemUnit,
+  quantity: item.totalStock,
+  totalStock: item.totalStock,
+  safetyStock: item.safetyStock,
+  isStandard: item.isStandard,
+});
+
 export async function GET(request: NextRequest) {
   try {
     const { userId: clerkId } = await auth();
@@ -10,60 +29,52 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const activeOnly = searchParams.get('activeOnly') === 'true';
-    const sortBy = searchParams.get('sortBy') || 'name';
-    const namesOnly = searchParams.get('namesOnly') === 'true';
+    const url = new URL(request.url);
+    const namesOnly = url.searchParams.get('namesOnly') === 'true';
+    const category = url.searchParams.get('category');
+    const searchKeyword = url.searchParams.get('search')?.trim() || '';
+    const activeOnly = url.searchParams.get('activeOnly') === 'true';
 
-    let whereClause = {};
-    let orderByClause = {};
+    const filters: Record<string, unknown> = {};
+    const andConditions: unknown[] = [];
 
-    // 根據 activeOnly 參數決定是否只查詢活躍的物資
-    if (activeOnly) {
-      whereClause = { isActive: true };
+    if (category) {
+      filters.itemCategory = category;
     }
 
-    // 根據 sortBy 參數決定排序方式
-    if (sortBy === 'sortOrder') {
-      orderByClause = [
-        { sortOrder: 'asc' },
-        { name: 'asc' }
-      ];
-    } else {
-      orderByClause = { name: 'asc' };
-    }
-
-    // 如果只需要名稱（用於下拉選單），返回去重的名稱列表
-    if (namesOnly) {
-      const supplies = await prisma.supply.findMany({
-        where: whereClause,
-        select: {
-          name: true,
-          isActive: true,
-          sortOrder: true,
-        },
-        orderBy: orderByClause,
+    if (searchKeyword) {
+      andConditions.push({
+        OR: [
+          { itemName: { contains: searchKeyword, mode: 'insensitive' } },
+          { itemCategory: { contains: searchKeyword, mode: 'insensitive' } },
+        ],
       });
+    }
 
-      // 去重並返回唯一名稱
-      const uniqueNames = supplies
-        .filter((supply, index, self) => 
-          index === self.findIndex(s => s.name === supply.name)
-        )
-        .map(supply => supply.name);
+    if (activeOnly) {
+      andConditions.push({ totalStock: { gt: 0 } });
+    }
 
+    if (andConditions.length > 0) {
+      filters.AND = andConditions;
+    }
+
+    const itemStocks = await prisma.itemStock.findMany({
+      where: filters,
+      orderBy: [
+        { itemCategory: 'asc' },
+        { itemName: 'asc' },
+      ],
+    });
+
+    if (namesOnly) {
+      const uniqueNames = Array.from(new Set(itemStocks.map(item => item.itemName)));
       return NextResponse.json(uniqueNames);
     }
 
-    // 正常查詢所有物資
-    const supplies = await prisma.supply.findMany({
-      where: whereClause,
-      orderBy: orderByClause,
-    });
-
-    return NextResponse.json(supplies);
+    return NextResponse.json(itemStocks.map(transformItemStock));
   } catch (error) {
-    console.error('Error fetching supplies:', error);
+    console.error('Error fetching item stocks:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -83,42 +94,68 @@ export async function POST(request: NextRequest) {
     });
 
     if (!currentUser || (currentUser.role !== Role.ADMIN && currentUser.role !== Role.STAFF)) {
-      return NextResponse.json({ 
-        error: 'Access denied. Admin or Staff privileges required.' 
+      return NextResponse.json({
+        error: 'Access denied. Admin or Staff privileges required.',
       }, { status: 403 });
     }
 
-    const { name, category, quantity, unit, safetyStock, isActive, sortOrder } = await request.json();
+    const {
+      name,
+      category,
+      unit,
+      quantity,
+      safetyStock,
+      isStandard,
+    } = await request.json();
 
-    if (!name || !category || quantity === undefined || safetyStock === undefined) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!name || !category) {
+      return NextResponse.json({ error: 'Name and category are required' }, { status: 400 });
     }
 
-    try {
-      const newSupply = await prisma.supply.create({
-        data: {
-          name,
-          category,
-          quantity,
-          unit: unit || '個',
-          safetyStock,
-          isActive: isActive !== undefined ? isActive : true,
-          sortOrder: sortOrder || 0,
+    const normalizedName = String(name).trim();
+    const normalizedCategory = String(category).trim();
+    const normalizedUnit = unit ? String(unit).trim() : '個';
+    const normalizedQuantity = quantity !== undefined ? Number(quantity) : undefined;
+    const normalizedSafetyStock = safetyStock !== undefined ? Number(safetyStock) : undefined;
+
+    if (normalizedQuantity !== undefined && !Number.isFinite(normalizedQuantity)) {
+      return NextResponse.json({ error: 'Quantity must be a number' }, { status: 400 });
+    }
+
+    if (normalizedSafetyStock !== undefined && !Number.isFinite(normalizedSafetyStock)) {
+      return NextResponse.json({ error: 'Safety stock must be a number' }, { status: 400 });
+    }
+
+    const itemStock = await prisma.itemStock.upsert({
+      where: {
+        itemName_itemCategory: {
+          itemName: normalizedName,
+          itemCategory: normalizedCategory,
         },
-      });
+      },
+      create: {
+        itemName: normalizedName,
+        itemCategory: normalizedCategory,
+        itemUnit: normalizedUnit,
+        totalStock: normalizedQuantity ?? 0,
+        safetyStock: normalizedSafetyStock ?? 0,
+        isStandard: Boolean(isStandard),
+      },
+      update: {
+        itemUnit: normalizedUnit,
+        ...(normalizedQuantity !== undefined
+          ? { totalStock: normalizedQuantity }
+          : {}),
+        ...(normalizedSafetyStock !== undefined
+          ? { safetyStock: normalizedSafetyStock }
+          : {}),
+        isStandard: isStandard === undefined ? undefined : Boolean(isStandard),
+      },
+    });
 
-      return NextResponse.json(newSupply, { status: 201 });
-    } catch (prismaError: unknown) {
-      // 處理唯一約束錯誤
-      if (typeof prismaError === 'object' && prismaError !== null && 'code' in prismaError && prismaError.code === 'P2002') {
-        return NextResponse.json({ 
-          error: '物資名稱已存在，請使用不同的名稱' 
-        }, { status: 409 });
-      }
-      throw prismaError;
-    }
+    return NextResponse.json(transformItemStock(itemStock), { status: 201 });
   } catch (error) {
-    console.error('Error creating supply:', error);
+    console.error('Error creating or updating item stock:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -4,22 +4,12 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, Search, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { ItemsManagement } from "@/components/admin/ItemsManagement";
-
-interface Supply {
-  id: string;
-  name: string;
-  category: string;
-  quantity: number;
-  unit: string;
-  safetyStock: number;
-  isActive: boolean;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
-}
+import { DonorsManagement } from "@/components/admin/DonorsManagement";
+import { RecipientUnitsManagement } from "@/components/recipient/RecipientUnitsManagement";
 
 interface Category {
   id: string;
@@ -30,40 +20,64 @@ interface Category {
   updatedAt: string;
 }
 
-interface RecipientUnit {
-  id: string;
-  name: string;
-  phone?: string;
-  isActive: boolean;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
+interface DataCounts {
+  categories: number;
+  standardItems: number;
+  customItems: number;
+  donors: number;
+  recipients: number;
 }
 
 export function DataManagement() {
-  const [supplies, setSupplies] = useState<Supply[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [recipientUnits, setRecipientUnits] = useState<RecipientUnit[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeSection, setActiveSection] = useState<"supplies" | "categories" | "recipient-units" | "items">("supplies");
+  const [activeSection, setActiveSection] = useState<"categories" | "recipients" | "donors" | "items">("items");
   const [editingItem, setEditingItem] = useState<{ type: string; id: string; name: string } | null>(null);
   const [editName, setEditName] = useState("");
+  const [counts, setCounts] = useState<DataCounts>({
+    categories: 0,
+    standardItems: 0,
+    customItems: 0,
+    donors: 0,
+    recipients: 0,
+  });
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
-    fetchSupplies();
-    fetchCategories();
-    fetchRecipientUnits();
+    loadAllData();
   }, []);
 
-  const fetchSupplies = async () => {
+  const loadAllData = async () => {
+    setInitialLoading(true);
     try {
-      const response = await fetch('/api/supplies');
-      if (response.ok) {
-        const data = await response.json();
-        setSupplies(data);
+      // 並行載入所有資料以取得計數
+      const [categoriesRes, standardItemsRes, customItemsRes, donorsRes, recipientsRes] = await Promise.all([
+        fetch('/api/categories').then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch('/api/standard-items').then(r => r.ok ? r.json() : { data: [] }).catch(() => ({ data: [] })),
+        fetch('/api/custom-items?includeHidden=true').then(r => r.ok ? r.json() : { data: [] }).catch(() => ({ data: [] })),
+        fetch('/api/donors?includeInactive=true').then(r => r.ok ? r.json() : { data: [] }).catch(() => ({ data: [] })),
+        fetch('/api/recipient-units?includeInactive=true').then(r => r.ok ? r.json() : []).catch(() => []),
+      ]);
+
+      // 更新 categories（用於當前頁面顯示）
+      if (Array.isArray(categoriesRes)) {
+        setCategories(categoriesRes);
       }
+
+      // 更新計數
+      setCounts({
+        categories: Array.isArray(categoriesRes) ? categoriesRes.length : 0,
+        standardItems: standardItemsRes.data?.length || 0,
+        customItems: customItemsRes.data?.filter((i: { isHidden: boolean }) => !i.isHidden).length || 0,
+        donors: donorsRes.data?.filter((d: { isActive: boolean }) => d.isActive).length || 0,
+        recipients: Array.isArray(recipientsRes)
+          ? recipientsRes.filter((r: { isActive: boolean }) => r.isActive).length
+          : recipientsRes.data?.filter((r: { isActive: boolean }) => r.isActive).length || 0,
+      });
     } catch (error) {
-      console.error('Error fetching supplies:', error);
+      console.error('Error loading data:', error);
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -76,18 +90,6 @@ export function DataManagement() {
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
-    }
-  };
-
-  const fetchRecipientUnits = async () => {
-    try {
-      const response = await fetch('/api/recipient-units');
-      if (response.ok) {
-        const data = await response.json();
-        setRecipientUnits(data);
-      }
-    } catch (error) {
-      console.error('Error fetching recipient units:', error);
     }
   };
 
@@ -106,16 +108,8 @@ export function DataManagement() {
       let endpoint = "";
       let body = {};
 
-      if (editingItem.type === "supplies") {
-        endpoint = `/api/supplies/${editingItem.id}`;
-        body = { name: editName.trim() };
-      } else if (editingItem.type === "categories") {
-        endpoint = "/api/categories";
-        body = { id: editingItem.id, name: editName.trim() };
-      } else {
-        endpoint = "/api/recipient-units";
-        body = { id: editingItem.id, name: editName.trim() };
-      }
+      endpoint = "/api/categories";
+      body = { id: editingItem.id, name: editName.trim() };
       
       const response = await fetch(endpoint, {
         method: "PUT",
@@ -127,13 +121,7 @@ export function DataManagement() {
 
       if (response.ok) {
         toast.success(`「${editingItem.name}」已成功更新為「${editName.trim()}」`);
-        
-        // Refresh the appropriate list
-        if (editingItem.type === "supplies") fetchSupplies();
-        else if (editingItem.type === "categories") fetchCategories();
-        else fetchRecipientUnits();
-        
-        // Clear editing state
+        fetchCategories();
         setEditingItem(null);
         setEditName("");
       } else {
@@ -157,35 +145,17 @@ export function DataManagement() {
     }
 
     try {
-      let endpoint = "";
-      let method = "";
-      let body = {};
-
-      if (type === "supplies") {
-        endpoint = `/api/supplies/${id}`;
-        method = "PUT";
-        body = { isActive: false };
-      } else {
-        endpoint = type === "categories" ? "/api/categories" : "/api/recipient-units";
-        method = "DELETE";
-        body = { id };
-      }
-      
-      const response = await fetch(endpoint, {
-        method,
+      const response = await fetch("/api/categories", {
+        method: "DELETE",
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ id }),
       });
 
       if (response.ok) {
         toast.success(`「${name}」已成功停用`);
-        
-        // Refresh the appropriate list
-        if (type === "supplies") fetchSupplies();
-        else if (type === "categories") fetchCategories();
-        else fetchRecipientUnits();
+        fetchCategories();
       } else {
         const errorData = await response.json();
         toast.error(`停用失敗: ${errorData.error}`);
@@ -196,13 +166,13 @@ export function DataManagement() {
     }
   };
 
-  const filterData = (data: (Supply | Category | RecipientUnit)[]) => {
-    return data.filter(item => 
+  const filterData = (data: Category[]) => {
+    return data.filter(item =>
       item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   };
 
-  const DataTable = ({ data, type, title }: { data: (Supply | Category | RecipientUnit)[], type: string, title: string }) => (
+  const DataTable = ({ data, type, title }: { data: Category[], type: string, title: string }) => (
     <Card>
       <CardHeader>
         <CardTitle className="text-lg font-semibold">{title}</CardTitle>
@@ -246,17 +216,6 @@ export function DataManagement() {
                       </>
                     )}
                   </div>
-                  {'category' in item && (
-                    <div className="text-sm text-muted-foreground">類別：{item.category}</div>
-                  )}
-                  {'quantity' in item && (
-                    <div className="text-sm text-muted-foreground">
-                      庫存：{item.quantity} {item.unit} / 安全庫存：{item.safetyStock}
-                    </div>
-                  )}
-                  {'phone' in item && item.phone && (
-                    <div className="text-sm text-muted-foreground">電話：{item.phone}</div>
-                  )}
                   <div className="text-xs text-muted-foreground">
                     建立時間：{new Date(item.createdAt).toLocaleDateString()}
                   </div>
@@ -283,17 +242,6 @@ export function DataManagement() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     )}
-                    {!('isActive' in item) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(type, (item as Category | RecipientUnit).id, (item as Category | RecipientUnit).name)}
-                        className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                        title="刪除此項目"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
                   </div>
                 )}
               </div>
@@ -310,7 +258,7 @@ export function DataManagement() {
       <div>
         <h2 className="text-2xl font-bold mb-2">資料管理</h2>
         <p className="text-muted-foreground">
-          管理系統中的物資名稱、類別和領取單位等基礎資料
+          管理系統中的物資品項、類別、捐贈單位和領取單位等基礎資料
         </p>
       </div>
 
@@ -334,42 +282,54 @@ export function DataManagement() {
           onClick={() => setActiveSection("items")}
           className="rounded-b-none"
         >
-          物資品項
-        </Button>
-        <Button
-          variant={activeSection === "supplies" ? "default" : "ghost"}
-          onClick={() => setActiveSection("supplies")}
-          className="rounded-b-none"
-        >
-          物資項目 ({supplies.length})
+          物資品項 {(counts.standardItems + counts.customItems) > 0 && `(${counts.standardItems + counts.customItems})`}
         </Button>
         <Button
           variant={activeSection === "categories" ? "default" : "ghost"}
           onClick={() => setActiveSection("categories")}
           className="rounded-b-none"
         >
-          物資類別 ({categories.length})
+          物資類別 {counts.categories > 0 && `(${counts.categories})`}
         </Button>
         <Button
-          variant={activeSection === "recipient-units" ? "default" : "ghost"}
-          onClick={() => setActiveSection("recipient-units")}
+          variant={activeSection === "donors" ? "default" : "ghost"}
+          onClick={() => setActiveSection("donors")}
           className="rounded-b-none"
         >
-          領取單位 ({recipientUnits.length})
+          捐贈單位 {counts.donors > 0 && `(${counts.donors})`}
+        </Button>
+        <Button
+          variant={activeSection === "recipients" ? "default" : "ghost"}
+          onClick={() => setActiveSection("recipients")}
+          className="rounded-b-none"
+        >
+          領取單位 {counts.recipients > 0 && `(${counts.recipients})`}
         </Button>
       </div>
 
       {/* Data Tables */}
       <div className="min-h-[400px]">
-        {activeSection === "items" && <ItemsManagement />}
-        {activeSection === "supplies" && (
-          <DataTable data={supplies} type="supplies" title="物資項目清單" />
-        )}
-        {activeSection === "categories" && (
-          <DataTable data={categories} type="categories" title="物資類別清單" />
-        )}
-        {activeSection === "recipient-units" && (
-          <DataTable data={recipientUnits} type="recipient-units" title="領取單位清單" />
+        {initialLoading ? (
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-8 w-48" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {activeSection === "items" && <ItemsManagement />}
+            {activeSection === "categories" && (
+              <DataTable data={categories} type="categories" title="物資類別清單" />
+            )}
+            {activeSection === "donors" && <DonorsManagement />}
+            {activeSection === "recipients" && <RecipientUnitsManagement />}
+          </>
         )}
       </div>
 
@@ -377,11 +337,10 @@ export function DataManagement() {
       <div className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg">
         <p className="font-medium mb-1">📝 使用說明：</p>
         <ul className="space-y-1 list-disc list-inside ml-2">
-          <li>編輯功能：點擊編輯按鈕可直接修改項目名稱，按 Enter 確認或 Escape 取消</li>
-          <li>物資項目：停用操作僅會將項目設為「不活躍」狀態，不會真正從資料庫中移除</li>
-          <li>被停用的物資項目將不再顯示在表單下拉選單中，但歷史記錄仍會保留</li>
-          <li>新增物資項目可以透過「物資管理」頁面的新增功能進行</li>
-          <li>類別和領取單位的刪除是軟刪除，同樣保留歷史記錄</li>
+          <li>物資品項管理專區整合標準品項與自訂品項，可直接新增或隱藏物資</li>
+          <li>類別編輯：點擊編輯按鈕可直接修改項目名稱，按 Enter 確認或 Escape 取消</li>
+          <li>捐贈單位與領取單位：提供完整的搜尋、篩選、新增、編輯與停用功能</li>
+          <li>類別的刪除是軟刪除，保留歷史記錄；捐贈單位與領取單位可停用後重新啟用</li>
           <li>只有管理員和員工才能執行編輯操作，只有管理員才能執行停用/刪除操作</li>
         </ul>
       </div>

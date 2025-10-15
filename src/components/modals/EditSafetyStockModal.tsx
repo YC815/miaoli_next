@@ -13,11 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-interface Supply {
+interface ItemStock {
   id: string;
   category: string;
   name: string;
-  quantity: number;
+  totalStock: number;
+  unit: string;
   safetyStock: number;
 }
 
@@ -25,7 +26,7 @@ interface EditSafetyStockModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (id: string, newSafetyStock: number) => void;
-  supply: Supply | null;
+  supply: ItemStock | null;
 }
 
 export function EditSafetyStockModal({ open, onOpenChange, onSubmit, supply }: EditSafetyStockModalProps) {
@@ -55,9 +56,9 @@ export function EditSafetyStockModal({ open, onOpenChange, onSubmit, supply }: E
   const getStockStatus = () => {
     if (!supply) return null;
     
-    if (supply.quantity === 0) return { label: '無庫存', color: 'text-red-600' };
-    if (supply.quantity < safetyStock) return { label: '將顯示庫存不足', color: 'text-orange-600' };
-    if (supply.quantity === safetyStock) return { label: '將顯示剛好達標', color: 'text-yellow-600' };
+    if (supply.totalStock === 0) return { label: '無庫存', color: 'text-red-600' };
+    if (supply.totalStock < safetyStock) return { label: '將顯示庫存不足', color: 'text-orange-600' };
+    if (supply.totalStock === safetyStock) return { label: '將顯示剛好達標', color: 'text-yellow-600' };
     return { label: '將顯示庫存充足', color: 'text-green-600' };
   };
 
@@ -69,7 +70,7 @@ export function EditSafetyStockModal({ open, onOpenChange, onSubmit, supply }: E
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">編輯安全庫存量</DialogTitle>
           <DialogDescription className="text-sm">
-            {supply && `${supply.name} - 目前庫存：${supply.quantity} 個`}
+            {supply && `${supply.name} - 目前庫存：${supply.totalStock} ${supply.unit}`}
           </DialogDescription>
         </DialogHeader>
         
@@ -95,9 +96,9 @@ export function EditSafetyStockModal({ open, onOpenChange, onSubmit, supply }: E
               <div className="text-xs sm:text-sm">
                 <p className="font-medium mb-2">設定預覽：</p>
                 <div className="space-y-1">
-                  <p className="break-words">目前庫存：{supply.quantity} 個</p>
+                  <p className="break-words">目前庫存：{supply.totalStock} {supply.unit}</p>
                   <p className="break-words">
-                    安全庫存：{supply.safetyStock} → {safetyStock} 個
+                    安全庫存：{supply.safetyStock} → {safetyStock} {supply.unit}
                   </p>
                   {status && (
                     <p className={`font-medium ${status.color} break-words`}>

@@ -20,30 +20,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-interface Supply {
+interface ItemStock {
   id: string;
   category: string;
   name: string;
-  quantity: number;
+  totalStock: number;
   unit: string;
   safetyStock: number;
+  isStandard: boolean;
 }
 
 interface EditSupplyModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (updatedSupply: Supply) => void;
-  supply: Supply | null;
+  onSubmit: (updatedSupply: ItemStock) => void;
+  supply: ItemStock | null;
 }
 
 export function EditSupplyModal({ open, onOpenChange, onSubmit, supply }: EditSupplyModalProps) {
-  const [formData, setFormData] = useState<Supply>({
+  const [formData, setFormData] = useState<ItemStock>({
     id: "",
     category: "",
     name: "",
-    quantity: 0,
     unit: "個",
     safetyStock: 0,
+    totalStock: 0,
+    isStandard: false,
   });
   const [supplyNames, setSupplyNames] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -226,9 +228,10 @@ export function EditSupplyModal({ open, onOpenChange, onSubmit, supply }: EditSu
         id: "",
         category: "",
         name: "",
-        quantity: 0,
         unit: "個",
         safetyStock: 0,
+        totalStock: 0,
+        isStandard: false,
       });
       setIsNewSupplyName(false);
       setNewSupplyName("");

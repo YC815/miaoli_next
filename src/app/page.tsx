@@ -23,13 +23,14 @@ import { Menu, X } from "lucide-react";
 
 type TabType = "supplies" | "records" | "staff" | "data";
 
-interface Supply {
+interface ItemStock {
   id: string;
   category: string;
   name: string;
-  quantity: number;
   unit: string;
+  totalStock: number;
   safetyStock: number;
+  isStandard: boolean;
 }
 
 
@@ -44,17 +45,19 @@ interface DonationItemData {
 }
 
 interface BatchPickupInfo {
-  unit: string;
-  phone: string;
+  unitId: string | null;
+  unitName: string;
+  phone: string | null;
+  address: string | null;
   purpose: string;
 }
 
-interface PickupItem {
+interface DisbursementItem {
   id: string;
-  name: string;
-  category: string;
-  availableQuantity: number;
-  requestedQuantity: number;
+  itemName: string;
+  itemCategory: string;
+  quantity: number;
+  itemUnit: string;
 }
 
 import type { DonationRecord as BaseDonationRecord } from "@/types/donation";
@@ -87,7 +90,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const [supplies, setSupplies] = useState<Supply[]>([]);
+  const [supplies, setSupplies] = useState<ItemStock[]>([]);
   const [stats, setStats] = useState({
     totalCategories: 0,
     monthlyDonations: 0,
@@ -100,12 +103,24 @@ function HomePage({ dbUser = null }: HomePageProps) {
       const response = await fetch('/api/supplies');
       if (response.ok) {
         const data = await response.json();
-        setSupplies(data);
-        // Update stats with latest supplies data
+        const normalizedSupplies: ItemStock[] = (Array.isArray(data) ? data : []).map((item) => ({
+          id: item.id,
+          category: item.category,
+          name: item.name,
+          unit: item.unit || '個',
+          totalStock: Number(item.totalStock ?? item.quantity ?? 0),
+          safetyStock: Number(item.safetyStock ?? 0),
+          isStandard: Boolean(item.isStandard),
+        }));
+
+        setSupplies(normalizedSupplies);
+
+        const uniqueCategories = new Set(normalizedSupplies.map((item) => item.category));
+
         setStats(prevStats => ({
           ...prevStats,
-          totalCategories: data.length,
-          lowStock: data.filter((s: Supply) => s.quantity < s.safetyStock).length,
+          totalCategories: uniqueCategories.size,
+          lowStock: normalizedSupplies.filter(item => item.totalStock < item.safetyStock).length,
         }));
       } else {
         toast.error("載入物資失敗");
@@ -202,7 +217,17 @@ function HomePage({ dbUser = null }: HomePageProps) {
     }
   };
 
-  const handleBatchPickup = async (pickupInfo: BatchPickupInfo, selectedItems: PickupItem[]) => {
+  const handleBatchPickup = async (pickupInfo: BatchPickupInfo, selectedItems: DisbursementItem[]) => {
+    if (!pickupInfo.unitName) {
+      toast.error("請選擇領取單位");
+      return;
+    }
+
+    if (selectedItems.length === 0) {
+      toast.error("請選擇至少一項物資");
+      return;
+    }
+
     try {
       const response = await fetch('/api/disbursements', {
         method: 'POST',
@@ -227,14 +252,19 @@ function HomePage({ dbUser = null }: HomePageProps) {
     }
   };
 
-  const handleUpdateSupply = async (updatedSupply: Supply) => {
+  const handleUpdateSupply = async (updatedSupply: ItemStock) => {
     try {
       const response = await fetch(`/api/supplies/${updatedSupply.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updatedSupply),
+        body: JSON.stringify({
+          name: updatedSupply.name,
+          category: updatedSupply.category,
+          unit: updatedSupply.unit,
+          isStandard: updatedSupply.isStandard,
+        }),
       });
 
       if (response.ok) {
@@ -252,12 +282,30 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
   const handleUpdateQuantity = async (id: string, newQuantity: number, changeType: string, reason: string) => {
     try {
+      const currentSupply = supplies.find(s => s.id === id);
+      if (!currentSupply) {
+        toast.error("找不到對應的物資資料");
+        return;
+      }
+
+      const changeAmount = Math.abs(newQuantity - currentSupply.totalStock);
+
+      if (changeAmount === 0) {
+        toast.info("庫存數量未變更");
+        return;
+      }
+
       const response = await fetch('/api/inventory-logs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ supplyId: id, changeType, changeAmount: Math.abs(newQuantity - (supplies.find(s => s.id === id)?.quantity || 0)), newQuantity, reason }),
+        body: JSON.stringify({
+          itemStockId: id,
+          changeType,
+          changeAmount,
+          reason,
+        }),
       });
 
       if (response.ok) {
@@ -280,7 +328,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ safetyStock: newSafetyStock }),
+        body: JSON.stringify({ safetyStock: Number(newSafetyStock) }),
       });
 
       if (response.ok) {
@@ -300,7 +348,9 @@ function HomePage({ dbUser = null }: HomePageProps) {
     const exportData = supplies.map(supply => ({
       '類別': supply.category,
       '物資名稱': supply.name,
-      '當前數量': `${supply.quantity} ${supply.unit}`
+      '品項類型': supply.isStandard ? '標準品項' : '自訂品項',
+      '當前數量': `${supply.totalStock} ${supply.unit}`,
+      '安全庫存': `${supply.safetyStock} ${supply.unit}`,
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
@@ -527,7 +577,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
         open={isBatchPickupOpen}
         onOpenChange={setIsBatchPickupOpen}
         onSubmit={handleBatchPickup}
-        supplies={supplies}
+        items={supplies}
         dbUser={dbUser}
       />
       
@@ -688,5 +738,3 @@ export default function App() {
     </AuthGuard>
   );
 }
-
-

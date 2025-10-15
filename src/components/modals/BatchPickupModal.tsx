@@ -8,25 +8,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { MultiStepWizard, WizardStep } from "@/components/ui/multi-step-wizard";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { User } from "@/components/auth/AuthGuard";
+import { RecipientUnitSelect } from "@/components/recipient/RecipientUnitSelect";
+import type { RecipientUnit } from "@/components/recipient/AddRecipientUnitDialog";
 
 interface BatchPickupInfo {
-  unit: string;
-  phone: string;
+  unitId: string | null;
+  unitName: string;
+  phone: string | null;
+  address: string | null;
   purpose: string;
 }
 
@@ -39,108 +34,48 @@ interface PickupItem {
   unit: string;
 }
 
-interface Supply {
+interface ItemStock {
   id: string;
   category: string;
   name: string;
-  quantity: number;
+  totalStock: number;
   unit: string;
-  safetyStock: number;
+}
+
+interface SelectedPickupItem {
+  id: string;
+  itemName: string;
+  itemCategory: string;
+  itemUnit: string;
+  quantity: number;
 }
 
 interface BatchPickupModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (pickupInfo: BatchPickupInfo, selectedItems: PickupItem[]) => void;
-  supplies: Supply[];
+  onSubmit: (pickupInfo: BatchPickupInfo, selectedItems: SelectedPickupItem[]) => void;
+  items: ItemStock[];
   dbUser?: User | null;
 }
 
-export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies, dbUser }: BatchPickupModalProps) {
+export function BatchPickupModal({ open, onOpenChange, onSubmit, items, dbUser }: BatchPickupModalProps) {
   const { hasPermission } = usePermissions(dbUser || null);
   const [currentStep, setCurrentStep] = useState(0);
-  const [batchPickupInfo, setBatchPickupInfo] = useState<BatchPickupInfo>({
-    unit: "",
-    phone: "",
-    purpose: "",
-  });
+  const [selectedRecipient, setSelectedRecipient] = useState<RecipientUnit | null>(null);
+  const [purpose, setPurpose] = useState("");
   const [pickupItems, setPickupItems] = useState<PickupItem[]>([]);
-  const [availablePickupUnits, setAvailablePickupUnits] = useState<string[]>([]);
-  const [newUnitName, setNewUnitName] = useState("");
-  const [isNewUnit, setIsNewUnit] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      fetchRecipientUnits();
-    }
-  }, [open]);
-
-  useEffect(() => {
-    const availableItems: PickupItem[] = supplies.map(supply => ({
-      id: supply.id,
-      name: supply.name,
-      category: supply.category,
-      availableQuantity: supply.quantity,
+    const availableItems: PickupItem[] = items.map(item => ({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      availableQuantity: item.totalStock,
       requestedQuantity: 0,
-      unit: supply.unit,
+      unit: item.unit,
     }));
     setPickupItems(availableItems);
-  }, [supplies]);
-
-  const fetchRecipientUnits = async () => {
-    try {
-      const response = await fetch('/api/recipient-units');
-      if (response.ok) {
-        const data = await response.json();
-        setAvailablePickupUnits(data.map((unit: { name: string }) => unit.name));
-      }
-    } catch (error) {
-      console.error('Error fetching recipient units:', error);
-    }
-  };
-
-  const handleUnitSelect = (value: string) => {
-    if (value === "new") {
-      setIsNewUnit(true);
-      setNewUnitName("");
-      setBatchPickupInfo({...batchPickupInfo, unit: ""});
-    } else {
-      setIsNewUnit(false);
-      setBatchPickupInfo({...batchPickupInfo, unit: value});
-    }
-  };
-
-  const confirmNewUnit = async () => {
-    if (!newUnitName.trim()) return;
-
-    try {
-      const response = await fetch('/api/recipient-units', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: newUnitName.trim(),
-        }),
-      });
-
-      if (response.ok || response.status === 409) {
-        const unitName = newUnitName.trim();
-        if (!availablePickupUnits.includes(unitName)) {
-          setAvailablePickupUnits(prev => [...prev, unitName]);
-        }
-        
-        setBatchPickupInfo({...batchPickupInfo, unit: unitName});
-        setIsNewUnit(false);
-        setNewUnitName("");
-        console.log('✅ New recipient unit confirmed and added:', unitName);
-      } else {
-        console.error('Failed to create recipient unit');
-      }
-    } catch (error) {
-      console.error('Error creating recipient unit:', error);
-    }
-  };
+  }, [items]);
 
   const updatePickupQuantity = (id: string, quantity: number) => {
     setPickupItems(items => 
@@ -154,21 +89,28 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies, dbUse
 
   const resetForm = () => {
     setCurrentStep(0);
-    setBatchPickupInfo({ unit: "", phone: "", purpose: "" });
+    setSelectedRecipient(null);
+    setPurpose("");
     setPickupItems(items => items.map(item => ({ ...item, requestedQuantity: 0 })));
-    setNewUnitName("");
-    setIsNewUnit(false);
   };
 
   const handleComplete = () => {
-    const finalPickupInfo = {
-      ...batchPickupInfo,
-      unit: batchPickupInfo.unit === "new" ? newUnitName : batchPickupInfo.unit
+    const finalPickupInfo: BatchPickupInfo = {
+      unitId: selectedRecipient?.id ?? null,
+      unitName: selectedRecipient?.name ?? "",
+      phone: selectedRecipient?.phone ?? null,
+      address: selectedRecipient?.address ?? null,
+      purpose,
     };
-    const selectedItems = pickupItems.filter(item => item.requestedQuantity > 0).map(item => ({
-      ...item,
-      unit: item.unit // 確保傳送正確的單位
-    }));
+    const selectedItems: SelectedPickupItem[] = pickupItems
+      .filter(item => item.requestedQuantity > 0)
+      .map(item => ({
+        id: item.id,
+        itemName: item.name,
+        itemCategory: item.category,
+        itemUnit: item.unit,
+        quantity: item.requestedQuantity,
+      }));
     onSubmit(finalPickupInfo, selectedItems);
     resetForm();
   };
@@ -179,12 +121,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies, dbUse
   };
 
   // Validation functions
-  const isPickupInfoValid = () => {
-    const unitValid = isNewUnit 
-      ? newUnitName.trim() !== ""
-      : batchPickupInfo.unit.trim() !== "";
-    return unitValid;
-  };
+  const isPickupInfoValid = () => selectedRecipient !== null;
 
   const hasSelectedItems = () => {
     return pickupItems.some(item => item.requestedQuantity > 0);
@@ -205,7 +142,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies, dbUse
   };
 
   const getPickupUnitDisplayName = () => {
-    return isNewUnit ? newUnitName : batchPickupInfo.unit;
+    return selectedRecipient?.name || "未選擇";
   };
 
   const stepTitles = [
@@ -215,7 +152,16 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies, dbUse
   ];
 
   return (
-    <Dialog open={open} onOpenChange={() => onOpenChange(false)}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) {
+          onOpenChange(true);
+        } else {
+          handleCancel();
+        }
+      }}
+    >
       <DialogContent className="w-[95vw] max-w-3xl max-h-[95vh] overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle>批量物資領取</DialogTitle>
@@ -237,62 +183,17 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies, dbUse
           <WizardStep title="領取單位資訊">
             <div className="space-y-4">
               <h3 className="text-lg font-medium">領取單位資訊</h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>領取單位 <span className="text-red-500">*</span></Label>
-                  {isNewUnit ? (
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Input
-                        type="text"
-                        value={newUnitName}
-                        onChange={(e) => setNewUnitName(e.target.value)}
-                        placeholder="輸入新領取單位名稱"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={confirmNewUnit}
-                        className="sm:w-auto w-full min-h-[44px]"
-                      >
-                        確認
-                      </Button>
-                    </div>
-                  ) : (
-                    <Select 
-                      value={batchPickupInfo.unit}
-                      onValueChange={handleUnitSelect}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="選擇領取單位" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availablePickupUnits.map((unit) => (
-                          <SelectItem key={unit} value={unit}>{unit}</SelectItem>
-                        ))}
-                        {hasPermission('canAddRecipientUnits') && (
-                          <SelectItem value="new">+ 新增單位</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="unit-phone">聯絡電話（選填）</Label>
-                  <PhoneInput 
-                    id="unit-phone"
-                    value={batchPickupInfo.phone}
-                    onChange={(e) => setBatchPickupInfo({...batchPickupInfo, phone: e.target.value})}
-                    placeholder="請輸入聯絡電話"
-                  />
-                </div>
-              </div>
+              <RecipientUnitSelect
+                selectedRecipientId={selectedRecipient?.id || null}
+                onRecipientChange={setSelectedRecipient}
+                canCreate={hasPermission('canAddRecipientUnits')}
+              />
               <div className="space-y-2">
                 <Label htmlFor="unit-purpose">領取用途/備註（選填）</Label>
                 <Textarea 
                   id="unit-purpose"
-                  value={batchPickupInfo.purpose}
-                  onChange={(e) => setBatchPickupInfo({...batchPickupInfo, purpose: e.target.value})}
+                  value={purpose}
+                  onChange={(e) => setPurpose(e.target.value)}
                   placeholder="請輸入領取用途或備註"
                   rows={2}
                 />
@@ -351,12 +252,16 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, supplies, dbUse
                   </div>
                   <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
                     <span className="font-medium sm:font-normal">聯絡電話：</span>
-                    <span className="break-all">{batchPickupInfo.phone}</span>
+                    <span className="break-all">{selectedRecipient?.phone || "—"}</span>
                   </div>
-                  {batchPickupInfo.purpose && (
+                  <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                    <span className="font-medium sm:font-normal">地址：</span>
+                    <span className="break-words">{selectedRecipient?.address || "—"}</span>
+                  </div>
+                  {purpose && (
                     <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
                       <span className="font-medium sm:font-normal">領取用途：</span>
-                      <span className="break-words">{batchPickupInfo.purpose}</span>
+                      <span className="break-words">{purpose}</span>
                     </div>
                   )}
                 </div>

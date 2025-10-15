@@ -20,21 +20,22 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    const { supplyId, changeType, changeAmount, reason } = await request.json();
+    const { itemStockId, supplyId, changeType, changeAmount, reason } = await request.json();
+    const targetItemStockId = itemStockId || supplyId;
 
-    if (!supplyId || !changeType || changeAmount === undefined || !reason) {
+    if (!targetItemStockId || !changeType || changeAmount === undefined || !reason) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const supply = await prisma.supply.findUnique({
-      where: { id: supplyId },
+    const itemStock = await prisma.itemStock.findUnique({
+      where: { id: targetItemStockId },
     });
 
-    if (!supply) {
-      return NextResponse.json({ error: 'Supply not found' }, { status: 404 });
+    if (!itemStock) {
+      return NextResponse.json({ error: 'Item stock not found' }, { status: 404 });
     }
 
-    let newQuantity = supply.quantity;
+    let newQuantity = itemStock.totalStock;
     if (changeType === ChangeType.INCREASE) {
       newQuantity += changeAmount;
     } else if (changeType === ChangeType.DECREASE) {
@@ -45,17 +46,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Quantity cannot be negative' }, { status: 400 });
     }
 
-    // Update supply quantity
-    await prisma.supply.update({
-      where: { id: supplyId },
+    // Update item stock quantity
+    await prisma.itemStock.update({
+      where: { id: targetItemStockId },
       data: {
-        quantity: newQuantity,
+        totalStock: newQuantity,
       },
     });
 
     const newLog = await prisma.inventoryLog.create({
       data: {
-        supplyId,
+        itemStockId: targetItemStockId,
         changeType,
         changeAmount,
         newQuantity,
@@ -98,12 +99,12 @@ export async function GET() {
             email: true,
           },
         },
-        supply: {
+        itemStock: {
           select: {
             id: true,
-            name: true,
-            category: true,
-            unit: true,
+            itemName: true,
+            itemCategory: true,
+            itemUnit: true,
           },
         },
       },

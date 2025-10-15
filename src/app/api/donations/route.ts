@@ -53,47 +53,99 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Donation items are required' }, { status: 400 });
     }
 
-    // Validate that at least one donation item is valid
-    const validDonationItems = donationItems.filter(item =>
-      item.itemName && item.itemName.trim() !== '' &&
-      item.itemCategory && item.itemCategory.trim() !== ''
-    );
+    // Normalize and validate donation items
+    let normalizedDonationItems;
+    try {
+      normalizedDonationItems = donationItems
+        .filter(item =>
+          item.itemName && item.itemName.trim() !== '' &&
+          item.itemCategory && item.itemCategory.trim() !== ''
+        )
+        .map(item => {
+          const quantity = Number(item.quantity);
+          if (!Number.isFinite(quantity) || quantity <= 0) {
+            throw new Error(`物品「${item.itemName}」缺少有效的數量設定`);
+          }
 
-    console.log('✅ Valid donation items:', validDonationItems);
+          return {
+            itemName: item.itemName.trim(),
+            itemCategory: item.itemCategory.trim(),
+            itemUnit: item.itemUnit || '個',
+            expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+            isStandard: Boolean(item.isStandard),
+            notes: item.notes?.trim() || null,
+            quantity: quantity,
+          };
+        });
+    } catch (validationError) {
+      const message = validationError instanceof Error
+        ? validationError.message
+        : 'Donation items validation failed';
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
 
-    if (validDonationItems.length === 0) {
-      console.log('❌ No valid donation items found');
-      return NextResponse.json({ error: 'At least one valid donation item is required' }, { status: 400 });
+    if (normalizedDonationItems.length === 0) {
+      return NextResponse.json(
+        { error: 'At least one valid donation item is required' },
+        { status: 400 }
+      );
     }
 
     const serialNumber = await generateDonationSerialNumber();
     console.log('📝 Generated serial number:', serialNumber);
 
-    const donationData = {
-      serialNumber,
-      donorId,
-      userId: currentUser.id,
-      donationItems: {
-        create: validDonationItems.map((item: DonationItemData) => ({
-          itemName: item.itemName,
-          itemCategory: item.itemCategory,
-          itemUnit: item.itemUnit,
-          expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
-          isStandard: Boolean(item.isStandard),
-          quantity: Number(item.quantity),
-          notes: item.notes || null
-        })),
-      },
-    };
+    const newDonationRecord = await prisma.$transaction(async (tx) => {
+      const donationRecord = await tx.donationRecord.create({
+        data: {
+          serialNumber,
+          donorId,
+          userId: currentUser.id,
+          donationItems: {
+            create: normalizedDonationItems.map(item => ({
+              itemName: item.itemName,
+              itemCategory: item.itemCategory,
+              itemUnit: item.itemUnit,
+              expiryDate: item.expiryDate,
+              isStandard: item.isStandard,
+              quantity: item.quantity,
+              notes: item.notes,
+            })),
+          },
+        },
+        include: {
+          donationItems: true,
+          donor: true,
+        },
+      });
 
-    console.log('🗄️ Creating donation record with data:', JSON.stringify(donationData, null, 2));
+      // Update item stock totals
+      for (const item of normalizedDonationItems) {
+        await tx.itemStock.upsert({
+          where: {
+            itemName_itemCategory: {
+              itemName: item.itemName,
+              itemCategory: item.itemCategory,
+            },
+          },
+          create: {
+            itemName: item.itemName,
+            itemCategory: item.itemCategory,
+            itemUnit: item.itemUnit,
+            totalStock: item.quantity,
+            safetyStock: 0,
+            isStandard: item.isStandard,
+          },
+          update: {
+            totalStock: {
+              increment: item.quantity,
+            },
+            itemUnit: item.itemUnit,
+            isStandard: item.isStandard,
+          },
+        });
+      }
 
-    const newDonationRecord = await prisma.donationRecord.create({
-      data: donationData,
-      include: {
-        donationItems: true,
-        donor: true
-      },
+      return donationRecord;
     });
 
     console.log('✅ Donation record created successfully:', newDonationRecord.id);
@@ -142,11 +194,7 @@ export async function GET() {
 
     const donationRecords = await prisma.donationRecord.findMany({
       include: {
-        donationItems: {
-          include: {
-            itemConditions: true
-          }
-        },
+        donationItems: true,
         user: {
           select: {
             id: true,

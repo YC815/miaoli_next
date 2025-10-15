@@ -49,13 +49,13 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: Omit<AddSupplyM
 
   const canAdvanceToStep = (stepIndex: number): boolean => {
     switch (stepIndex) {
-      case 0: // 捐贈者資訊
+      case 0:
         return selectedDonorId !== null;
-      case 1: // 物品選擇
+      case 1:
         return selectedItems.length > 0 && selectedItems.every(item =>
           item.itemName.trim() !== "" && item.quantity > 0
         );
-      case 2: // 確認頁面
+      case 2:
         return true;
       default:
         return true;
@@ -81,7 +81,6 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: Omit<AddSupplyM
       return;
     }
 
-    // 構建提交資料
     const donationItems: DonationItemData[] = selectedItems.map(item => ({
       itemName: item.itemName,
       itemCategory: item.itemCategory,
@@ -89,7 +88,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: Omit<AddSupplyM
       expiryDate: item.expiryDate,
       isStandard: item.isStandard,
       quantity: item.quantity,
-      notes: item.notes
+      notes: item.notes,
     }));
 
     onSubmit(selectedDonorId, donationItems);
@@ -129,7 +128,10 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: Omit<AddSupplyM
           currentStep={currentStep}
           totalSteps={3}
           onStepChange={handleStepChange}
-          onCancel={() => onOpenChange(false)}
+          onCancel={() => {
+            resetForm();
+            onOpenChange(false);
+          }}
           onComplete={handleSubmit}
           canGoNext={canAdvanceToStep(currentStep)}
           completeButtonText="確認捐贈"
