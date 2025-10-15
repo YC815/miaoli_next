@@ -10,13 +10,40 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Search, AlertTriangle, Package, Copy, ArrowUpDown, ArrowUp, ArrowDown, Check } from "lucide-react";
-import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import {
+  MoreHorizontal,
+  Search,
+  AlertTriangle,
+  Package,
+  Copy,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Check,
+  Filter,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { EditSupplyModal } from "@/components/modals/EditSupplyModal";
 import { EditSafetyStockModal } from "@/components/modals/EditSafetyStockModal";
 import { InventoryCountModal } from "@/components/modals/InventoryCountModal";
@@ -52,12 +79,68 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [isCopied, setIsCopied] = useState(false);
+  const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
+  const [stockTypeFilter, setStockTypeFilter] = useState<"all" | "standard" | "custom">("all");
+  const [showOnlyBelowSafetyStock, setShowOnlyBelowSafetyStock] = useState(false);
+
+  const uniqueCategories = useMemo(
+    () => Array.from(new Set(supplies.map((supply) => supply.category))).sort(),
+    [supplies]
+  );
+
+  const uniqueUnits = useMemo(
+    () => Array.from(new Set(supplies.map((supply) => supply.unit))).sort(),
+    [supplies]
+  );
+
+  const stockStatusOptions = useMemo(
+    () => ["庫存充足", "庫存不足", "剛好達標", "無庫存"],
+    []
+  );
 
   const filteredAndSortedSupplies = (() => {
-    const filtered = supplies.filter(supply =>
-      supply.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supply.category.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const loweredSearch = searchTerm.toLowerCase();
+
+    const filtered = supplies.filter((supply) => {
+      const matchesSearch =
+        loweredSearch.length === 0 ||
+        supply.name.toLowerCase().includes(loweredSearch) ||
+        supply.category.toLowerCase().includes(loweredSearch) ||
+        supply.unit.toLowerCase().includes(loweredSearch);
+
+      if (!matchesSearch) return false;
+
+      if (selectedCategories.length > 0 && !selectedCategories.includes(supply.category)) {
+        return false;
+      }
+
+      if (selectedUnits.length > 0 && !selectedUnits.includes(supply.unit)) {
+        return false;
+      }
+
+      if (stockTypeFilter !== "all") {
+        const shouldShowStandard = stockTypeFilter === "standard";
+        if (shouldShowStandard !== supply.isStandard) {
+          return false;
+        }
+      }
+
+      if (showOnlyBelowSafetyStock && supply.totalStock >= supply.safetyStock) {
+        return false;
+      }
+
+      if (selectedStatuses.length > 0) {
+        const statusLabel = getStockStatus(supply.totalStock, supply.safetyStock).label;
+        if (!selectedStatuses.includes(statusLabel)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
 
     if (!sortField || !sortDirection) return filtered;
 
@@ -150,6 +233,33 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
   };
 
 
+  const toggleSelection = (value: string, selections: string[], setter: (next: string[]) => void) => {
+    setter(
+      selections.includes(value)
+        ? selections.filter((item) => item !== value)
+        : [...selections, value]
+    );
+  };
+
+  const removeFilter = (value: string, setter: (next: string[]) => void) => {
+    setter((prev) => prev.filter((item) => item !== value));
+  };
+
+  const clearAllFilters = () => {
+    setSelectedCategories([]);
+    setSelectedStatuses([]);
+    setSelectedUnits([]);
+    setStockTypeFilter("all");
+    setShowOnlyBelowSafetyStock(false);
+  };
+
+  const hasActiveFilters =
+    selectedCategories.length > 0 ||
+    selectedStatuses.length > 0 ||
+    selectedUnits.length > 0 ||
+    stockTypeFilter !== "all" ||
+    showOnlyBelowSafetyStock;
+
   const handleEditSupply = (supply: ItemStock) => {
     setSelectedSupply(supply);
     setIsEditSupplyOpen(true);
@@ -169,38 +279,383 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
     <div className="flex flex-col h-full max-w-full mx-auto">
       {/* Search and Header */}
       <div className="flex flex-col gap-3 sm:gap-4 mb-3 sm:mb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
           <div>
             <h2 className="text-lg sm:text-xl font-semibold mb-1">物資庫存清單</h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
               共 {filteredAndSortedSupplies.length} 項物資
             </p>
           </div>
-          <div className="flex gap-2 sm:gap-3 flex-col sm:flex-row">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={copyAvailableItemsToClipboard}
+            className={`flex items-center gap-2 min-h-[40px] px-3 sm:px-4 transition-colors ${
+              isCopied ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : ''
+            }`}
+            disabled={filteredAndSortedSupplies.filter(s => s.totalStock > 0).length === 0}
+          >
+            {isCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+            <span className="text-xs sm:text-sm">
+              {isCopied ? '已複製' : '複製「庫存充足」品相清單'}
+            </span>
+          </Button>
+        </div>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[220px] sm:min-w-[260px] sm:max-w-xs lg:max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="搜尋物資名稱或類別..."
+                placeholder="搜尋物資名稱、類別或單位..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 text-sm sm:text-base min-h-[44px]"
+                className="pl-10 text-sm sm:text-base min-h-[40px]"
               />
             </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={copyAvailableItemsToClipboard}
-              className={`flex items-center gap-2 self-start sm:self-auto min-h-[44px] px-3 sm:px-4 transition-colors ${
-                isCopied ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : ''
-              }`}
-              disabled={filteredAndSortedSupplies.filter(s => s.totalStock > 0).length === 0}
+              className="min-h-[40px] sm:hidden flex items-center gap-2"
+              onClick={() => setIsFilterDialogOpen(true)}
             >
-              {isCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-              <span className="text-xs sm:text-sm">
-                {isCopied ? '已複製' : '複製庫存清單'}
-              </span>
+              <SlidersHorizontal className="h-4 w-4" />
+              篩選條件
             </Button>
           </div>
+          <div className="hidden sm:flex flex-wrap items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant={selectedCategories.length ? "default" : "outline"}
+                  size="sm"
+                  className="flex items-center gap-2 min-h-[40px]"
+                >
+                  <Filter className="h-4 w-4" />
+                  分類
+                  {selectedCategories.length > 0 && ` (${selectedCategories.length})`}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-48">
+                <DropdownMenuLabel>選擇分類</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {uniqueCategories.length === 0 ? (
+                  <DropdownMenuItem disabled>沒有分類資料</DropdownMenuItem>
+                ) : (
+                  uniqueCategories.map((category) => (
+                    <DropdownMenuCheckboxItem
+                      key={category}
+                      checked={selectedCategories.includes(category)}
+                      onCheckedChange={() =>
+                        toggleSelection(category, selectedCategories, setSelectedCategories)
+                      }
+                    >
+                      {category}
+                    </DropdownMenuCheckboxItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant={selectedStatuses.length ? "default" : "outline"}
+                  size="sm"
+                  className="flex items-center gap-2 min-h-[40px]"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  庫存狀態
+                  {selectedStatuses.length > 0 && ` (${selectedStatuses.length})`}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-48">
+                <DropdownMenuLabel>選擇狀態</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {stockStatusOptions.map((status) => (
+                  <DropdownMenuCheckboxItem
+                    key={status}
+                    checked={selectedStatuses.includes(status)}
+                    onCheckedChange={() =>
+                      toggleSelection(status, selectedStatuses, setSelectedStatuses)
+                    }
+                  >
+                    {status}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant={selectedUnits.length ? "default" : "outline"}
+                  size="sm"
+                  className="flex items-center gap-2 min-h-[40px]"
+                >
+                  單位
+                  {selectedUnits.length > 0 && ` (${selectedUnits.length})`}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-48">
+                <DropdownMenuLabel>選擇單位</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {uniqueUnits.length === 0 ? (
+                  <DropdownMenuItem disabled>沒有單位資料</DropdownMenuItem>
+                ) : (
+                  uniqueUnits.map((unit) => (
+                    <DropdownMenuCheckboxItem
+                      key={unit}
+                      checked={selectedUnits.includes(unit)}
+                      onCheckedChange={() =>
+                        toggleSelection(unit, selectedUnits, setSelectedUnits)
+                      }
+                    >
+                      {unit}
+                    </DropdownMenuCheckboxItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant={stockTypeFilter === "all" ? "outline" : "default"}
+                  size="sm"
+                  className="flex items-center gap-2 min-h-[40px]"
+                >
+                  品項類型
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-44">
+                <DropdownMenuLabel>顯示項目</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup
+                  value={stockTypeFilter}
+                  onValueChange={(value) =>
+                    setStockTypeFilter(value as "all" | "standard" | "custom")
+                  }
+                >
+                  <DropdownMenuRadioItem value="all">全部</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="standard">只看標準品項</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="custom">只看自訂品項</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button
+              variant={showOnlyBelowSafetyStock ? "default" : "outline"}
+              size="sm"
+              className="min-h-[40px]"
+              onClick={() => setShowOnlyBelowSafetyStock((prev) => !prev)}
+            >
+              低於安全庫存
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="min-h-[40px] text-muted-foreground hover:text-foreground"
+              onClick={clearAllFilters}
+              disabled={!hasActiveFilters}
+            >
+              清除篩選
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedCategories.map((category) => (
+              <Badge key={`category-${category}`} className="flex items-center gap-2">
+                {category}
+                <button
+                  type="button"
+                  aria-label={`移除分類 ${category}`}
+                  className="rounded-full p-0.5 hover:bg-muted transition-colors"
+                  onClick={() => removeFilter(category, setSelectedCategories)}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+            {selectedStatuses.map((status) => (
+              <Badge key={`status-${status}`} variant="secondary" className="flex items-center gap-2">
+                {status}
+                <button
+                  type="button"
+                  aria-label={`移除狀態 ${status}`}
+                  className="rounded-full p-0.5 hover:bg-muted transition-colors"
+                  onClick={() => removeFilter(status, setSelectedStatuses)}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+            {selectedUnits.map((unit) => (
+              <Badge key={`unit-${unit}`} variant="outline" className="flex items-center gap-2">
+                {unit}
+                <button
+                  type="button"
+                  aria-label={`移除單位 ${unit}`}
+                  className="rounded-full p-0.5 hover:bg-muted transition-colors"
+                  onClick={() => removeFilter(unit, setSelectedUnits)}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+            {stockTypeFilter !== "all" && (
+              <Badge variant="destructive" className="flex items-center gap-2">
+                {stockTypeFilter === "standard" ? "標準品項" : "自訂品項"}
+                <button
+                  type="button"
+                  aria-label="移除品項類型篩選"
+                  className="rounded-full p-0.5 hover:bg-muted/80 transition-colors"
+                  onClick={() => setStockTypeFilter("all")}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {showOnlyBelowSafetyStock && (
+              <Badge variant="secondary" className="flex items-center gap-2">
+                只看低於安全庫存
+                <button
+                  type="button"
+                  aria-label="移除安全庫存篩選"
+                  className="rounded-full p-0.5 hover:bg-muted transition-colors"
+                  onClick={() => setShowOnlyBelowSafetyStock(false)}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {!hasActiveFilters && (
+              <span className="text-xs sm:text-sm text-muted-foreground">
+                尚未套用篩選條件
+              </span>
+            )}
+          </div>
+          <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
+            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
+              <DialogHeader className="text-left">
+                <DialogTitle>篩選條件</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-6">
+                <section className="space-y-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground">分類</h3>
+                  <div className="space-y-2">
+                    {uniqueCategories.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">目前沒有分類資料</p>
+                    ) : (
+                      uniqueCategories.map((category) => (
+                        <Label
+                          key={`mobile-category-${category}`}
+                          className="justify-between rounded-md border px-3 py-2"
+                        >
+                          <span>{category}</span>
+                          <Checkbox
+                            checked={selectedCategories.includes(category)}
+                            onCheckedChange={() =>
+                              toggleSelection(category, selectedCategories, setSelectedCategories)
+                            }
+                          />
+                        </Label>
+                      ))
+                    )}
+                  </div>
+                </section>
+
+                <section className="space-y-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground">庫存狀態</h3>
+                  <div className="space-y-2">
+                    {stockStatusOptions.map((status) => (
+                      <Label
+                        key={`mobile-status-${status}`}
+                        className="justify-between rounded-md border px-3 py-2"
+                      >
+                        <span>{status}</span>
+                        <Checkbox
+                          checked={selectedStatuses.includes(status)}
+                          onCheckedChange={() =>
+                            toggleSelection(status, selectedStatuses, setSelectedStatuses)
+                          }
+                        />
+                      </Label>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="space-y-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground">單位</h3>
+                  <div className="space-y-2">
+                    {uniqueUnits.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">目前沒有單位資料</p>
+                    ) : (
+                      uniqueUnits.map((unit) => (
+                        <Label
+                          key={`mobile-unit-${unit}`}
+                          className="justify-between rounded-md border px-3 py-2"
+                        >
+                          <span>{unit}</span>
+                          <Checkbox
+                            checked={selectedUnits.includes(unit)}
+                            onCheckedChange={() =>
+                              toggleSelection(unit, selectedUnits, setSelectedUnits)
+                            }
+                          />
+                        </Label>
+                      ))
+                    )}
+                  </div>
+                </section>
+
+                <section className="space-y-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground">品項類型</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { label: "全部", value: "all" },
+                      { label: "標準品項", value: "standard" },
+                      { label: "自訂品項", value: "custom" },
+                    ].map((option) => (
+                      <Button
+                        key={`mobile-type-${option.value}`}
+                        variant={stockTypeFilter === option.value ? "default" : "outline"}
+                        size="sm"
+                        className="flex-1 min-h-[38px]"
+                        onClick={() => setStockTypeFilter(option.value as typeof stockTypeFilter)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="space-y-2">
+                  <Label className="justify-between rounded-md border px-3 py-2">
+                    <span>只顯示低於安全庫存</span>
+                    <Checkbox
+                      checked={showOnlyBelowSafetyStock}
+                      onCheckedChange={() =>
+                        setShowOnlyBelowSafetyStock((prev) => !prev)
+                      }
+                    />
+                  </Label>
+                </section>
+              </div>
+              <DialogFooter className="sm:justify-between sm:flex-row">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={clearAllFilters}
+                >
+                  清除全部
+                </Button>
+                <Button type="button" onClick={() => setIsFilterDialogOpen(false)}>
+                  套用篩選
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

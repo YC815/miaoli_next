@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Package } from "lucide-react"
+import { Package, Trash2 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 
 export interface DisbursementRecord {
   id: string
@@ -48,11 +49,13 @@ const formatSupplyItemTooltip = (
 interface DisbursementRecordsTableProps {
   data: DisbursementRecord[]
   onSelectionChange?: (selectedRecords: DisbursementRecord[]) => void
+  onDelete?: (record: DisbursementRecord) => void
 }
 
 export function DisbursementRecordsTable({ 
   data, 
-  onSelectionChange 
+  onSelectionChange, 
+  onDelete
 }: DisbursementRecordsTableProps) {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [selectedRecordIds, setSelectedRecordIds] = React.useState<Set<string>>(new Set());
@@ -135,12 +138,13 @@ export function DisbursementRecordsTable({
                 <th className="h-12 px-4 text-left align-middle font-medium">聯絡電話</th>
                 <th className="h-12 px-4 text-left align-middle font-medium">用途</th>
                 <th className="h-12 px-4 text-left align-middle font-medium">操作者</th>
+                <th className="h-12 px-4 text-center align-middle font-medium">操作</th>
               </tr>
             </thead>
             <tbody>
               {filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="h-24 text-center">
+                  <td colSpan={10} className="h-24 text-center">
                     沒有找到任何紀錄
                   </td>
                 </tr>
@@ -205,6 +209,22 @@ export function DisbursementRecordsTable({
                       {itemIndex === 0 ? (
                         <td className="p-4 align-top" rowSpan={items.length}>
                           {record.user.nickname || "-"}
+                        </td>
+                      ) : null}
+                      {itemIndex === 0 ? (
+                        <td className="p-4 align-top text-center" rowSpan={items.length}>
+                          {onDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onDelete(record)}
+                              className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                              title="刪除"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">刪除</span>
+                            </Button>
+                          )}
                         </td>
                       ) : null}
                     </tr>

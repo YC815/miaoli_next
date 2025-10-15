@@ -1,13 +1,19 @@
 "use client"
 
 import * as React from "react"
-import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, TrendingUp, TrendingDown } from "lucide-react"
+import { ColumnDef } from "@tanstack/react-table";
+import { ArrowUpDown, TrendingUp, TrendingDown, MoreHorizontal, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DataTable } from "@/components/ui/data-table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export interface InventoryLog {
   id: string
@@ -60,10 +66,10 @@ const getCategoryColor = (category: string) => {
   return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
 };
 
-const columns: ColumnDef<InventoryLog>[] = [
+const createColumns = (onDelete?: (record: InventoryLog) => void): ColumnDef<InventoryLog>[] => [
   {
     id: "select",
-    header: ({ table }) => (
+    header: ({ table }: { table: any }) => (
       <Checkbox
         checked={
           table.getIsAllPageRowsSelected() ||
@@ -74,7 +80,7 @@ const columns: ColumnDef<InventoryLog>[] = [
         className="translate-y-0.5"
       />
     ),
-    cell: ({ row }) => (
+    cell: ({ row }: { row: any }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
@@ -88,7 +94,7 @@ const columns: ColumnDef<InventoryLog>[] = [
   },
   {
     accessorKey: "createdAt",
-    header: ({ column }) => (
+    header: ({ column }: { column: any }) => (
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
@@ -98,7 +104,7 @@ const columns: ColumnDef<InventoryLog>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => (
+    cell: ({ row }: { row: any }) => (
       <div className="text-sm font-medium">
         {formatDate(row.getValue("createdAt"))}
       </div>
@@ -107,9 +113,9 @@ const columns: ColumnDef<InventoryLog>[] = [
   },
   {
     id: "itemStockName",
-    accessorFn: (row) => row.itemStock.itemName,
+    accessorFn: (row: InventoryLog) => row.itemStock.itemName,
     header: "物資資訊",
-    cell: ({ row }) => {
+    cell: ({ row }: { row: any }) => {
       const { itemStock } = row.original;
       return (
         <div className="flex flex-col gap-1">
@@ -127,7 +133,7 @@ const columns: ColumnDef<InventoryLog>[] = [
   },
   {
     accessorKey: "changeType",
-    header: ({ column }) => (
+    header: ({ column }: { column: any }) => (
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
@@ -137,7 +143,7 @@ const columns: ColumnDef<InventoryLog>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => {
+    cell: ({ row }: { row: any }) => {
       const changeType = row.getValue("changeType") as 'INCREASE' | 'DECREASE';
       const changeAmount = row.original.changeAmount;
       const display = getChangeTypeDisplay(changeType, changeAmount);
@@ -156,7 +162,7 @@ const columns: ColumnDef<InventoryLog>[] = [
   },
   {
     accessorKey: "previousQuantity",
-    header: ({ column }) => (
+    header: ({ column }: { column: any }) => (
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
@@ -166,7 +172,7 @@ const columns: ColumnDef<InventoryLog>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => (
+    cell: ({ row }: { row: any }) => (
       <div className="text-sm font-medium">
         {row.getValue("previousQuantity")} {row.original.itemStock.itemUnit}
       </div>
@@ -175,7 +181,7 @@ const columns: ColumnDef<InventoryLog>[] = [
   },
   {
     accessorKey: "newQuantity",
-    header: ({ column }) => (
+    header: ({ column }: { column: any }) => (
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
@@ -185,7 +191,7 @@ const columns: ColumnDef<InventoryLog>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => (
+    cell: ({ row }: { row: any }) => (
       <div className="text-sm font-medium">
         {row.getValue("newQuantity")} {row.original.itemStock.itemUnit}
       </div>
@@ -195,7 +201,7 @@ const columns: ColumnDef<InventoryLog>[] = [
   {
     accessorKey: "reason",
     header: "盤點原因",
-    cell: ({ row }) => (
+    cell: ({ row }: { row: any }) => (
       <div className="text-sm max-w-[200px] truncate" title={row.getValue("reason")}>
         {row.getValue("reason")}
       </div>
@@ -205,7 +211,7 @@ const columns: ColumnDef<InventoryLog>[] = [
   {
     accessorKey: "user",
     header: "操作人員",
-    cell: ({ row }) => {
+    cell: ({ row }: { row: any }) => {
       const user = row.getValue("user") as InventoryLog['user'];
       return (
         <div className="text-sm">
@@ -215,29 +221,62 @@ const columns: ColumnDef<InventoryLog>[] = [
     },
     size: 100,
   },
+  {
+    id: "actions",
+    cell: ({ row }: { row: any }) => {
+      if (!onDelete) return null;
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">開啟選單</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => onDelete(row.original)}
+              className="text-red-600 focus:text-red-600"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              刪除
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    },
+    size: 50,
+  },
 ];
 
 interface InventoryLogsTableProps {
   data: InventoryLog[]
   onSelectionChange: (selectedRows: InventoryLog[]) => void
+  onDelete?: (record: InventoryLog) => void
 }
 
-export function InventoryLogsTable({ data, onSelectionChange }: InventoryLogsTableProps) {
+export function InventoryLogsTable({ data, onSelectionChange, onDelete }: InventoryLogsTableProps) {
+  const columns = React.useMemo(() => createColumns(onDelete), [onDelete]);
+
   return (
-    <Card className="border-0 shadow-none bg-transparent">
-      <CardHeader className="px-0 pb-4">
-        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <TrendingUp className="h-5 w-5" />
-          盤點紀錄
+    <Card className="border-0 shadow-md bg-card">
+      <CardHeader className="px-6 pb-4">
+        <CardTitle className="flex items-center space-x-3 text-lg">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+            <TrendingUp className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          </div>
+          <span className="font-semibold text-foreground">盤點紀錄</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="px-0">
+      <CardContent className="px-6 pb-6">
         <DataTable
           columns={columns}
           data={data}
           onSelectionChange={onSelectionChange}
           searchKey="itemStockName"
           searchPlaceholder="搜尋物資名稱..."
+          showFooter={false}
         />
       </CardContent>
     </Card>

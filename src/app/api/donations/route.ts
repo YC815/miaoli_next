@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { generateDonationSerialNumber } from '@/lib/serialNumber';
 
 interface DonationItemData {
@@ -170,7 +170,36 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+const MAX_PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 25;
+
+const parseDate = (value: string | null, endOfDay = false) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  if (endOfDay) {
+    date.setHours(23, 59, 59, 999);
+  }
+  return date;
+};
+
+const normalizeMultiValueParam = (params: URLSearchParams, key: string) => {
+  const directValues = params
+    .getAll(key)
+    .flatMap((entry) => entry.split(',').map((v) => v.trim()));
+
+  const bracketValues = params
+    .getAll(`${key}[]`)
+    .flatMap((entry) => entry.split(',').map((v) => v.trim()));
+
+  const combined = [...directValues, ...bracketValues].filter(Boolean);
+
+  return Array.from(new Set(combined));
+};
+
+export async function GET(request: NextRequest) {
   try {
     const { userId: clerkId } = await auth();
     if (!clerkId) {
@@ -192,23 +221,164 @@ export async function GET() {
       }, { status: 403 });
     }
 
-    const donationRecords = await prisma.donationRecord.findMany({
-      include: {
-        donationItems: true,
-        donor: true,
-        user: {
-          select: {
-            id: true,
-            nickname: true,
+    const searchParams = request.nextUrl.searchParams;
+    const page = Math.max(parseInt(searchParams.get('page') ?? '1', 10) || 1, 1);
+    const requestedPageSize =
+      parseInt(searchParams.get('pageSize') ?? `${DEFAULT_PAGE_SIZE}`, 10) ||
+      DEFAULT_PAGE_SIZE;
+    const pageSize = Math.min(Math.max(requestedPageSize, 1), MAX_PAGE_SIZE);
+    const skip = (page - 1) * pageSize;
+
+    const search = searchParams.get('search')?.trim();
+    const startDate = parseDate(searchParams.get('startDate'));
+    const endDate = parseDate(searchParams.get('endDate'), true);
+    const userIdFilter = searchParams.get('userId') ?? undefined;
+    const donorIdFilter = searchParams.get('donorId') ?? undefined;
+    const categories = normalizeMultiValueParam(searchParams, 'category');
+    const itemTypes = normalizeMultiValueParam(searchParams, 'itemType');
+
+    const where: Prisma.DonationRecordWhereInput = {};
+    const andConditions: Prisma.DonationRecordWhereInput[] = [];
+
+    if (startDate || endDate) {
+      andConditions.push({
+        createdAt: {
+          ...(startDate ? { gte: startDate } : {}),
+          ...(endDate ? { lte: endDate } : {}),
+        },
+      });
+    }
+
+    if (search) {
+      andConditions.push({
+        OR: [
+          { serialNumber: { contains: search, mode: 'insensitive' } },
+          {
+            donor: {
+              OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { phone: { contains: search, mode: 'insensitive' } },
+                { address: { contains: search, mode: 'insensitive' } },
+                { taxId: { contains: search, mode: 'insensitive' } },
+              ],
+            },
+          },
+          {
+            donationItems: {
+              some: {
+                OR: [
+                  { itemName: { contains: search, mode: 'insensitive' } },
+                  { itemCategory: { contains: search, mode: 'insensitive' } },
+                  { notes: { contains: search, mode: 'insensitive' } },
+                ],
+              },
+            },
+          },
+          {
+            user: {
+              nickname: { contains: search, mode: 'insensitive' },
+            },
+          },
+        ],
+      });
+    }
+
+    if (userIdFilter) {
+      andConditions.push({ userId: userIdFilter });
+    }
+
+    if (donorIdFilter) {
+      andConditions.push({ donorId: donorIdFilter });
+    }
+
+    if (categories.length > 0) {
+      andConditions.push({
+        donationItems: {
+          some: {
+            itemCategory: {
+              in: categories,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
+      });
+    }
+
+    if (itemTypes.length > 0) {
+      const includeStandard = itemTypes.includes('standard');
+      const includeCustom = itemTypes.includes('custom');
+
+      if (includeStandard !== includeCustom) {
+        andConditions.push({
+          donationItems: {
+            some: {
+              isStandard: includeStandard,
+            },
+          },
+        });
+      }
+    }
+
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
+    }
+
+    const sortBy = searchParams.get('sortBy') ?? 'createdAt';
+    const sortOrderParam = searchParams.get('sortOrder');
+    const sortOrder = sortOrderParam === 'asc' ? 'asc' : 'desc';
+
+    const sortFieldMap: Record<string, Prisma.DonationRecordOrderByWithRelationInput> = {
+      createdAt: { createdAt: sortOrder },
+      serialNumber: { serialNumber: sortOrder },
+      donor: { donor: { name: sortOrder } },
+      items: { donationItems: { _count: sortOrder } },
+    };
+
+    const orderBy =
+      sortFieldMap[sortBy] ??
+      ({
+        createdAt: sortOrder,
+      } as Prisma.DonationRecordOrderByWithRelationInput);
+
+    const [totalCount, donationRecords, donationQuantitySum] = await prisma.$transaction([
+      prisma.donationRecord.count({ where }),
+      prisma.donationRecord.findMany({
+        where,
+        include: {
+          donationItems: true,
+          donor: true,
+          user: {
+            select: {
+              id: true,
+              nickname: true,
+            },
+          },
+        },
+        orderBy,
+        skip,
+        take: pageSize,
+      }),
+      prisma.donationItem.aggregate({
+        _sum: {
+          quantity: true,
+        },
+        where: {
+          donation: {
+            ...where,
+          },
+        },
+      }),
+    ]);
+
+    return NextResponse.json({
+      items: donationRecords,
+      page,
+      pageSize,
+      totalCount,
+      totalPages: Math.ceil(totalCount / pageSize),
+      summary: {
+        totalQuantity: donationQuantitySum._sum.quantity ?? 0,
       },
     });
-
-    return NextResponse.json(donationRecords);
   } catch (error) {
     console.error('Error fetching donation records:', error);
     return NextResponse.json(
