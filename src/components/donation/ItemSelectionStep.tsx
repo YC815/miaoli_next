@@ -107,7 +107,7 @@ export function ItemSelectionStep({ selectedItems, onItemsChange }: Omit<ItemSel
       itemUnit: "個",
       expiryDate: "",
       isStandard: false,
-      quantity: 1,
+      quantity: 0,
       notes: ""
     };
     onItemsChange([...selectedItems, newItem]);
@@ -261,10 +261,11 @@ export function ItemSelectionStep({ selectedItems, onItemsChange }: Omit<ItemSel
                     </Label>
                     <Input
                       type="number"
+                      inputMode="numeric"
                       min="1"
                       value={item.quantity || ""}
-                      onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 1)}
-                      placeholder="1"
+                      onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 0)}
+                      placeholder="請輸入數量"
                     />
                   </div>
 

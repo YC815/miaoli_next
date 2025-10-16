@@ -103,7 +103,7 @@ export function AddSupplyModal({ open, onOpenChange, onSubmit }: Omit<AddSupplyM
         itemUnit: "個",
         expiryDate: "",
         isStandard: false,
-        quantity: 1,
+        quantity: 0,
         notes: ""
       }]);
     } else if (!open) {

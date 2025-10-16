@@ -224,11 +224,13 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, items, dbUser }
                       <Input
                         id={`quantity-${item.id}`}
                         type="number"
+                        inputMode="numeric"
                         min="0"
                         max={item.availableQuantity}
-                        value={item.requestedQuantity}
+                        value={item.requestedQuantity || ""}
                         onChange={(e) => updatePickupQuantity(item.id, parseInt(e.target.value) || 0)}
                         className="w-20 min-h-[44px]"
+                        placeholder="0"
                       />
                     </div>
                   </div>
