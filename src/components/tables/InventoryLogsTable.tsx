@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CellContext, ColumnDef, HeaderContext } from "@tanstack/react-table";
+import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, TrendingUp, TrendingDown, MoreHorizontal, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -69,55 +69,43 @@ const getCategoryColor = (category: string) => {
 const createColumns = (onDelete?: (record: InventoryLog) => void): ColumnDef<InventoryLog>[] => [
   {
     id: "select",
-    header: (context: HeaderContext<InventoryLog, unknown>) => {
-      const { table } = context;
-
-      return (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="選擇全部"
-          className="translate-y-0.5"
-        />
-      );
-    },
-    cell: (context: CellContext<InventoryLog, unknown>) => {
-      const { row } = context;
-
-      return (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="選擇行"
-          className="translate-y-0.5"
-        />
-      );
-    },
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="選擇全部"
+        className="translate-y-0.5"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="選擇行"
+        className="translate-y-0.5"
+      />
+    ),
     enableSorting: false,
     enableHiding: false,
     size: 40,
   },
   {
     accessorKey: "createdAt",
-    header: (context: HeaderContext<InventoryLog, InventoryLog["createdAt"]>) => {
-      const { column } = context;
-
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-8 px-2 lg:px-3"
-        >
-          盤點時間
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: (context: CellContext<InventoryLog, InventoryLog["createdAt"]>) => {
-      const value = context.getValue();
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="h-8 px-2 lg:px-3"
+      >
+        盤點時間
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
+    cell: ({ row }) => {
+      const value = row.getValue("createdAt") as InventoryLog["createdAt"];
 
       return (
         <div className="text-sm font-medium">
@@ -131,8 +119,8 @@ const createColumns = (onDelete?: (record: InventoryLog) => void): ColumnDef<Inv
     id: "itemStockName",
     accessorFn: (row: InventoryLog) => row.itemStock.itemName,
     header: "物資資訊",
-    cell: (context: CellContext<InventoryLog, string>) => {
-      const { itemStock } = context.row.original;
+    cell: ({ row }) => {
+      const { itemStock } = row.original;
       return (
         <div className="flex flex-col gap-1">
           <div className="font-medium text-sm">{itemStock.itemName}</div>
@@ -149,23 +137,19 @@ const createColumns = (onDelete?: (record: InventoryLog) => void): ColumnDef<Inv
   },
   {
     accessorKey: "changeType",
-    header: (context: HeaderContext<InventoryLog, InventoryLog["changeType"]>) => {
-      const { column } = context;
-
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-8 px-2 lg:px-3"
-        >
-          盤點調整
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: (context: CellContext<InventoryLog, InventoryLog["changeType"]>) => {
-      const changeType = context.getValue();
-      const changeAmount = context.row.original.changeAmount;
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="h-8 px-2 lg:px-3"
+      >
+        盤點調整
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
+    cell: ({ row }) => {
+      const changeType = row.getValue("changeType") as InventoryLog["changeType"];
+      const changeAmount = row.original.changeAmount;
       const display = getChangeTypeDisplay(changeType, changeAmount);
       const Icon = display.icon;
       
@@ -173,7 +157,7 @@ const createColumns = (onDelete?: (record: InventoryLog) => void): ColumnDef<Inv
         <div className={`flex items-center gap-2 px-2 py-1 rounded-md ${display.bgColor} w-fit`}>
           <Icon className={`h-4 w-4 ${display.color}`} />
           <span className={`text-sm font-medium ${display.color}`}>
-            {display.text} {context.row.original.itemStock.itemUnit}
+            {display.text} {row.original.itemStock.itemUnit}
           </span>
         </div>
       );
@@ -182,26 +166,22 @@ const createColumns = (onDelete?: (record: InventoryLog) => void): ColumnDef<Inv
   },
   {
     accessorKey: "previousQuantity",
-    header: (context: HeaderContext<InventoryLog, InventoryLog["previousQuantity"]>) => {
-      const { column } = context;
-
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-8 px-2 lg:px-3"
-        >
-          盤點前
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: (context: CellContext<InventoryLog, InventoryLog["previousQuantity"]>) => {
-      const value = context.getValue();
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="h-8 px-2 lg:px-3"
+      >
+        盤點前
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
+    cell: ({ row }) => {
+      const value = row.getValue("previousQuantity") as InventoryLog["previousQuantity"];
 
       return (
         <div className="text-sm font-medium">
-          {value} {context.row.original.itemStock.itemUnit}
+          {value} {row.original.itemStock.itemUnit}
         </div>
       );
     },
@@ -209,26 +189,22 @@ const createColumns = (onDelete?: (record: InventoryLog) => void): ColumnDef<Inv
   },
   {
     accessorKey: "newQuantity",
-    header: (context: HeaderContext<InventoryLog, InventoryLog["newQuantity"]>) => {
-      const { column } = context;
-
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-8 px-2 lg:px-3"
-        >
-          盤點後
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: (context: CellContext<InventoryLog, InventoryLog["newQuantity"]>) => {
-      const value = context.getValue();
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="h-8 px-2 lg:px-3"
+      >
+        盤點後
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
+    cell: ({ row }) => {
+      const value = row.getValue("newQuantity") as InventoryLog["newQuantity"];
 
       return (
         <div className="text-sm font-medium">
-          {value} {context.row.original.itemStock.itemUnit}
+          {value} {row.original.itemStock.itemUnit}
         </div>
       );
     },
@@ -237,8 +213,8 @@ const createColumns = (onDelete?: (record: InventoryLog) => void): ColumnDef<Inv
   {
     accessorKey: "reason",
     header: "盤點原因",
-    cell: (context: CellContext<InventoryLog, InventoryLog["reason"]>) => {
-      const value = context.getValue();
+    cell: ({ row }) => {
+      const value = row.getValue("reason") as InventoryLog["reason"];
 
       return (
         <div className="text-sm max-w-[200px] truncate" title={value}>
@@ -251,8 +227,8 @@ const createColumns = (onDelete?: (record: InventoryLog) => void): ColumnDef<Inv
   {
     accessorKey: "user",
     header: "操作人員",
-    cell: (context: CellContext<InventoryLog, InventoryLog["user"]>) => {
-      const user = context.row.original.user;
+    cell: ({ row }) => {
+      const user = row.original.user;
       return (
         <div className="text-sm">
           {user.nickname || user.email.split('@')[0]}
@@ -263,9 +239,7 @@ const createColumns = (onDelete?: (record: InventoryLog) => void): ColumnDef<Inv
   },
   {
     id: "actions",
-    cell: (context: CellContext<InventoryLog, unknown>) => {
-      const { row } = context;
-
+    cell: ({ row }) => {
       if (!onDelete) return null;
 
       return (
