@@ -8,6 +8,7 @@ import { FloatingActionButtons } from "@/components/FloatingActionButtons";
 import { AddSupplyModal } from "@/components/modals/AddSupplyModal";
 import { BatchPickupModal } from "@/components/modals/BatchPickupModal";
 import { ReceiptModal } from "@/components/modals/ReceiptModal";
+import { ExpiryStatusModal } from "@/components/modals/ExpiryStatusModal";
 import { ModeToggle } from "@/components/theme-toggle";
 import { StaffManagement } from "@/components/admin/StaffManagement";
 import { DataManagement } from "@/components/admin/DataManagement";
@@ -20,6 +21,7 @@ import { toast } from "sonner";
 import { getPermissions } from "@/lib/permissions";
 import { SignOutButton } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
+import type { ExpiryItemDetail } from "@/types/expiry";
 
 type TabType = "supplies" | "records" | "staff" | "data";
 
@@ -89,6 +91,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isExpiryModalOpen, setIsExpiryModalOpen] = useState(false);
 
   const [supplies, setSupplies] = useState<ItemStock[]>([]);
   const [stats, setStats] = useState({
@@ -96,7 +99,17 @@ function HomePage({ dbUser = null }: HomePageProps) {
     monthlyDonations: 0,
     monthlyDistributions: 0,
     lowStock: 0,
+    expiringCount: 0,
+    expiredCount: 0,
+    expiryUpdatedAt: null as string | null,
   });
+  const [expiryItems, setExpiryItems] = useState<{
+    expiring: ExpiryItemDetail[];
+    expired: ExpiryItemDetail[];
+  }>({ expiring: [], expired: [] });
+  const [expiryLoading, setExpiryLoading] = useState(false);
+  const [expiryError, setExpiryError] = useState<string | null>(null);
+  const [hasLoadedExpiryDetails, setHasLoadedExpiryDetails] = useState(false);
 
   const fetchSupplies = async () => {
     try {
@@ -149,13 +162,66 @@ function HomePage({ dbUser = null }: HomePageProps) {
     }
   };
 
+  const fetchExpirySummary = async () => {
+    try {
+      const response = await fetch('/api/expiry-status');
+      if (!response.ok) {
+        throw new Error(response.statusText);
+      }
+      const data = await response.json();
+      setStats(prev => ({
+        ...prev,
+        expiringCount: data.summary?.expiring ?? 0,
+        expiredCount: data.summary?.expired ?? 0,
+        expiryUpdatedAt: data.summary?.updatedAt ?? null,
+      }));
+    } catch (error) {
+      console.error("Error fetching expiry summary:", error);
+    }
+  };
+
+  const fetchExpiryDetails = async () => {
+    setExpiryLoading(true);
+    setExpiryError(null);
+    try {
+      const response = await fetch('/api/expiry-status?detail=full');
+      if (!response.ok) {
+        throw new Error(response.statusText);
+      }
+      const data = await response.json();
+      setStats(prev => ({
+        ...prev,
+        expiringCount: data.summary?.expiring ?? prev.expiringCount,
+        expiredCount: data.summary?.expired ?? prev.expiredCount,
+        expiryUpdatedAt: data.summary?.updatedAt ?? prev.expiryUpdatedAt,
+      }));
+      setExpiryItems({
+        expiring: data.expiringItems ?? [],
+        expired: data.expiredItems ?? [],
+      });
+      setHasLoadedExpiryDetails(true);
+    } catch (error) {
+      console.error("Error fetching expiry details:", error);
+      setExpiryError("載入效期資訊失敗，請稍後再試");
+    } finally {
+      setExpiryLoading(false);
+    }
+  };
+
 
   useEffect(() => {
     if (currentDbUser) { // Only fetch supplies if currentDbUser is available
       fetchSupplies();
       fetchStatistics();
+      fetchExpirySummary();
     }
   }, [currentDbUser]); // Add currentDbUser to dependency array
+
+  useEffect(() => {
+    if (isExpiryModalOpen && !hasLoadedExpiryDetails) {
+      fetchExpiryDetails();
+    }
+  }, [isExpiryModalOpen, hasLoadedExpiryDetails]);
 
   // Handle user profile updates
   const handleUserUpdate = (updatedUser: User) => {
@@ -205,6 +271,8 @@ function HomePage({ dbUser = null }: HomePageProps) {
         toast.success("物資捐贈新增成功！");
         fetchSupplies(); // Refresh supplies list
         fetchStatistics(); // Refresh statistics
+        fetchExpirySummary(); // Refresh expiry summary
+        setHasLoadedExpiryDetails(false);
         setIsAddSupplyOpen(false);
       } else {
         const errorData = await response.json();
@@ -237,6 +305,8 @@ function HomePage({ dbUser = null }: HomePageProps) {
         toast.success("批量領取成功！");
         fetchSupplies(); // Refresh supplies list
         fetchStatistics(); // Refresh statistics
+        fetchExpirySummary(); // Refresh expiry summary
+        setHasLoadedExpiryDetails(false);
         setIsBatchPickupOpen(false);
       } else {
         const errorData = await response.json();
@@ -312,6 +382,8 @@ function HomePage({ dbUser = null }: HomePageProps) {
       if (response.ok) {
         toast.success("盤點紀錄已更新！");
         fetchSupplies(); // Refresh supplies list
+        fetchExpirySummary(); // Refresh expiry summary
+        setHasLoadedExpiryDetails(false);
       } else {
         const errorData = await response.json();
         toast.error(`盤點失敗: ${errorData.error || response.statusText}`);
@@ -534,7 +606,10 @@ function HomePage({ dbUser = null }: HomePageProps) {
         {activeTab === "supplies" && (
           <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto">
             <div className="py-3 sm:py-6">
-              <StatisticsCards stats={stats} />
+              <StatisticsCards
+                stats={stats}
+                onShowExpiry={() => setIsExpiryModalOpen(true)}
+              />
             </div>
             <div className="flex-1 pb-3 sm:pb-6">
               <SuppliesTable 
@@ -586,6 +661,22 @@ function HomePage({ dbUser = null }: HomePageProps) {
         open={isReceiptOpen}
         onOpenChange={setIsReceiptOpen}
         onPrint={handlePrintReceipts}
+      />
+
+      <ExpiryStatusModal
+        open={isExpiryModalOpen}
+        onOpenChange={(openState) => {
+          setIsExpiryModalOpen(openState);
+          if (!openState) {
+            setHasLoadedExpiryDetails(false);
+          }
+        }}
+        expiringItems={expiryItems.expiring}
+        expiredItems={expiryItems.expired}
+        loading={expiryLoading}
+        errorMessage={expiryError}
+        lastUpdatedAt={stats.expiryUpdatedAt}
+        onRetry={fetchExpiryDetails}
       />
 
       <UserProfile
