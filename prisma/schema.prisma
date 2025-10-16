@@ -71,6 +71,7 @@ model DonationItem {
   itemName      String
   itemUnit      String
   notes         String?
+  isHandled     Boolean         @default(false)
   donation      DonationRecord  @relation(fields: [donationId], references: [id])
   ItemCondition ItemCondition[]
 }

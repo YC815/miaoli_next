@@ -1,17 +1,21 @@
-export interface ExpiryDonationRecord {
-  donationId: string;
-  serialNumber: string | null;
-  quantity: number;
-  expiryDate: string;
-}
-
 export interface ExpiryItemDetail {
-  itemStockId: string;
+  id: string;
   itemName: string;
   itemCategory: string;
   itemUnit: string;
-  totalStock: number;
-  soonestExpiry: string | null;
+  quantity: number;
+  expiryDate: string | null;
   daysUntilExpiry: number | null;
-  donationRecords: ExpiryDonationRecord[];
+  isHandled: boolean;
+  serialNumber: string | null;
+  donationId: string | null;
+}
+
+export interface ExpiryPagination {
+  page: number;
+  pageSize: number;
+  totalExpiring: number;
+  totalExpired: number;
+  totalPagesExpiring: number;
+  totalPagesExpired: number;
 }

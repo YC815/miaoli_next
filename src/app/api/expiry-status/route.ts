@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import type { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 
 const EXPIRY_THRESHOLD_DAYS = 30;
-const KEY_SEPARATOR = "::";
+const DEFAULT_PAGE_SIZE = 25;
 
 export async function GET(request: Request) {
   try {
@@ -23,75 +22,63 @@ export async function GET(request: Request) {
 
     const url = new URL(request.url);
     const includeDetails = url.searchParams.get("detail") === "full";
+    const pageParam = url.searchParams.get("page");
+    const pageSizeParam = url.searchParams.get("pageSize");
+
+    const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1;
+    const pageSize = pageSizeParam
+      ? Math.min(100, Math.max(1, parseInt(pageSizeParam, 10)))
+      : DEFAULT_PAGE_SIZE;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const thresholdDate = addDays(today, EXPIRY_THRESHOLD_DAYS);
 
-    const stocks = await prisma.itemStock.findMany({
-      select: {
-        id: true,
-        itemName: true,
-        itemCategory: true,
-        itemUnit: true,
-        totalStock: true,
-      },
-    });
-
-    const stockMap = new Map<string, (typeof stocks)[number]>();
-    stocks.forEach((stock) => {
-      if (stock.totalStock <= 0) return;
-      const key = buildKey(stock.itemName, stock.itemCategory);
-      stockMap.set(key, stock);
-    });
-
-    const donationGroups = await prisma.donationItem.groupBy({
-      by: ["itemName", "itemCategory"],
+    // Count ONLY unhandled items for summary (but display all in list)
+    const expiringCount = await prisma.donationItem.count({
       where: {
         expiryDate: {
           not: null,
+          gte: today,
+          lte: thresholdDate,
         },
-      },
-      _min: {
-        expiryDate: true,
+        isHandled: false,
       },
     });
 
-    const itemMeta = new Map<
-      string,
-      {
-        soonestExpiry: Date;
-        daysUntilExpiry: number;
-      }
-    >();
+    const expiredCount = await prisma.donationItem.count({
+      where: {
+        expiryDate: {
+          not: null,
+          lt: today,
+        },
+        isHandled: false,
+      },
+    });
 
-    const expiringKeys: string[] = [];
-    const expiredKeys: string[] = [];
+    // Get total counts (including handled items) for pagination
+    const totalExpiringItems = await prisma.donationItem.count({
+      where: {
+        expiryDate: {
+          not: null,
+          gte: today,
+          lte: thresholdDate,
+        },
+      },
+    });
 
-    donationGroups.forEach((group) => {
-      const key = buildKey(group.itemName, group.itemCategory);
-      const stock = stockMap.get(key);
-      const minExpiry = group._min.expiryDate;
-      if (!stock || !minExpiry) {
-        return;
-      }
-
-      const daysUntil = calculateDaysBetween(today, minExpiry);
-      itemMeta.set(key, {
-        soonestExpiry: minExpiry,
-        daysUntilExpiry: daysUntil,
-      });
-
-      if (minExpiry < today) {
-        expiredKeys.push(key);
-      } else if (minExpiry <= thresholdDate) {
-        expiringKeys.push(key);
-      }
+    const totalExpiredItems = await prisma.donationItem.count({
+      where: {
+        expiryDate: {
+          not: null,
+          lt: today,
+        },
+      },
     });
 
     const summary = {
-      expiring: expiringKeys.length,
-      expired: expiredKeys.length,
+      expiring: expiringCount,
+      expired: expiredCount,
       updatedAt: new Date().toISOString(),
     };
 
@@ -99,112 +86,98 @@ export async function GET(request: Request) {
       return NextResponse.json({ summary });
     }
 
-    const relevantKeys = Array.from(new Set([...expiringKeys, ...expiredKeys]));
-
-    type DonationItemWithDonation = Prisma.DonationItemGetPayload<{
+    // Fetch ALL paginated expiring items (both handled and unhandled)
+    const expiringItems = await prisma.donationItem.findMany({
+      where: {
+        expiryDate: {
+          not: null,
+          gte: today,
+          lte: thresholdDate,
+        },
+      },
       select: {
-        itemName: true;
-        itemCategory: true;
-        expiryDate: true;
-        quantity: true;
-        donationId: true;
+        id: true,
+        itemName: true,
+        itemCategory: true,
+        itemUnit: true,
+        quantity: true,
+        expiryDate: true,
+        isHandled: true,
         donation: {
           select: {
-            id: true;
-            serialNumber: true;
-          };
-        };
-      };
-    }>;
-
-    let donationItems: DonationItemWithDonation[] = [];
-
-    if (relevantKeys.length > 0) {
-      donationItems = await prisma.donationItem.findMany({
-        where: {
-          expiryDate: {
-            not: null,
-          },
-          OR: relevantKeys.map((key) => {
-            const [itemName, itemCategory] = key.split(KEY_SEPARATOR);
-            return {
-              itemName,
-              itemCategory,
-            };
-          }),
-        },
-        select: {
-          itemName: true,
-          itemCategory: true,
-          expiryDate: true,
-          quantity: true,
-          donationId: true,
-          donation: {
-            select: {
-              id: true,
-              serialNumber: true,
-            },
+            id: true,
+            serialNumber: true,
           },
         },
-        orderBy: {
-          expiryDate: "asc",
-        },
-      });
-    }
-
-    const donationByKey = new Map<string, DonationItemWithDonation[]>();
-    donationItems.forEach((donationItem) => {
-      const key = buildKey(donationItem.itemName, donationItem.itemCategory);
-      const list = donationByKey.get(key);
-      if (list) {
-        list.push(donationItem);
-      } else {
-        donationByKey.set(key, [donationItem]);
-      }
+      },
+      orderBy: {
+        expiryDate: "asc",
+      },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     });
 
-    const buildDetail = (keys: string[]) =>
-      [...keys]
-        .sort((a, b) => {
-          const metaA = itemMeta.get(a);
-          const metaB = itemMeta.get(b);
-          if (!metaA || !metaB) return 0;
-          return metaA.soonestExpiry.getTime() - metaB.soonestExpiry.getTime();
-        })
-        .map((key) => {
-          const stock = stockMap.get(key)!;
-          const meta = itemMeta.get(key)!;
-          const soonestExpiryISO = meta.soonestExpiry.toISOString();
-          const donations = (donationByKey.get(key) ?? []).filter(
-            (
-              r
-            ): r is DonationItemWithDonation & {
-              expiryDate: Date;
-            } =>
-              !!r.expiryDate && isSameDay(r.expiryDate, meta.soonestExpiry)
-          );
+    // Fetch ALL paginated expired items (both handled and unhandled)
+    const expiredItems = await prisma.donationItem.findMany({
+      where: {
+        expiryDate: {
+          not: null,
+          lt: today,
+        },
+      },
+      select: {
+        id: true,
+        itemName: true,
+        itemCategory: true,
+        itemUnit: true,
+        quantity: true,
+        expiryDate: true,
+        isHandled: true,
+        donation: {
+          select: {
+            id: true,
+            serialNumber: true,
+          },
+        },
+      },
+      orderBy: {
+        expiryDate: "asc",
+      },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
 
-          return {
-            itemStockId: stock.id,
-            itemName: stock.itemName,
-            itemCategory: stock.itemCategory,
-            itemUnit: stock.itemUnit,
-            totalStock: stock.totalStock,
-            soonestExpiry: soonestExpiryISO,
-            daysUntilExpiry: meta.daysUntilExpiry,
-            donationRecords: donations.map((donationItem) => ({
-              donationId: donationItem.donationId,
-              serialNumber: donationItem.donation?.serialNumber ?? null,
-              quantity: donationItem.quantity,
-              expiryDate: donationItem.expiryDate.toISOString(),
-            })),
-          };
-        });
+    const mapItem = (item: typeof expiringItems[number]) => {
+      const daysUntilExpiry = item.expiryDate
+        ? calculateDaysBetween(today, item.expiryDate)
+        : null;
+
+      return {
+        id: item.id,
+        itemName: item.itemName,
+        itemCategory: item.itemCategory,
+        itemUnit: item.itemUnit,
+        quantity: item.quantity,
+        expiryDate: item.expiryDate?.toISOString() ?? null,
+        daysUntilExpiry,
+        isHandled: item.isHandled,
+        serialNumber: item.donation?.serialNumber ?? null,
+        donationId: item.donation?.id ?? null,
+      };
+    };
 
     return NextResponse.json({
       summary,
-      expiringItems: buildDetail(expiringKeys),
-      expiredItems: buildDetail(expiredKeys),
+      expiringItems: expiringItems.map(mapItem),
+      expiredItems: expiredItems.map(mapItem),
+      pagination: {
+        page,
+        pageSize,
+        totalExpiring: totalExpiringItems,
+        totalExpired: totalExpiredItems,
+        totalPagesExpiring: Math.ceil(totalExpiringItems / pageSize),
+        totalPagesExpired: Math.ceil(totalExpiredItems / pageSize),
+      },
     });
   } catch (error) {
     console.error("Error fetching expiry status:", error);
@@ -213,10 +186,6 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
-
-function buildKey(itemName: string, itemCategory: string) {
-  return `${itemName}${KEY_SEPARATOR}${itemCategory}`;
 }
 
 function addDays(date: Date, days: number) {
@@ -233,12 +202,4 @@ function calculateDaysBetween(start: Date, end: Date) {
   );
   const endUTC = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
   return Math.floor((endUTC - startUTC) / (1000 * 60 * 60 * 24));
-}
-
-function isSameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
 }

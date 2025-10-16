@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,8 +19,10 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCcw } from "lucide-react";
-import type { ExpiryItemDetail } from "@/types/expiry";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, RefreshCcw, ChevronLeft, ChevronRight } from "lucide-react";
+import type { ExpiryItemDetail, ExpiryPagination } from "@/types/expiry";
+import { toast } from "sonner";
 
 interface ExpiryStatusModalProps {
   open: boolean;
@@ -30,7 +32,10 @@ interface ExpiryStatusModalProps {
   loading: boolean;
   errorMessage: string | null;
   lastUpdatedAt: string | null;
+  pagination: ExpiryPagination | null;
+  currentPage: number;
   onRetry: () => void;
+  onPageChange: (page: number) => void;
 }
 
 export function ExpiryStatusModal({
@@ -41,11 +46,15 @@ export function ExpiryStatusModal({
   loading,
   errorMessage,
   lastUpdatedAt,
+  pagination,
+  currentPage,
   onRetry,
+  onPageChange,
 }: ExpiryStatusModalProps) {
   const [activeTab, setActiveTab] = React.useState<"expiring" | "expired">(
     "expiring"
   );
+  const [handlingIds, setHandlingIds] = useState<Set<string>>(new Set());
 
   React.useEffect(() => {
     if (!open) return;
@@ -67,7 +76,35 @@ export function ExpiryStatusModal({
       })
     : "尚未更新";
 
-  const renderStatusTable = (items: ExpiryItemDetail[]) => {
+  const handleToggleHandled = async (itemId: string, currentHandled: boolean) => {
+    setHandlingIds((prev) => new Set(prev).add(itemId));
+
+    try {
+      const response = await fetch(`/api/donation-items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isHandled: !currentHandled }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update item status");
+      }
+
+      toast.success(currentHandled ? "已標記為未處理" : "已標記為已處理");
+      onRetry(); // Refresh data
+    } catch (error) {
+      console.error("Error updating handled status:", error);
+      toast.error("更新失敗，請稍後再試");
+    } finally {
+      setHandlingIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
+    }
+  };
+
+  const renderStatusTable = (items: ExpiryItemDetail[], tabType: "expiring" | "expired") => {
     if (loading) {
       return (
         <div className="flex flex-col items-center justify-center py-14 text-muted-foreground gap-3">
@@ -98,67 +135,97 @@ export function ExpiryStatusModal({
       );
     }
 
+    const totalPages =
+      tabType === "expiring"
+        ? pagination?.totalPagesExpiring ?? 1
+        : pagination?.totalPagesExpired ?? 1;
+
     return (
-      <div className="overflow-x-auto rounded-lg border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[180px]">品項</TableHead>
-              <TableHead>類別</TableHead>
-              <TableHead className="text-center">庫存</TableHead>
-              <TableHead className="text-center">最早到期日</TableHead>
-              <TableHead className="text-center">提醒</TableHead>
-              <TableHead>相關捐贈紀錄</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item) => (
-              <TableRow key={item.itemStockId}>
-                <TableCell className="font-medium">
-                  <div className="flex flex-col">
-                    <span>{item.itemName}</span>
-                    <span className="text-xs text-muted-foreground">
-                      單位：{item.itemUnit}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>{item.itemCategory}</TableCell>
-                <TableCell className="text-center">
-                  {item.totalStock.toLocaleString()} {item.itemUnit}
-                </TableCell>
-                <TableCell className="text-center">
-                  {item.soonestExpiry
-                    ? new Date(item.soonestExpiry).toLocaleDateString("zh-TW")
-                    : "未登錄"}
-                </TableCell>
-                <TableCell className="text-center">
-                  {renderExpiryBadge(item.daysUntilExpiry)}
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-2">
-                    {item.donationRecords.map((record) => (
-                      <Badge
-                        key={`${record.donationId}-${record.expiryDate}`}
-                        variant="secondary"
-                        className="flex items-center gap-1"
-                      >
-                        <span>{record.serialNumber ?? "未編號"}</span>
-                        <span className="text-[11px] text-muted-foreground">
-                          x{record.quantity}
-                        </span>
-                      </Badge>
-                    ))}
-                    {item.donationRecords.length === 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        尚無對應捐贈紀錄
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
+      <div className="flex flex-col gap-3">
+        <div className="overflow-auto rounded-lg border max-h-[60vh]">
+          <Table>
+            <TableHeader className="sticky top-0 bg-background z-10">
+              <TableRow>
+                <TableHead className="w-12 text-center">處理</TableHead>
+                <TableHead className="min-w-[180px]">品項</TableHead>
+                <TableHead>類別</TableHead>
+                <TableHead className="text-center">數量</TableHead>
+                <TableHead className="text-center">效期日期</TableHead>
+                <TableHead className="text-center">提醒</TableHead>
+                <TableHead>捐贈編號</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center">
+                      <Checkbox
+                        checked={item.isHandled}
+                        disabled={handlingIds.has(item.id)}
+                        onCheckedChange={() => handleToggleHandled(item.id, item.isHandled)}
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex flex-col">
+                      <span>{item.itemName}</span>
+                      <span className="text-xs text-muted-foreground">
+                        單位:{item.itemUnit}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>{item.itemCategory}</TableCell>
+                  <TableCell className="text-center">
+                    {item.quantity.toLocaleString()} {item.itemUnit}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {item.expiryDate
+                      ? new Date(item.expiryDate).toLocaleDateString("zh-TW")
+                      : "未登錄"}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {renderExpiryBadge(item.daysUntilExpiry)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {item.serialNumber ?? "未編號"}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-2">
+            <div className="text-sm text-muted-foreground">
+              第 {currentPage} 頁，共 {totalPages} 頁
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(currentPage - 1)}
+                disabled={currentPage <= 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                上一頁
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages}
+              >
+                下一頁
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -183,10 +250,10 @@ export function ExpiryStatusModal({
           >
             <TabsList className="grid grid-cols-2 max-w-xs sm:max-w-md self-start mt-1">
               <TabsTrigger value="expiring">
-                即將過期（{expiringItems.length}）
+                即將過期（{pagination?.totalExpiring ?? expiringItems.length}）
               </TabsTrigger>
               <TabsTrigger value="expired">
-                已過期（{expiredItems.length}）
+                已過期（{pagination?.totalExpired ?? expiredItems.length}）
               </TabsTrigger>
             </TabsList>
 
@@ -195,16 +262,16 @@ export function ExpiryStatusModal({
                 value="expiring"
                 className="flex-1 overflow-hidden data-[state=inactive]:hidden"
               >
-                <div className="h-full overflow-y-auto pr-1">
-                  {renderStatusTable(expiringItems)}
+                <div className="h-full">
+                  {renderStatusTable(expiringItems, "expiring")}
                 </div>
               </TabsContent>
               <TabsContent
                 value="expired"
                 className="flex-1 overflow-hidden data-[state=inactive]:hidden"
               >
-                <div className="h-full overflow-y-auto pr-1">
-                  {renderStatusTable(expiredItems)}
+                <div className="h-full">
+                  {renderStatusTable(expiredItems, "expired")}
                 </div>
               </TabsContent>
             </div>

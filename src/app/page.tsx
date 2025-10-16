@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { getPermissions } from "@/lib/permissions";
 import { SignOutButton } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
-import type { ExpiryItemDetail } from "@/types/expiry";
+import type { ExpiryItemDetail, ExpiryPagination } from "@/types/expiry";
 import type { ReceiptDraftSubmission } from "@/types/receipt";
 
 type TabType = "supplies" | "records" | "staff" | "data";
@@ -100,6 +100,8 @@ function HomePage({ dbUser = null }: HomePageProps) {
     expiring: ExpiryItemDetail[];
     expired: ExpiryItemDetail[];
   }>({ expiring: [], expired: [] });
+  const [expiryPagination, setExpiryPagination] = useState<ExpiryPagination | null>(null);
+  const [expiryPage, setExpiryPage] = useState(1);
   const [expiryLoading, setExpiryLoading] = useState(false);
   const [expiryError, setExpiryError] = useState<string | null>(null);
   const [hasLoadedExpiryDetails, setHasLoadedExpiryDetails] = useState(false);
@@ -173,11 +175,11 @@ function HomePage({ dbUser = null }: HomePageProps) {
     }
   };
 
-  const fetchExpiryDetails = async () => {
+  const fetchExpiryDetails = async (page = 1) => {
     setExpiryLoading(true);
     setExpiryError(null);
     try {
-      const response = await fetch('/api/expiry-status?detail=full');
+      const response = await fetch(`/api/expiry-status?detail=full&page=${page}`);
       if (!response.ok) {
         throw new Error(response.statusText);
       }
@@ -192,6 +194,8 @@ function HomePage({ dbUser = null }: HomePageProps) {
         expiring: data.expiringItems ?? [],
         expired: data.expiredItems ?? [],
       });
+      setExpiryPagination(data.pagination ?? null);
+      setExpiryPage(page);
       setHasLoadedExpiryDetails(true);
     } catch (error) {
       console.error("Error fetching expiry details:", error);
@@ -199,6 +203,10 @@ function HomePage({ dbUser = null }: HomePageProps) {
     } finally {
       setExpiryLoading(false);
     }
+  };
+
+  const handleExpiryPageChange = (newPage: number) => {
+    fetchExpiryDetails(newPage);
   };
 
 
@@ -662,6 +670,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
           setIsExpiryModalOpen(openState);
           if (!openState) {
             setHasLoadedExpiryDetails(false);
+            setExpiryPage(1);
           }
         }}
         expiringItems={expiryItems.expiring}
@@ -669,7 +678,10 @@ function HomePage({ dbUser = null }: HomePageProps) {
         loading={expiryLoading}
         errorMessage={expiryError}
         lastUpdatedAt={stats.expiryUpdatedAt}
-        onRetry={fetchExpiryDetails}
+        pagination={expiryPagination}
+        currentPage={expiryPage}
+        onRetry={() => fetchExpiryDetails(expiryPage)}
+        onPageChange={handleExpiryPageChange}
       />
 
       <UserProfile
