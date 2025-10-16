@@ -20,7 +20,8 @@ import { User, AuthGuard } from "@/components/auth/AuthGuard";
 import { toast } from "sonner";
 import { getPermissions } from "@/lib/permissions";
 import { SignOutButton } from "@clerk/nextjs";
-import { Menu, X } from "lucide-react";
+import { Menu, X, BarChart3 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { ExpiryItemDetail, ExpiryPagination } from "@/types/expiry";
 import type { ReceiptDraftSubmission } from "@/types/receipt";
 
@@ -69,6 +70,7 @@ interface HomePageProps {
 
 function HomePage({ dbUser = null }: HomePageProps) {
   console.log('🔍 HomePage Debug:', { dbUser: dbUser?.id });
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("supplies");
   const [currentDbUser, setCurrentDbUser] = useState<User | null>(dbUser);
   
@@ -495,7 +497,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
           </div>
 
           {/* Desktop Navigation Tabs */}
-          <div className="hidden md:flex flex-1 justify-center max-w-lg mx-4">
+          <div className="hidden md:flex flex-1 justify-center max-w-2xl mx-4">
             <div className="flex bg-muted/30 rounded-lg p-1">
               <Button
                 variant={activeTab === "supplies" ? "default" : "ghost"}
@@ -515,6 +517,15 @@ function HomePage({ dbUser = null }: HomePageProps) {
                   紀錄調取
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/analytics')}
+                className="rounded-md text-sm px-3 py-2"
+                size="sm"
+              >
+                <BarChart3 className="h-4 w-4 mr-1" />
+                資料圖表
+              </Button>
               {userPermissions?.canManageUsers && (
                 <Button
                   variant={activeTab === "staff" ? "default" : "ghost"}
@@ -732,7 +743,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
               >
                 物資管理
               </Button>
-              
+
               {userPermissions?.canViewRecords && (
                 <Button
                   variant={activeTab === "records" ? "default" : "ghost"}
@@ -745,7 +756,19 @@ function HomePage({ dbUser = null }: HomePageProps) {
                   紀錄調取
                 </Button>
               )}
-              
+
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  router.push('/analytics');
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full justify-start text-left min-h-[48px] px-4"
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                資料圖表
+              </Button>
+
               {userPermissions?.canManageUsers && (
                 <Button
                   variant={activeTab === "staff" ? "default" : "ghost"}
@@ -758,7 +781,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
                   人員管理
                 </Button>
               )}
-              
+
               {userPermissions?.canManageUsers && (
                 <Button
                   variant={activeTab === "data" ? "default" : "ghost"}
