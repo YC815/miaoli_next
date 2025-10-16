@@ -39,21 +39,25 @@ export function EditDisbursementModal({
 }: EditDisbursementModalProps) {
   const [units, setUnits] = useState<RecipientUnit[]>([]);
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
-  const [customUnitName, setCustomUnitName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
+  const [selectedUnit, setSelectedUnit] = useState<RecipientUnit | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingUnits, setLoadingUnits] = useState(false);
 
   useEffect(() => {
     if (open && record) {
       setSelectedUnitId(record.recipientUnitId || null);
-      setCustomUnitName(record.recipientUnitName || "");
-      setPhone(record.recipientPhone || "");
-      setAddress(record.recipientAddress || "");
       loadUnits();
     }
   }, [open, record]);
+
+  useEffect(() => {
+    if (selectedUnitId && units.length > 0) {
+      const unit = units.find(u => u.id === selectedUnitId);
+      setSelectedUnit(unit || null);
+    } else {
+      setSelectedUnit(null);
+    }
+  }, [selectedUnitId, units]);
 
   const loadUnits = async () => {
     setLoadingUnits(true);
@@ -71,27 +75,14 @@ export function EditDisbursementModal({
   };
 
   const handleUnitSelect = (unitId: string) => {
-    if (unitId === "custom") {
-      setSelectedUnitId(null);
-      setCustomUnitName("");
-      setPhone("");
-      setAddress("");
-    } else {
-      const unit = units.find(u => u.id === unitId);
-      if (unit) {
-        setSelectedUnitId(unit.id);
-        setCustomUnitName(unit.name);
-        setPhone(unit.phone || "");
-        setAddress(unit.address || "");
-      }
-    }
+    setSelectedUnitId(unitId);
   };
 
   const handleSubmit = async () => {
     if (!record) return;
 
-    if (!customUnitName.trim()) {
-      toast.error('請填寫領取單位名稱');
+    if (!selectedUnitId) {
+      toast.error('請選擇領取單位');
       return;
     }
 
@@ -104,9 +95,6 @@ export function EditDisbursementModal({
         },
         body: JSON.stringify({
           recipientUnitId: selectedUnitId,
-          recipientUnitName: customUnitName.trim(),
-          recipientPhone: phone.trim() || null,
-          recipientAddress: address.trim() || null,
         }),
       });
 
@@ -141,19 +129,16 @@ export function EditDisbursementModal({
         <div className="space-y-6 py-4">
           {/* 領取單位選擇 */}
           <div className="space-y-2">
-            <Label>選擇領取單位</Label>
+            <Label>選擇領取單位 <span className="text-red-500">*</span></Label>
             <Select
-              value={selectedUnitId || "custom"}
+              value={selectedUnitId || ""}
               onValueChange={handleUnitSelect}
               disabled={loadingUnits}
             >
               <SelectTrigger>
-                <SelectValue placeholder="自訂單位" />
+                <SelectValue placeholder="請選擇領取單位" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="custom">
-                  <span className="text-muted-foreground">自訂單位</span>
-                </SelectItem>
                 {units.map((unit) => (
                   <SelectItem key={unit.id} value={unit.id}>
                     {unit.name}
@@ -163,35 +148,28 @@ export function EditDisbursementModal({
             </Select>
           </div>
 
-          {/* 單位資訊 */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>單位名稱 <span className="text-red-500">*</span></Label>
-              <Input
-                value={customUnitName}
-                onChange={(e) => setCustomUnitName(e.target.value)}
-                placeholder="請輸入領取單位名稱"
-              />
-            </div>
+          {/* 選擇領取單位後顯示詳細資訊（唯讀） */}
+          {selectedUnit && (
+            <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-muted-foreground">聯絡電話</Label>
+                <Input
+                  value={selectedUnit.phone || "（未提供）"}
+                  disabled
+                  className="bg-background"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label>聯絡電話</Label>
-              <Input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="請輸入聯絡電話"
-              />
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-muted-foreground">地址</Label>
+                <Input
+                  value={selectedUnit.address || "（未提供）"}
+                  disabled
+                  className="bg-background"
+                />
+              </div>
             </div>
-
-            <div className="space-y-2">
-              <Label>地址</Label>
-              <Input
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="請輸入地址"
-              />
-            </div>
-          </div>
+          )}
 
           {/* 物資清單（唯讀） */}
           <div className="space-y-2">
