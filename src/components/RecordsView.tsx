@@ -256,6 +256,11 @@ export function RecordsView() {
   const [inventoryData, setInventoryData] =
     React.useState<InventoryResponse | null>(null);
 
+  // Stable empty arrays to prevent infinite re-renders
+  const emptyDonationItems = React.useMemo(() => [], []);
+  const emptyDisbursementItems = React.useMemo(() => [], []);
+  const emptyInventoryItems = React.useMemo(() => [], []);
+
   const [donationsLoading, setDonationsLoading] = React.useState(false);
   const [disbursementsLoading, setDisbursementsLoading] = React.useState(false);
   const [inventoryLoading, setInventoryLoading] = React.useState(false);
@@ -274,7 +279,7 @@ export function RecordsView() {
         return donationFiltersEqual(previous, next) ? previous : next;
       });
     },
-    [setDonationFilters]
+    []
   );
 
   const updateDisbursementFilters = React.useCallback(
@@ -289,7 +294,7 @@ export function RecordsView() {
         return disbursementFiltersEqual(previous, next) ? previous : next;
       });
     },
-    [setDisbursementFilters]
+    []
   );
 
   const updateInventoryFilters = React.useCallback(
@@ -302,7 +307,7 @@ export function RecordsView() {
         return inventoryFiltersEqual(previous, next) ? previous : next;
       });
     },
-    [setInventoryFilters]
+    []
   );
 
   const [selectedDonations, setSelectedDonations] = React.useState<
@@ -616,7 +621,7 @@ export function RecordsView() {
             <DataSection isLoading={isLoading}>
               <DonationRecordsTable
                 key={`donation-${donationData?.page ?? 1}`}
-                data={donationData?.items ?? []}
+                data={donationData?.items ?? emptyDonationItems}
                 onSelectionChange={setSelectedDonations}
                 onEdit={handleEditDonation}
                 onDelete={(record) => handleDeleteRecord(record, "donations")}
@@ -655,7 +660,7 @@ export function RecordsView() {
             <DataSection isLoading={isLoading}>
               <DisbursementRecordsTable
                 key={`disbursement-${disbursementData?.page ?? 1}`}
-                data={disbursementData?.items ?? []}
+                data={disbursementData?.items ?? emptyDisbursementItems}
                 onSelectionChange={setSelectedDisbursements}
                 onEdit={handleEditDisbursement}
                 onDelete={(record) => handleDeleteRecord(record, "disbursements")}
@@ -692,7 +697,7 @@ export function RecordsView() {
             <DataSection isLoading={isLoading}>
               <InventoryLogsTable
                 key={`inventory-${inventoryData?.page ?? 1}`}
-                data={inventoryData?.items ?? []}
+                data={inventoryData?.items ?? emptyInventoryItems}
                 onSelectionChange={setSelectedInventoryLogs}
                 onDelete={(record) => handleDeleteRecord(record, "inventory")}
               />
