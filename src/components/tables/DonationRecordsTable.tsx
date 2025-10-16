@@ -38,6 +38,7 @@ interface DonationTableRow {
   itemName: string
   itemUnit: string
   quantity: number
+  expiryDate: string | null
   notes: string | null
   donorName: string | null
   donorPhone: string | null
@@ -154,6 +155,23 @@ const createColumns = (
       </div>
     ),
     size: 100,
+  },
+  {
+    accessorKey: "expiryDate",
+    header: "有效期限",
+    cell: ({ row }) => {
+      const expiryDate = row.getValue("expiryDate") as string | null
+      if (!expiryDate) {
+        return <div className="text-sm text-muted-foreground">-</div>
+      }
+      const formattedDate = new Date(expiryDate).toLocaleDateString('zh-TW', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      })
+      return <div className="text-sm">{formattedDate}</div>
+    },
+    size: 110,
   },
   {
     accessorKey: "notes",
@@ -284,6 +302,7 @@ export function DonationRecordsTable({
           itemName: item.itemName,
           itemUnit: item.itemUnit,
           quantity: item.quantity,
+          expiryDate: item.expiryDate,
           notes: item.notes,
           donorName: record.donor?.name || null,
           donorPhone: record.donor?.phone || null,
