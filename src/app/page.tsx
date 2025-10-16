@@ -14,8 +14,8 @@ import { StaffManagement } from "@/components/admin/StaffManagement";
 import { DataManagement } from "@/components/admin/DataManagement";
 import { RecordsView } from "@/components/RecordsView";
 import { UserProfile } from "@/components/auth/UserProfile";
-import * as XLSX from 'xlsx';
-import { generateReceiptsPDF } from '@/lib/receipt-generator';
+import * as XLSX from "xlsx";
+import { generateReceiptsPDF } from "@/lib/receipt-generator";
 import { User, AuthGuard } from "@/components/auth/AuthGuard";
 import { toast } from "sonner";
 import { getPermissions } from "@/lib/permissions";
@@ -36,7 +36,6 @@ interface ItemStock {
   safetyStock: number;
   isStandard: boolean;
 }
-
 
 interface DonationItemData {
   itemName: string;
@@ -69,18 +68,20 @@ interface HomePageProps {
 }
 
 function HomePage({ dbUser = null }: HomePageProps) {
-  console.log('🔍 HomePage Debug:', { dbUser: dbUser?.id });
+  console.log("🔍 HomePage Debug:", { dbUser: dbUser?.id });
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("supplies");
   const [currentDbUser, setCurrentDbUser] = useState<User | null>(dbUser);
-  
+
   // Sync dbUser prop changes to local state
   useEffect(() => {
     setCurrentDbUser(dbUser);
   }, [dbUser]);
-  
+
   // Calculate user permissions
-  const userPermissions = currentDbUser ? getPermissions(currentDbUser.role) : null;
+  const userPermissions = currentDbUser
+    ? getPermissions(currentDbUser.role)
+    : null;
   const [isAddSupplyOpen, setIsAddSupplyOpen] = useState(false);
   const [isBatchPickupOpen, setIsBatchPickupOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
@@ -102,7 +103,8 @@ function HomePage({ dbUser = null }: HomePageProps) {
     expiring: ExpiryItemDetail[];
     expired: ExpiryItemDetail[];
   }>({ expiring: [], expired: [] });
-  const [expiryPagination, setExpiryPagination] = useState<ExpiryPagination | null>(null);
+  const [expiryPagination, setExpiryPagination] =
+    useState<ExpiryPagination | null>(null);
   const [expiryPage, setExpiryPage] = useState(1);
   const [expiryLoading, setExpiryLoading] = useState(false);
   const [expiryError, setExpiryError] = useState<string | null>(null);
@@ -110,14 +112,16 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
   const fetchSupplies = async () => {
     try {
-      const response = await fetch('/api/supplies');
+      const response = await fetch("/api/supplies");
       if (response.ok) {
         const data = await response.json();
-        const normalizedSupplies: ItemStock[] = (Array.isArray(data) ? data : []).map((item) => ({
+        const normalizedSupplies: ItemStock[] = (
+          Array.isArray(data) ? data : []
+        ).map((item) => ({
           id: item.id,
           category: item.category,
           name: item.name,
-          unit: item.unit || '個',
+          unit: item.unit || "個",
           totalStock: Number(item.totalStock ?? item.quantity ?? 0),
           safetyStock: Number(item.safetyStock ?? 0),
           isStandard: Boolean(item.isStandard),
@@ -125,12 +129,16 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
         setSupplies(normalizedSupplies);
 
-        const uniqueCategories = new Set(normalizedSupplies.map((item) => item.category));
+        const uniqueCategories = new Set(
+          normalizedSupplies.map((item) => item.category)
+        );
 
-        setStats(prevStats => ({
+        setStats((prevStats) => ({
           ...prevStats,
           totalCategories: uniqueCategories.size,
-          lowStock: normalizedSupplies.filter(item => item.totalStock < item.safetyStock).length,
+          lowStock: normalizedSupplies.filter(
+            (item) => item.totalStock < item.safetyStock
+          ).length,
         }));
       } else {
         toast.error("載入物資失敗");
@@ -143,10 +151,10 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
   const fetchStatistics = async () => {
     try {
-      const response = await fetch('/api/statistics');
+      const response = await fetch("/api/statistics");
       if (response.ok) {
         const data = await response.json();
-        setStats(prevStats => ({
+        setStats((prevStats) => ({
           ...prevStats,
           monthlyDonations: data.monthlyDonations,
           monthlyDistributions: data.monthlyDistributions,
@@ -161,12 +169,12 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
   const fetchExpirySummary = async () => {
     try {
-      const response = await fetch('/api/expiry-status');
+      const response = await fetch("/api/expiry-status");
       if (!response.ok) {
         throw new Error(response.statusText);
       }
       const data = await response.json();
-      setStats(prev => ({
+      setStats((prev) => ({
         ...prev,
         expiringCount: data.summary?.expiring ?? 0,
         expiredCount: data.summary?.expired ?? 0,
@@ -181,12 +189,14 @@ function HomePage({ dbUser = null }: HomePageProps) {
     setExpiryLoading(true);
     setExpiryError(null);
     try {
-      const response = await fetch(`/api/expiry-status?detail=full&page=${page}`);
+      const response = await fetch(
+        `/api/expiry-status?detail=full&page=${page}`
+      );
       if (!response.ok) {
         throw new Error(response.statusText);
       }
       const data = await response.json();
-      setStats(prev => ({
+      setStats((prev) => ({
         ...prev,
         expiringCount: data.summary?.expiring ?? prev.expiringCount,
         expiredCount: data.summary?.expired ?? prev.expiredCount,
@@ -211,9 +221,9 @@ function HomePage({ dbUser = null }: HomePageProps) {
     fetchExpiryDetails(newPage);
   };
 
-
   useEffect(() => {
-    if (currentDbUser) { // Only fetch supplies if currentDbUser is available
+    if (currentDbUser) {
+      // Only fetch supplies if currentDbUser is available
       fetchSupplies();
       fetchStatistics();
       fetchExpirySummary();
@@ -228,49 +238,51 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
   // Handle user profile updates
   const handleUserUpdate = (updatedUser: User) => {
-    console.log('[HomePage] Updating user data:', updatedUser);
+    console.log("[HomePage] Updating user data:", updatedUser);
     setCurrentDbUser(updatedUser);
   };
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
     if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     }
-    
+
     // Cleanup function to restore scroll on unmount
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
   }, [isMobileMenuOpen]);
 
-
   // Note: User updates are now handled by AuthGuard
 
-  const handleAddSupply = async (donorId: string | null, donationItems: DonationItemData[]) => {
-    console.log('🎯 handleAddSupply called with:');
-    console.log('👤 donorId:', donorId);
-    console.log('📦 donationItems:', donationItems);
+  const handleAddSupply = async (
+    donorId: string | null,
+    donationItems: DonationItemData[]
+  ) => {
+    console.log("🎯 handleAddSupply called with:");
+    console.log("👤 donorId:", donorId);
+    console.log("📦 donationItems:", donationItems);
 
     try {
       const requestBody = { donorId, donationItems };
-      console.log('📤 Sending request body:', requestBody);
+      console.log("📤 Sending request body:", requestBody);
 
-      const response = await fetch('/api/donations', {
-        method: 'POST',
+      const response = await fetch("/api/donations", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(requestBody),
       });
 
-      console.log('📥 Response status:', response.status);
+      console.log("📥 Response status:", response.status);
 
       if (response.ok) {
         const responseData = await response.json();
-        console.log('✅ Success response:', responseData);
+        console.log("✅ Success response:", responseData);
         toast.success("物資捐贈新增成功！");
         fetchSupplies(); // Refresh supplies list
         fetchStatistics(); // Refresh statistics
@@ -279,7 +291,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
         setIsAddSupplyOpen(false);
       } else {
         const errorData = await response.json();
-        console.error('❌ Error response:', errorData);
+        console.error("❌ Error response:", errorData);
         toast.error(`新增捐贈失敗: ${errorData.error || response.statusText}`);
       }
     } catch (error) {
@@ -288,18 +300,20 @@ function HomePage({ dbUser = null }: HomePageProps) {
     }
   };
 
-  const handleBatchPickup = async (pickupInfo: BatchPickupInfo, selectedItems: DisbursementItem[]) => {
-
+  const handleBatchPickup = async (
+    pickupInfo: BatchPickupInfo,
+    selectedItems: DisbursementItem[]
+  ) => {
     if (selectedItems.length === 0) {
       toast.error("請選擇至少一項物資");
       return;
     }
 
     try {
-      const response = await fetch('/api/disbursements', {
-        method: 'POST',
+      const response = await fetch("/api/disbursements", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ pickupInfo, selectedItems }),
       });
@@ -324,9 +338,9 @@ function HomePage({ dbUser = null }: HomePageProps) {
   const handleUpdateSupply = async (updatedSupply: ItemStock) => {
     try {
       const response = await fetch(`/api/supplies/${updatedSupply.id}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           name: updatedSupply.name,
@@ -356,7 +370,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
     reason: string
   ) => {
     try {
-      const currentSupply = supplies.find(s => s.id === id);
+      const currentSupply = supplies.find((s) => s.id === id);
       if (!currentSupply) {
         toast.error("找不到對應的物資資料");
         return;
@@ -369,10 +383,10 @@ function HomePage({ dbUser = null }: HomePageProps) {
         return;
       }
 
-      const response = await fetch('/api/inventory-logs', {
-        method: 'POST',
+      const response = await fetch("/api/inventory-logs", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           itemStockId: id,
@@ -397,12 +411,15 @@ function HomePage({ dbUser = null }: HomePageProps) {
     }
   };
 
-  const handleUpdateSafetyStock = async (id: string, newSafetyStock: number) => {
+  const handleUpdateSafetyStock = async (
+    id: string,
+    newSafetyStock: number
+  ) => {
     try {
       const response = await fetch(`/api/supplies/${id}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ safetyStock: Number(newSafetyStock) }),
       });
@@ -412,7 +429,9 @@ function HomePage({ dbUser = null }: HomePageProps) {
         fetchSupplies(); // Refresh supplies list
       } else {
         const errorData = await response.json();
-        toast.error(`更新安全庫存失敗: ${errorData.error || response.statusText}`);
+        toast.error(
+          `更新安全庫存失敗: ${errorData.error || response.statusText}`
+        );
       }
     } catch (error) {
       console.error("Error updating safety stock:", error);
@@ -421,21 +440,23 @@ function HomePage({ dbUser = null }: HomePageProps) {
   };
 
   const handleExportExcel = () => {
-    const exportData = supplies.map(supply => ({
-      '類別': supply.category,
-      '物資名稱': supply.name,
-      '品項類型': supply.isStandard ? '標準品項' : '自訂品項',
-      '當前數量': `${supply.totalStock} ${supply.unit}`,
-      '安全庫存': `${supply.safetyStock} ${supply.unit}`,
+    const exportData = supplies.map((supply) => ({
+      類別: supply.category,
+      物資名稱: supply.name,
+      品項類型: supply.isStandard ? "標準品項" : "自訂品項",
+      當前數量: `${supply.totalStock} ${supply.unit}`,
+      安全庫存: `${supply.safetyStock} ${supply.unit}`,
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "物資清單");
-    
+
     const now = new Date();
-    const filename = `物資清單_${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}.xlsx`;
-    
+    const filename = `物資清單_${now.getFullYear()}${(now.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}${now.getDate().toString().padStart(2, "0")}.xlsx`;
+
     XLSX.writeFile(wb, filename);
   };
 
@@ -474,10 +495,10 @@ function HomePage({ dbUser = null }: HomePageProps) {
   };
 
   const roleMapping = {
-    ADMIN: '管理員',
-    STAFF: '工作人員',
-    VOLUNTEER: '志工',
-  }
+    ADMIN: "管理員",
+    STAFF: "工作人員",
+    VOLUNTEER: "志工",
+  };
 
   // Auth handling is now managed by AuthGuard
 
@@ -489,7 +510,9 @@ function HomePage({ dbUser = null }: HomePageProps) {
           {/* Left: Brand */}
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs sm:text-sm">苗</span>
+              <span className="text-primary-foreground font-bold text-xs sm:text-sm">
+                苗
+              </span>
             </div>
             <h1 className="hidden sm:block text-lg sm:text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               苗栗社福物資管理平台
@@ -519,11 +542,10 @@ function HomePage({ dbUser = null }: HomePageProps) {
               )}
               <Button
                 variant="ghost"
-                onClick={() => router.push('/analytics')}
+                onClick={() => router.push("/analytics")}
                 className="rounded-md text-sm px-3 py-2"
                 size="sm"
               >
-                <BarChart3 className="h-4 w-4 mr-1" />
                 資料圖表
               </Button>
               {userPermissions?.canManageUsers && (
@@ -566,12 +588,12 @@ function HomePage({ dbUser = null }: HomePageProps) {
           <div className="flex items-center gap-2">
             {/* Theme Toggle */}
             <ModeToggle />
-            
+
             {currentDbUser && (
               <>
                 {/* Divider */}
                 <div className="hidden md:block h-6 w-px bg-border" />
-                
+
                 <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
                   {/* Role Badge */}
                   <span className="hidden sm:inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border">
@@ -579,16 +601,18 @@ function HomePage({ dbUser = null }: HomePageProps) {
                   </span>
 
                   {/* User Avatar */}
-                  <div 
+                  <div
                     className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
                     onClick={() => setIsUserProfileOpen(true)}
                     title="點擊編輯個人資料"
                   >
-                    <span className="text-white font-medium text-xs sm:text-sm">{currentDbUser.nickname?.[0]}</span>
+                    <span className="text-white font-medium text-xs sm:text-sm">
+                      {currentDbUser.nickname?.[0]}
+                    </span>
                   </div>
 
                   {/* User Name */}
-                  <button 
+                  <button
                     className="hidden lg:block text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
                     onClick={() => setIsUserProfileOpen(true)}
                     title="點擊編輯個人資料"
@@ -598,9 +622,9 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
                   {/* Sign Out Button */}
                   <SignOutButton>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="hidden md:block text-sm text-muted-foreground hover:text-foreground px-4"
                     >
                       登出
@@ -624,7 +648,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
               />
             </div>
             <div className="flex-1 pb-3 sm:pb-6">
-              <SuppliesTable 
+              <SuppliesTable
                 supplies={supplies}
                 onUpdateSupply={handleUpdateSupply}
                 onPerformInventory={handleInventoryCount}
@@ -660,7 +684,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
         onOpenChange={setIsAddSupplyOpen}
         onSubmit={handleAddSupply}
       />
-      
+
       <BatchPickupModal
         open={isBatchPickupOpen}
         onOpenChange={setIsBatchPickupOpen}
@@ -668,7 +692,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
         items={supplies}
         dbUser={dbUser}
       />
-      
+
       <ReceiptModal
         open={isReceiptOpen}
         onOpenChange={setIsReceiptOpen}
@@ -706,18 +730,20 @@ function HomePage({ dbUser = null }: HomePageProps) {
       {isMobileMenuOpen && (
         <>
           {/* Backdrop */}
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-50 md:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          
+
           {/* Sidebar */}
           <div className="fixed left-0 top-0 h-full w-80 bg-background border-r z-50 md:hidden transform transition-transform duration-300">
             {/* Sidebar Header */}
             <div className="flex items-center justify-between p-4 border-b">
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">苗</span>
+                  <span className="text-primary-foreground font-bold text-sm">
+                    苗
+                  </span>
                 </div>
                 <h2 className="font-semibold text-lg">物資管理</h2>
               </div>
@@ -760,12 +786,11 @@ function HomePage({ dbUser = null }: HomePageProps) {
               <Button
                 variant="ghost"
                 onClick={() => {
-                  router.push('/analytics');
+                  router.push("/analytics");
                   setIsMobileMenuOpen(false);
                 }}
                 className="w-full justify-start text-left min-h-[48px] px-4"
               >
-                <BarChart3 className="h-4 w-4 mr-2" />
                 資料圖表
               </Button>
 
@@ -801,11 +826,17 @@ function HomePage({ dbUser = null }: HomePageProps) {
               <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-muted/30">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
-                    <span className="text-white font-medium text-sm">{currentDbUser.nickname?.[0]}</span>
+                    <span className="text-white font-medium text-sm">
+                      {currentDbUser.nickname?.[0]}
+                    </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm break-words">{currentDbUser.nickname}</p>
-                    <p className="text-xs text-muted-foreground">{roleMapping[currentDbUser.role]}</p>
+                    <p className="font-medium text-sm break-words">
+                      {currentDbUser.nickname}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {roleMapping[currentDbUser.role]}
+                    </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -821,8 +852,8 @@ function HomePage({ dbUser = null }: HomePageProps) {
                     編輯資料
                   </Button>
                   <SignOutButton>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       className="min-h-[44px] px-4"
                     >
