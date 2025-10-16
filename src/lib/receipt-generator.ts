@@ -1,13 +1,16 @@
 import { jsPDF } from 'jspdf';
 // 讓我們嘗試強制設定 UTF-8 編碼
 
-import type { DonationRecord } from "@/types/donation";
+import type {
+  ReceiptDraftSubmission,
+  ReceiptSealCategory,
+  ReceiptSealSelection,
+} from "@/types/receipt";
 
 interface ReceiptData {
   receiptNumber: string;
   donorName: string;
   donorAddress?: string;
-  donorId?: string;
   donorPhone?: string;
   items: Array<{
     name: string;
@@ -16,6 +19,8 @@ interface ReceiptData {
     notes?: string;
   }>;
   date: Date;
+  seals: Record<ReceiptSealCategory, ReceiptSealSelection>;
+  memo?: string;
 }
 
 export class ReceiptGenerator {
@@ -134,6 +139,10 @@ export class ReceiptGenerator {
   }
 
   private async loadImage(imagePath: string): Promise<string> {
+    if (!imagePath) return '';
+    if (imagePath.startsWith('data:')) {
+      return imagePath;
+    }
     try {
       const response = await fetch(imagePath);
       if (!response.ok) {
@@ -150,6 +159,24 @@ export class ReceiptGenerator {
       console.warn(`Failed to load image: ${imagePath}`, error);
       return '';
     }
+  }
+
+  private async resolveSealImage(selection?: ReceiptSealSelection): Promise<string> {
+    if (!selection) return '';
+    if (selection.imageDataUrl) {
+      return selection.imageDataUrl;
+    }
+    if (selection.imageUrl) {
+      return await this.loadImage(selection.imageUrl);
+    }
+    if (selection.sealId) {
+      try {
+        return await this.loadImage(`/api/seals/${selection.sealId}/image`);
+      } catch (error) {
+        console.warn(`Failed to resolve seal by id ${selection.sealId}`, error);
+      }
+    }
+    return '';
   }
 
   private drawBorder(x: number, y: number, width: number, height: number, lineWidth: number = 0.5): void {
@@ -190,51 +217,42 @@ export class ReceiptGenerator {
     return currentY;
   }
 
-  async generateReceipt(records: DonationRecord[]): Promise<void> {
-    console.log('🔍 generateReceipt 開始，記錄數量:', records.length);
-    
+  async generateReceipt(draft: ReceiptDraftSubmission): Promise<void> {
+    console.log('🔍 generateReceipt 開始，草稿內容:', draft.recordIds);
+
     await this.loadFont();
 
-    if (records.length === 0) {
-      console.log('❌ 沒有記錄，退出');
+    if (!draft.items || draft.items.length === 0) {
+      console.warn('❌ 草稿中沒有物品資料，結束');
       return;
     }
 
-    // 合併所有記錄的資料
-    const firstRecord = records[0];
-    const allItems: ReceiptData['items'] = [];
-    
-    // 收集所有物品
-    records.forEach((record, index) => {
-      console.log(`📝 處理記錄 ${index + 1}:`, record.donor?.name || '匿名', '物品數量:', record.donationItems.length);
-      record.donationItems.forEach(item => {
-        allItems.push({
-          name: item.itemName,
-          quantity: item.quantity,
-          unit: item.itemUnit,
-          notes: item.notes ?? ''
-        });
-      });
-    });
-
-    // 找出主要捐贈者（具名捐贈者，如果都是無名氏則用第一個）
-    const namedRecords = records.filter(r => r.donor && r.donor.name?.trim());
-    const primaryRecord = namedRecords.length > 0 ? namedRecords[0] : firstRecord;
+    const receiptNumber = draft.receiptNumber || (await this.generateReceiptNumber());
+    const receiptDate = draft.receiptDate
+      ? new Date(draft.receiptDate)
+      : new Date();
 
     const receiptData: ReceiptData = {
-      receiptNumber: await this.generateReceiptNumber(),
-      donorName: primaryRecord.donor?.name || '無名氏',
-      donorAddress: primaryRecord.donor?.address ?? undefined,
-      donorPhone: primaryRecord.donor?.phone ?? undefined,
-      items: allItems,
-      date: new Date(primaryRecord.createdAt)
+      receiptNumber,
+      donorName: draft.donor.name || '無名氏',
+      donorAddress: draft.donor.address || undefined,
+      donorPhone: draft.donor.phone || undefined,
+      items: draft.items.map((item) => ({
+        name: item.name,
+        quantity: Number.isFinite(item.quantity) ? item.quantity : Number(item.quantity) || 0,
+        unit: item.unit,
+        notes: item.notes ?? '',
+      })),
+      date: receiptDate,
+      seals: draft.seals,
+      memo: draft.memo,
     };
 
     console.log('📋 收據資料:', {
       receiptNumber: receiptData.receiptNumber,
       donorName: receiptData.donorName,
       itemsCount: receiptData.items.length,
-      items: receiptData.items
+      hasMemo: Boolean(receiptData.memo),
     });
 
     try {
@@ -285,7 +303,13 @@ export class ReceiptGenerator {
     try {
       // 1. 繪製標題區域
       console.log('1️⃣ 繪製標題區域');
-      await this.drawHeader(margin, margin + 5, contentWidth, data.receiptNumber);
+      await this.drawHeader(
+        margin,
+        margin + 5,
+        contentWidth,
+        data.receiptNumber,
+        data.seals.ORG
+      );
 
       // 2. 繪製機構資訊
       console.log('2️⃣ 繪製機構資訊');
@@ -302,12 +326,34 @@ export class ReceiptGenerator {
 
       // 5. 繪製物品明細表格
       console.log('5️⃣ 繪製物品明細表格，物品數量:', data.items.length);
-      const itemsTableY = this.drawItemsTable(margin, donorTableY + 10, contentWidth, data.items);
+      const itemsTableY = this.drawItemsTable(
+        margin,
+        donorTableY + 10,
+        contentWidth,
+        data.items
+      );
       console.log('   物品表格結束位置:', itemsTableY);
+
+      let signatureStartY = itemsTableY + 15;
+
+      if (data.memo) {
+        console.log('6️⃣-備註區域');
+        signatureStartY = this.drawMemoArea(
+          margin,
+          itemsTableY + 5,
+          contentWidth,
+          data.memo
+        );
+      }
 
       // 6. 繪製簽名區域
       console.log('6️⃣ 繪製簽名區域');
-      await this.drawSignatureArea(margin, itemsTableY + 15, contentWidth);
+      await this.drawSignatureArea(
+        margin,
+        signatureStartY,
+        contentWidth,
+        data.seals
+      );
 
       // 7. 繪製日期
       console.log('7️⃣ 繪製日期');
@@ -320,7 +366,13 @@ export class ReceiptGenerator {
     }
   }
 
-  private async drawHeader(x: number, y: number, width: number, receiptNumber: string): Promise<void> {
+  private async drawHeader(
+    x: number,
+    y: number,
+    width: number,
+    receiptNumber: string,
+    orgSealSelection?: ReceiptSealSelection
+  ): Promise<void> {
     console.log('  📍 drawHeader:', { x, y, width, receiptNumber });
     
     // 機構標題
@@ -333,9 +385,9 @@ export class ReceiptGenerator {
     console.log('  🔢 繪製收據編號:', receiptNumber);
     this.pdf.text(`No.${receiptNumber}`, x + width - 50, y + 5);
 
-    // 嘗試載入機構印章 (1.png)
-    console.log('  🖼️ 載入機構印章 1.png');
-    const orgSeal = await this.loadImage('/receipt/1.png');
+    // 嘗試載入機構印章
+    console.log('  🖼️ 載入機構印章');
+    const orgSeal = await this.resolveSealImage(orgSealSelection);
     if (orgSeal) {
       console.log('  ✅ 機構印章載入成功，添加到PDF');
       this.pdf.addImage(orgSeal, 'PNG', x + width / 2 + 80, y - 8, 15, 15);
@@ -466,7 +518,7 @@ export class ReceiptGenerator {
     currentY += headerHeight;
     
     // 繪製物品資料行（至少4行）
-    const maxRows = 4;
+    const maxRows = Math.max(4, Math.ceil(items.length / 2));
     for (let row = 0; row < maxRows; row++) {
       // 左側物品
       const leftItem = items[row * 2];
@@ -508,27 +560,50 @@ export class ReceiptGenerator {
     return currentY;
   }
 
-  private async drawSignatureArea(x: number, y: number, width: number): Promise<void> {
+  private drawMemoArea(x: number, y: number, width: number, memo: string): number {
+    const padding = 3;
+    const lineHeight = 5.5;
+    const text = this.encodeText(`備註：${memo}`);
+    this.setFont(9);
+    const lines = this.pdf.splitTextToSize(
+      text,
+      width - padding * 2
+    ) as string[];
+    const boxHeight = Math.max(12, lines.length * lineHeight + padding * 2);
+
+    this.drawBorder(x, y, width, boxHeight, 0.5);
+
+    lines.forEach((line, index) => {
+      this.pdf.text(line, x + padding, y + padding + lineHeight * (index + 1) - 2);
+    });
+
+    return y + boxHeight + 8;
+  }
+
+  private async drawSignatureArea(
+    x: number,
+    y: number,
+    width: number,
+    seals: Record<ReceiptSealCategory, ReceiptSealSelection>
+  ): Promise<void> {
     this.setFont(12);
     
     // 理事長簽名區
     this.pdf.text(this.encodeText('理事長：'), x, y + 10);
-    const chairmanSeal = await this.loadImage('/receipt/2.png');
+    const chairmanSeal = await this.resolveSealImage(seals.CHAIRMAN);
     if (chairmanSeal) {
       this.pdf.addImage(chairmanSeal, 'PNG', x + 25, y, 20, 20);
     } else {
-      // 繪製簽名框
       this.pdf.setLineWidth(1);
       this.pdf.rect(x + 25, y + 5, 40, 10);
     }
     
     // 經手人簽名區
     this.pdf.text(this.encodeText('經手人：'), x + width - 80, y + 10);
-    const handlerSeal = await this.loadImage('/receipt/3.png');
+    const handlerSeal = await this.resolveSealImage(seals.HANDLER);
     if (handlerSeal) {
       this.pdf.addImage(handlerSeal, 'PNG', x + width - 50, y, 20, 20);
     } else {
-      // 繪製簽名框
       this.pdf.setLineWidth(1);
       this.pdf.rect(x + width - 50, y + 5, 40, 10);
     }
@@ -553,11 +628,10 @@ export class ReceiptGenerator {
   }
 }
 
-export async function generateReceiptsPDF(records: DonationRecord[]): Promise<Blob> {
+export async function generateReceiptsPDF(draft: ReceiptDraftSubmission): Promise<Blob> {
   const generator = new ReceiptGenerator();
   
-  // 將所有記錄合併成一張收據
-  await generator.generateReceipt(records);
+  await generator.generateReceipt(draft);
   
   return generator.getBlob();
 }

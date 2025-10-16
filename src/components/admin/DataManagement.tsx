@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { ItemsManagement } from "@/components/admin/ItemsManagement";
 import { DonorsManagement } from "@/components/admin/DonorsManagement";
 import { RecipientUnitsManagement } from "@/components/recipient/RecipientUnitsManagement";
+import { SealManagement } from "@/components/admin/SealManagement";
 
 interface Category {
   id: string;
@@ -26,12 +27,13 @@ interface DataCounts {
   customItems: number;
   donors: number;
   recipients: number;
+  seals: number;
 }
 
 export function DataManagement() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeSection, setActiveSection] = useState<"categories" | "recipients" | "donors" | "items">("items");
+  const [activeSection, setActiveSection] = useState<"categories" | "recipients" | "donors" | "items" | "seals">("items");
   const [editingItem, setEditingItem] = useState<{ type: string; id: string; name: string } | null>(null);
   const [editName, setEditName] = useState("");
   const [counts, setCounts] = useState<DataCounts>({
@@ -40,6 +42,7 @@ export function DataManagement() {
     customItems: 0,
     donors: 0,
     recipients: 0,
+    seals: 0,
   });
   const [initialLoading, setInitialLoading] = useState(true);
 
@@ -51,12 +54,13 @@ export function DataManagement() {
     setInitialLoading(true);
     try {
       // 並行載入所有資料以取得計數
-      const [categoriesRes, standardItemsRes, customItemsRes, donorsRes, recipientsRes] = await Promise.all([
+      const [categoriesRes, standardItemsRes, customItemsRes, donorsRes, recipientsRes, sealsRes] = await Promise.all([
         fetch('/api/categories').then(r => r.ok ? r.json() : []).catch(() => []),
         fetch('/api/standard-items').then(r => r.ok ? r.json() : { data: [] }).catch(() => ({ data: [] })),
         fetch('/api/custom-items?includeHidden=true').then(r => r.ok ? r.json() : { data: [] }).catch(() => ({ data: [] })),
         fetch('/api/donors?includeInactive=true').then(r => r.ok ? r.json() : { data: [] }).catch(() => ({ data: [] })),
         fetch('/api/recipient-units?includeInactive=true').then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch('/api/seals').then(r => r.ok ? r.json() : []).catch(() => []),
       ]);
 
       // 更新 categories（用於當前頁面顯示）
@@ -73,6 +77,7 @@ export function DataManagement() {
         recipients: Array.isArray(recipientsRes)
           ? recipientsRes.filter((r: { isActive: boolean }) => r.isActive).length
           : recipientsRes.data?.filter((r: { isActive: boolean }) => r.isActive).length || 0,
+        seals: Array.isArray(sealsRes) ? sealsRes.length : 0,
       });
     } catch (error) {
       console.error('Error loading data:', error);
@@ -258,7 +263,7 @@ export function DataManagement() {
       <div>
         <h2 className="text-2xl font-bold mb-2">資料管理</h2>
         <p className="text-muted-foreground">
-          管理系統中的物資品項、類別、捐贈單位和領取單位等基礎資料
+          管理系統中的物資品項、類別、捐贈與領取單位以及收據印章等基礎資料
         </p>
       </div>
 
@@ -305,6 +310,13 @@ export function DataManagement() {
         >
           領取單位 {counts.recipients > 0 && `(${counts.recipients})`}
         </Button>
+        <Button
+          variant={activeSection === "seals" ? "default" : "ghost"}
+          onClick={() => setActiveSection("seals")}
+          className="rounded-b-none"
+        >
+          印章管理 {counts.seals > 0 && `(${counts.seals})`}
+        </Button>
       </div>
 
       {/* Data Tables */}
@@ -329,6 +341,7 @@ export function DataManagement() {
             )}
             {activeSection === "donors" && <DonorsManagement />}
             {activeSection === "recipients" && <RecipientUnitsManagement />}
+            {activeSection === "seals" && <SealManagement />}
           </>
         )}
       </div>
@@ -341,6 +354,7 @@ export function DataManagement() {
           <li>類別編輯：點擊編輯按鈕可直接修改項目名稱，按 Enter 確認或 Escape 取消</li>
           <li>捐贈單位與領取單位：提供完整的搜尋、篩選、新增、編輯與停用功能</li>
           <li>類別的刪除是軟刪除，保留歷史記錄；捐贈單位與領取單位可停用後重新啟用</li>
+          <li>印章管理可集中維護所有收據印章，支援重新命名、裁切及刪除</li>
           <li>只有管理員和員工才能執行編輯操作，只有管理員才能執行停用/刪除操作</li>
         </ul>
       </div>

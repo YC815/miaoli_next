@@ -218,6 +218,19 @@ model ItemCondition {
   DonationItem       DonationItem?     @relation(fields: [donationItemId], references: [id])
 }
 
+model ReceiptSeal {
+  id        String               @id @default(cuid())
+  name      String
+  category  ReceiptSealCategory
+  imageData String
+  mimeType  String               @default("image/png")
+  isActive  Boolean              @default(true)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  createdBy String?
+  updatedBy String?
+}
+
 enum Role {
   ADMIN
   STAFF
@@ -227,4 +240,10 @@ enum Role {
 enum ChangeType {
   INCREASE
   DECREASE
+}
+
+enum ReceiptSealCategory {
+  ORG
+  CHAIRMAN
+  HANDLER
 }

@@ -22,6 +22,7 @@ import { getPermissions } from "@/lib/permissions";
 import { SignOutButton } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
 import type { ExpiryItemDetail } from "@/types/expiry";
+import type { ReceiptDraftSubmission } from "@/types/receipt";
 
 type TabType = "supplies" | "records" | "staff" | "data";
 
@@ -60,14 +61,6 @@ interface DisbursementItem {
   itemCategory: string;
   quantity: number;
   itemUnit: string;
-}
-
-import type { DonationRecord as BaseDonationRecord } from "@/types/donation";
-
-interface DonationRecord extends BaseDonationRecord {
-  selected: boolean;
-  items: string;
-  date: string;
 }
 
 interface HomePageProps {
@@ -436,35 +429,35 @@ function HomePage({ dbUser = null }: HomePageProps) {
     XLSX.writeFile(wb, filename);
   };
 
-  const handlePrintReceipts = async (selectedRecords: DonationRecord[]) => {
-    if (selectedRecords.length === 0) return;
+  const handleFinalizeReceipt = async (draft: ReceiptDraftSubmission) => {
+    if (!draft.recordIds || draft.recordIds.length === 0) {
+      toast.error("沒有可生成的收據資料");
+      return;
+    }
 
-    const loadingToast = toast.loading('正在生成收據 PDF...');
-    
+    const loadingToast = toast.loading("正在生成收據 PDF...");
+
     try {
-      // 使用新的 PDF 生成器
-      const pdfBlob = await generateReceiptsPDF(selectedRecords);
-      
-      // 創建下載連結
+      const pdfBlob = await generateReceiptsPDF(draft);
+
       const url = URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.download = `收據_${new Date().toLocaleDateString('zh-TW').replace(/\//g, '')}.pdf`;
-      
-      // 觸發下載
+      link.download = `收據_${new Date()
+        .toLocaleDateString("zh-TW")
+        .replace(/\//g, "")}.pdf`;
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      // 清理 URL
       URL.revokeObjectURL(url);
-      
-      toast.success(`已生成 ${selectedRecords.length} 份收據 PDF`, {
+
+      toast.success(`已生成 ${draft.recordIds.length} 份收據`, {
         id: loadingToast,
       });
     } catch (error) {
-      console.error('生成收據失敗:', error);
-      toast.error('生成收據失敗，請稍後再試', {
+      console.error("生成收據失敗:", error);
+      toast.error("生成收據失敗，請稍後再試", {
         id: loadingToast,
       });
     }
@@ -660,7 +653,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
       <ReceiptModal
         open={isReceiptOpen}
         onOpenChange={setIsReceiptOpen}
-        onPrint={handlePrintReceipts}
+        onFinalize={handleFinalizeReceipt}
       />
 
       <ExpiryStatusModal
