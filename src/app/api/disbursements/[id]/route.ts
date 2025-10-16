@@ -75,7 +75,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -108,6 +108,7 @@ export async function DELETE(
         throw new Error("Disbursement record not found");
       }
 
+      // 1. Restore stock quantities
       for (const item of disbursement.disbursementItems) {
         await tx.itemStock.update({
           where: {
@@ -124,6 +125,12 @@ export async function DELETE(
         });
       }
 
+      // 2. Delete disbursement items (child records)
+      await tx.disbursementItem.deleteMany({
+        where: { disbursementId: id },
+      });
+
+      // 3. Delete disbursement record (parent record)
       await tx.disbursement.delete({
         where: { id },
       });

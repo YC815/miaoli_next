@@ -9,7 +9,6 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
@@ -32,23 +31,21 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-interface DataTableProps<TData, TValue> {
+interface RecordsDataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   searchKey?: string
   searchPlaceholder?: string
   onSelectionChange?: (selectedRows: TData[]) => void
-  showFooter?: boolean
 }
 
-export function DataTable<TData, TValue>({
+export function RecordsDataTable<TData, TValue>({
   columns,
   data,
   searchKey = "",
   searchPlaceholder = "搜尋...",
   onSelectionChange,
-  showFooter = true,
-}: DataTableProps<TData, TValue>) {
+}: RecordsDataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -60,16 +57,10 @@ export function DataTable<TData, TValue>({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    initialState: {
-      pagination: {
-        pageSize: 5,
-      },
-    },
     state: {
       sorting,
       columnFilters,
@@ -129,7 +120,7 @@ export function DataTable<TData, TValue>({
         </DropdownMenu>
       </div>
       <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
-        <div className="max-h-[400px] overflow-y-auto">
+        <div className="max-h-[600px] overflow-y-auto">
           <Table>
             <TableHeader className="bg-muted/50 sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
@@ -183,38 +174,6 @@ export function DataTable<TData, TValue>({
           </Table>
         </div>
       </div>
-      {showFooter && (
-        <div className="flex items-center justify-between space-x-2 py-2">
-          <div className="text-sm text-muted-foreground">
-            已選擇 {table.getFilteredSelectedRowModel().rows.length} / {table.getFilteredRowModel().rows.length} 項目
-          </div>
-          <div className="flex items-center space-x-2">
-            <p className="text-sm font-medium text-muted-foreground">
-              第 {table.getState().pagination.pageIndex + 1} 頁，共 {table.getPageCount()} 頁
-            </p>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-                className="h-8 px-3"
-              >
-                上一頁
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-                className="h-8 px-3"
-              >
-                下一頁
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

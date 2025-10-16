@@ -92,7 +92,7 @@ export function ItemRecordsDialog({
         const params = new URLSearchParams({
           itemStockId,
           page: donationPage.toString(),
-          pageSize: "25",
+          pageSize: "3",
         });
         const response = await fetch(`/api/donations?${params.toString()}`, {
           signal: controller.signal,
@@ -126,7 +126,7 @@ export function ItemRecordsDialog({
         const params = new URLSearchParams({
           itemStockId,
           page: disbursementPage.toString(),
-          pageSize: "25",
+          pageSize: "3",
         });
         const response = await fetch(
           `/api/disbursements?${params.toString()}`,
@@ -163,7 +163,7 @@ export function ItemRecordsDialog({
         const params = new URLSearchParams({
           itemStockId,
           page: inventoryPage.toString(),
-          pageSize: "25",
+          pageSize: "3",
         });
         const response = await fetch(
           `/api/inventory-logs?${params.toString()}`,
@@ -283,6 +283,8 @@ export function ItemRecordsDialog({
                   onSelectionChange={() => {}}
                   onDelete={() => {}}
                   onEdit={() => {}}
+                  showFooter={false}
+                  variant="item-dialog"
                 />
               )}
               {activeTab === "disbursements" && (
@@ -292,6 +294,8 @@ export function ItemRecordsDialog({
                   onSelectionChange={() => {}}
                   onDelete={() => {}}
                   onEdit={() => {}}
+                  showFooter={false}
+                  variant="item-dialog"
                 />
               )}
               {activeTab === "inventory" && (
@@ -300,6 +304,8 @@ export function ItemRecordsDialog({
                   data={inventoryData?.items ?? []}
                   onSelectionChange={() => {}}
                   onDelete={() => {}}
+                  showFooter={false}
+                  variant="item-dialog"
                 />
               )}
             </div>

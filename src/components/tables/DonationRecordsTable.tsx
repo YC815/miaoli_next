@@ -1,12 +1,21 @@
 "use client"
 
 import * as React from "react"
-import { Calendar, Trash2, Edit } from "lucide-react"
+import { Calendar, Trash2, Edit, ArrowUpDown } from "lucide-react"
+import { ColumnDef } from "@tanstack/react-table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { RecordsDataTable } from "@/components/ui/records-data-table"
+import { ItemRecordsDataTable } from "@/components/ui/item-records-data-table"
 import { DonationRecord } from "@/types/donation"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreHorizontal } from "lucide-react"
 
 export type { DonationRecord }
 
@@ -20,61 +29,288 @@ const formatDate = (dateString: string) => {
   });
 };
 
+// Flattened row type for table display
+interface DonationTableRow {
+  id: string // unique row id
+  recordId: string // original record id
+  serialNumber: string
+  createdAt: string
+  itemName: string
+  itemUnit: string
+  quantity: number
+  notes: string | null
+  donorName: string | null
+  donorPhone: string | null
+  donorAddress: string | null
+  operatorName: string | null
+  isFirstItem: boolean
+  itemCount: number
+  originalRecord: DonationRecord
+}
+
 interface DonationRecordsTableProps {
   data: DonationRecord[]
   onSelectionChange?: (selectedRecords: DonationRecord[]) => void
   onDelete?: (record: DonationRecord) => void
   onEdit?: (record: DonationRecord) => void
+  showFooter?: boolean
+  variant?: "records" | "item-dialog"
 }
+
+const createColumns = (
+  onDelete?: (record: DonationRecord) => void,
+  onEdit?: (record: DonationRecord) => void
+): ColumnDef<DonationTableRow>[] => [
+  {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="選擇全部"
+        className="translate-y-0.5"
+      />
+    ),
+    cell: ({ row }) => {
+      if (!row.original.isFirstItem) return null
+      return (
+        <div className={row.original.itemCount > 1 ? "pb-2" : ""}>
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="選擇行"
+            className="translate-y-0.5"
+          />
+        </div>
+      )
+    },
+    enableSorting: false,
+    enableHiding: false,
+    size: 40,
+  },
+  {
+    accessorKey: "createdAt",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="h-8 px-2 lg:px-3"
+      >
+        捐贈日期
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
+    cell: ({ row }) => {
+      if (!row.original.isFirstItem) return null
+      return (
+        <div className={`text-sm font-mono ${row.original.itemCount > 1 ? "pb-2" : ""}`}>
+          {formatDate(row.getValue("createdAt"))}
+        </div>
+      )
+    },
+    size: 150,
+  },
+  {
+    accessorKey: "serialNumber",
+    header: "流水號",
+    cell: ({ row }) => {
+      if (!row.original.isFirstItem) return null
+      return (
+        <div className={row.original.itemCount > 1 ? "pb-2" : ""}>
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 font-mono tracking-wide">
+            {row.getValue("serialNumber")}
+          </span>
+        </div>
+      )
+    },
+    size: 120,
+  },
+  {
+    accessorKey: "itemName",
+    header: "物資名稱",
+    cell: ({ row }) => (
+      <div className="text-sm">{row.getValue("itemName")}</div>
+    ),
+    size: 150,
+  },
+  {
+    accessorKey: "quantity",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="h-8 px-2 lg:px-3"
+      >
+        數量
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm">
+        {row.getValue("quantity")} {row.original.itemUnit}
+      </div>
+    ),
+    size: 100,
+  },
+  {
+    accessorKey: "notes",
+    header: "備註",
+    cell: ({ row }) => {
+      const notes = row.getValue("notes") as string | null
+      return (
+        <div className="text-sm max-w-[200px] truncate" title={notes || ""}>
+          {notes || "-"}
+        </div>
+      )
+    },
+    size: 200,
+  },
+  {
+    accessorKey: "donorName",
+    header: "捐贈者",
+    cell: ({ row }) => {
+      if (!row.original.isFirstItem) return null
+      const donorName = row.getValue("donorName") as string | null
+      return (
+        <div className={`text-sm ${row.original.itemCount > 1 ? "pb-2" : ""}`}>
+          {donorName || <span className="text-muted-foreground italic">匿名</span>}
+        </div>
+      )
+    },
+    size: 120,
+  },
+  {
+    accessorKey: "donorPhone",
+    header: "聯絡電話",
+    cell: ({ row }) => {
+      if (!row.original.isFirstItem) return null
+      const phone = row.getValue("donorPhone") as string | null
+      return (
+        <div className={`text-sm ${row.original.itemCount > 1 ? "pb-2" : ""}`}>
+          {phone || "-"}
+        </div>
+      )
+    },
+    size: 120,
+  },
+  {
+    accessorKey: "donorAddress",
+    header: "地址",
+    cell: ({ row }) => {
+      if (!row.original.isFirstItem) return null
+      const address = row.getValue("donorAddress") as string | null
+      return (
+        <div className={`text-sm max-w-[200px] truncate ${row.original.itemCount > 1 ? "pb-2" : ""}`} title={address || ""}>
+          {address || "-"}
+        </div>
+      )
+    },
+    size: 200,
+  },
+  {
+    accessorKey: "operatorName",
+    header: "操作者",
+    cell: ({ row }) => {
+      if (!row.original.isFirstItem) return null
+      return (
+        <div className={`text-sm ${row.original.itemCount > 1 ? "pb-2" : ""}`}>
+          {row.getValue("operatorName") || "-"}
+        </div>
+      )
+    },
+    size: 100,
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => {
+      if (!row.original.isFirstItem) return null
+      if (!onDelete && !onEdit) return null
+
+      return (
+        <div className={row.original.itemCount > 1 ? "pb-2" : ""}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">開啟選單</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {onEdit && (
+                <DropdownMenuItem onClick={() => onEdit(row.original.originalRecord)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  編輯
+                </DropdownMenuItem>
+              )}
+              {onDelete && (
+                <DropdownMenuItem
+                  onClick={() => onDelete(row.original.originalRecord)}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  刪除
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )
+    },
+    size: 50,
+  },
+]
 
 export function DonationRecordsTable({
   data,
   onSelectionChange,
   onDelete,
-  onEdit
+  onEdit,
+  variant = "records"
 }: DonationRecordsTableProps) {
-  const [selectedRecordIds, setSelectedRecordIds] = React.useState<Set<string>>(new Set());
-  const [searchTerm, setSearchTerm] = React.useState("");
+  // Flatten donation records into individual rows
+  const flattenedData = React.useMemo(() => {
+    const rows: DonationTableRow[] = []
+    data.forEach((record) => {
+      const items = record.donationItems
+      items.forEach((item, index) => {
+        rows.push({
+          id: `${record.id}-${index}`,
+          recordId: record.id,
+          serialNumber: record.serialNumber,
+          createdAt: record.createdAt,
+          itemName: item.itemName,
+          itemUnit: item.itemUnit,
+          quantity: item.quantity,
+          notes: item.notes,
+          donorName: record.donor?.name || null,
+          donorPhone: record.donor?.phone || null,
+          donorAddress: record.donor?.address || null,
+          operatorName: record.user.nickname,
+          isFirstItem: index === 0,
+          itemCount: items.length,
+          originalRecord: record,
+        })
+      })
+    })
+    return rows
+  }, [data])
 
-  // Filter data based on search term
-  const filteredData = React.useMemo(() => {
-    if (!searchTerm) return data;
-    const lowerSearch = searchTerm.toLowerCase();
-    return data.filter(record =>
-      (record.donor && record.donor.name.toLowerCase().includes(lowerSearch)) ||
-      (record.donor && record.donor.phone?.toLowerCase().includes(lowerSearch)) ||
-      record.serialNumber.toLowerCase().includes(lowerSearch)
-    );
-  }, [data, searchTerm]);
+  const columns = React.useMemo(() => createColumns(onDelete, onEdit), [onDelete, onEdit])
 
-  // Handle selection changes
-  React.useEffect(() => {
-    if (onSelectionChange) {
-      const selectedRecords = data.filter(record => selectedRecordIds.has(record.id));
-      onSelectionChange(selectedRecords);
-    }
-  }, [selectedRecordIds, data, onSelectionChange]);
+  // Handle selection changes - group by recordId
+  const handleSelectionChange = React.useCallback((selectedRows: DonationTableRow[]) => {
+    if (!onSelectionChange) return
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedRecordIds(new Set(filteredData.map(r => r.id)));
-    } else {
-      setSelectedRecordIds(new Set());
-    }
-  };
+    // Get unique records from selected rows
+    const uniqueRecordIds = new Set(selectedRows.map(row => row.recordId))
+    const selectedRecords = data.filter(record => uniqueRecordIds.has(record.id))
+    onSelectionChange(selectedRecords)
+  }, [data, onSelectionChange])
 
-  const handleSelectRecord = (recordId: string, checked: boolean) => {
-    const newSelection = new Set(selectedRecordIds);
-    if (checked) {
-      newSelection.add(recordId);
-    } else {
-      newSelection.delete(recordId);
-    }
-    setSelectedRecordIds(newSelection);
-  };
-
-  const allSelected = filteredData.length > 0 && filteredData.every(r => selectedRecordIds.has(r.id));
-  const someSelected = filteredData.some(r => selectedRecordIds.has(r.id)) && !allSelected;
+  const DataTableComponent = variant === "item-dialog" ? ItemRecordsDataTable : RecordsDataTable
 
   return (
     <Card className="border-0 shadow-md bg-card">
@@ -87,172 +323,13 @@ export function DonationRecordsTable({
         </CardTitle>
       </CardHeader>
       <CardContent className="px-6 pb-6">
-        {/* Search Input */}
-        <div className="mb-4">
-          <Input
-            placeholder="搜尋捐贈者..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
-          />
-        </div>
-
-        {/* Custom Table */}
-        <div className="rounded-md border overflow-x-auto">
-          <table className="w-full text-sm min-w-max">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="h-12 px-4 text-left align-middle font-medium">
-                  <Checkbox
-                    checked={allSelected || (someSelected && "indeterminate")}
-                    onCheckedChange={handleSelectAll}
-                    aria-label="全選"
-                  />
-                </th>
-                <th className="h-12 px-4 text-left align-middle font-medium">捐贈日期</th>
-                <th className="h-12 px-4 text-left align-middle font-medium">流水號</th>
-                <th className="h-12 px-4 text-left align-middle font-medium">物資名稱</th>
-                <th className="h-12 px-4 text-left align-middle font-medium">數量</th>
-                <th className="h-12 px-4 text-left align-middle font-medium">備註</th>
-                <th className="h-12 px-4 text-left align-middle font-medium">捐贈者</th>
-                <th className="h-12 px-4 text-left align-middle font-medium">聯絡電話</th>
-                <th className="h-12 px-4 text-left align-middle font-medium">地址</th>
-                <th className="h-12 px-4 text-left align-middle font-medium">操作者</th>
-                <th className="h-12 px-4 text-center align-middle font-medium">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredData.length === 0 ? (
-                <tr>
-                  <td colSpan={11} className="h-24 text-center">
-                    沒有找到任何紀錄
-                  </td>
-                </tr>
-              ) : (
-                filteredData.map((record) => {
-                  const items = record.donationItems;
-                  return items.map((item, itemIndex) => (
-                    <tr key={`${record.id}-${itemIndex}`} className="border-b">
-                      {/* Checkbox - only show on first row */}
-                      {itemIndex === 0 ? (
-                        <td className="p-4 align-top" rowSpan={items.length}>
-                          <Checkbox
-                            checked={selectedRecordIds.has(record.id)}
-                            onCheckedChange={(checked) => handleSelectRecord(record.id, !!checked)}
-                            aria-label="選擇行"
-                          />
-                        </td>
-                      ) : null}
-
-                      {/* Date - only show on first row */}
-                      {itemIndex === 0 ? (
-                        <td className="p-4 align-top font-mono text-sm" rowSpan={items.length}>
-                          {formatDate(record.createdAt)}
-                        </td>
-                      ) : null}
-
-                      {/* Serial Number - only show on first row */}
-                      {itemIndex === 0 ? (
-                        <td className="p-4 align-top" rowSpan={items.length}>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 font-mono tracking-wide">
-                            {record.serialNumber}
-                          </span>
-                        </td>
-                      ) : null}
-
-                      {/* Item Name */}
-                      <td className="p-4 align-top">
-                        {item.itemName}
-                      </td>
-
-                      {/* Quantity */}
-                      <td className="p-4 align-top">
-                        {item.quantity} {item.itemUnit}
-                      </td>
-
-                      {/* Item Notes */}
-                      <td className="p-4 align-top max-w-xs">
-                        <div className="truncate" title={item.notes || ""}>
-                          {item.notes || "-"}
-                        </div>
-                      </td>
-
-                      {/* Donor Name - only show on first row */}
-                      {itemIndex === 0 ? (
-                        <td className="p-4 align-top" rowSpan={items.length}>
-                          {record.donor ? (
-                            record.donor.name
-                          ) : (
-                            <span className="text-muted-foreground italic">匿名</span>
-                          )}
-                        </td>
-                      ) : null}
-
-                      {/* Donor Phone - only show on first row */}
-                      {itemIndex === 0 ? (
-                        <td className="p-4 align-top" rowSpan={items.length}>
-                          {record.donor ? (record.donor.phone || "-") : "-"}
-                        </td>
-                      ) : null}
-
-                      {/* Donor Address - only show on first row */}
-                      {itemIndex === 0 ? (
-                        <td className="p-4 align-top max-w-xs" rowSpan={items.length}>
-                          {record.donor ? (
-                            <div className="truncate" title={record.donor.address || ""}>
-                              {record.donor.address || "-"}
-                            </div>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                      ) : null}
-
-                      {/* Operator - only show on first row */}
-                      {itemIndex === 0 ? (
-                        <td className="p-4 align-top" rowSpan={items.length}>
-                          {record.user.nickname || "-"}
-                        </td>
-                      ) : null}
-
-                      {/* Actions - only show on first row */}
-                      {itemIndex === 0 ? (
-                        <td className="p-4 align-top text-center" rowSpan={items.length}>
-                          <div className="flex items-center justify-center gap-1">
-                            {onEdit && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => onEdit(record)}
-                                className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600"
-                                title="編輯"
-                              >
-                                <Edit className="h-4 w-4" />
-                                <span className="sr-only">編輯</span>
-                              </Button>
-                            )}
-                            {onDelete && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => onDelete(record)}
-                                className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
-                                title="刪除"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                <span className="sr-only">刪除</span>
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      ) : null}
-                    </tr>
-                  ));
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTableComponent
+          columns={columns}
+          data={flattenedData}
+          searchKey={variant === "records" ? "donorName" : undefined}
+          searchPlaceholder="搜尋捐贈者..."
+          onSelectionChange={handleSelectionChange}
+        />
       </CardContent>
     </Card>
   )

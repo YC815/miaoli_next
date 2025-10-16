@@ -5,7 +5,8 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, TrendingUp, TrendingDown, MoreHorizontal, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { DataTable } from "@/components/ui/data-table"
+import { RecordsDataTable } from "@/components/ui/records-data-table"
+import { ItemRecordsDataTable } from "@/components/ui/item-records-data-table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -270,10 +271,13 @@ interface InventoryLogsTableProps {
   data: InventoryLog[]
   onSelectionChange: (selectedRows: InventoryLog[]) => void
   onDelete?: (record: InventoryLog) => void
+  showFooter?: boolean
+  variant?: "records" | "item-dialog"
 }
 
-export function InventoryLogsTable({ data, onSelectionChange, onDelete }: InventoryLogsTableProps) {
+export function InventoryLogsTable({ data, onSelectionChange, onDelete, variant = "records" }: InventoryLogsTableProps) {
   const columns = React.useMemo(() => createColumns(onDelete), [onDelete]);
+  const DataTableComponent = variant === "item-dialog" ? ItemRecordsDataTable : RecordsDataTable
 
   return (
     <Card className="border-0 shadow-md bg-card">
@@ -286,13 +290,12 @@ export function InventoryLogsTable({ data, onSelectionChange, onDelete }: Invent
         </CardTitle>
       </CardHeader>
       <CardContent className="px-6 pb-6">
-        <DataTable
+        <DataTableComponent
           columns={columns}
           data={data}
           onSelectionChange={onSelectionChange}
-          searchKey="itemStockName"
+          searchKey={variant === "records" ? "itemStockName" : undefined}
           searchPlaceholder="搜尋物資名稱..."
-          showFooter={false}
         />
       </CardContent>
     </Card>

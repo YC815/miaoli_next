@@ -112,7 +112,7 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, items, dbUser }
         quantity: item.requestedQuantity,
       }));
     onSubmit(finalPickupInfo, selectedItems);
-    resetForm();
+    // resetForm will be called by handleCancel when dialog closes
   };
 
   const handleCancel = () => {

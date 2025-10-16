@@ -166,14 +166,14 @@ const createDefaultDonationFilters = (): DonationFilters => ({
   categories: [],
   itemType: "all",
   page: 1,
-  pageSize: 25,
+  pageSize: 20,
 });
 
 const createDefaultDisbursementFilters = (): DisbursementFilters => ({
   search: "",
   categories: [],
   page: 1,
-  pageSize: 25,
+  pageSize: 20,
 });
 
 const createDefaultInventoryFilters = (): InventoryFilters => ({
@@ -181,7 +181,7 @@ const createDefaultInventoryFilters = (): InventoryFilters => ({
   categories: [],
   changeType: "all",
   page: 1,
-  pageSize: 50,
+  pageSize: 20,
 });
 
 type DeletableRecord = (DonationRecord | DisbursementRecord | InventoryLog) & { recordType: TabType };
@@ -1304,8 +1304,7 @@ const PageSizeSelect = ({
       <SelectValue />
     </SelectTrigger>
     <SelectContent align="start">
-      <SelectItem value="15">每頁 15 筆</SelectItem>
-      <SelectItem value="25">每頁 25 筆</SelectItem>
+      <SelectItem value="20">每頁 20 筆</SelectItem>
       <SelectItem value="50">每頁 50 筆</SelectItem>
       <SelectItem value="100">每頁 100 筆</SelectItem>
     </SelectContent>
