@@ -122,8 +122,8 @@ export function DisbursementRecordsTable({
           />
         </div>
 
-        <div className="rounded-md border">
-          <table className="w-full text-sm">
+        <div className="rounded-md border overflow-x-auto">
+          <table className="w-full text-sm min-w-max">
             <thead>
               <tr className="border-b bg-muted/50">
                 <th className="h-12 px-4 text-left align-middle font-medium">

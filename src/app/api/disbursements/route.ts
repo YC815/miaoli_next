@@ -270,6 +270,7 @@ export async function GET(request: NextRequest) {
     const endDate = parseDate(searchParams.get('endDate'), true);
     const userIdFilter = searchParams.get('userId') ?? undefined;
     const recipientUnitId = searchParams.get('recipientUnitId') ?? undefined;
+    const itemStockIdFilter = searchParams.get('itemStockId') ?? undefined;
     const categories = normalizeMultiValueParam(searchParams, 'category');
 
     const where: Prisma.DisbursementWhereInput = {};
@@ -316,6 +317,25 @@ export async function GET(request: NextRequest) {
 
     if (recipientUnitId) {
       andConditions.push({ recipientUnitId });
+    }
+
+    // Filter by itemStockId - need to lookup the item details first
+    if (itemStockIdFilter) {
+      const itemStock = await prisma.itemStock.findUnique({
+        where: { id: itemStockIdFilter },
+        select: { itemName: true, itemCategory: true },
+      });
+
+      if (itemStock) {
+        andConditions.push({
+          disbursementItems: {
+            some: {
+              itemName: itemStock.itemName,
+              itemCategory: itemStock.itemCategory,
+            },
+          },
+        });
+      }
     }
 
     if (categories.length > 0) {

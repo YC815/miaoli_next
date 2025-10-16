@@ -47,6 +47,7 @@ import { useMemo, useState } from "react";
 import { EditSupplyModal } from "@/components/modals/EditSupplyModal";
 import { EditSafetyStockModal } from "@/components/modals/EditSafetyStockModal";
 import { InventoryCountModal } from "@/components/modals/InventoryCountModal";
+import { ItemRecordsDialog } from "@/components/modals/ItemRecordsDialog";
 import { Permission } from "@/lib/permissions";
 
 interface ItemStock {
@@ -75,6 +76,7 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
   const [isEditSupplyOpen, setIsEditSupplyOpen] = useState(false);
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [isEditSafetyStockOpen, setIsEditSafetyStockOpen] = useState(false);
+  const [isItemRecordsOpen, setIsItemRecordsOpen] = useState(false);
   const [selectedSupply, setSelectedSupply] = useState<ItemStock | null>(null);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
@@ -241,8 +243,8 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
     );
   };
 
-  const removeFilter = (value: string, setter: (next: string[]) => void) => {
-    setter((prev) => prev.filter((item) => item !== value));
+  const removeFilter = (value: string, setter: React.Dispatch<React.SetStateAction<string[]>>) => {
+    setter((prev: string[]) => prev.filter((item: string) => item !== value));
   };
 
   const clearAllFilters = () => {
@@ -273,6 +275,11 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
   const handleEditSafetyStock = (supply: ItemStock) => {
     setSelectedSupply(supply);
     setIsEditSafetyStockOpen(true);
+  };
+
+  const handleOpenItemRecords = (supply: ItemStock) => {
+    setSelectedSupply(supply);
+    setIsItemRecordsOpen(true);
   };
 
   return (
@@ -724,7 +731,10 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
                           {supply.category}
                         </span>
                       </TableCell>
-                      <TableCell className="py-2 sm:py-4">
+                      <TableCell
+                        className="py-2 sm:py-4 cursor-pointer hover:bg-muted/30 transition-colors"
+                        onClick={() => handleOpenItemRecords(supply)}
+                      >
                         <div className="font-medium text-sm sm:text-base break-words">{supply.name}</div>
                         <div className="mt-1">
                           <Badge variant={supply.isStandard ? "secondary" : "outline"} className="text-[10px] sm:text-xs">
@@ -732,7 +742,10 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
                           </Badge>
                         </div>
                       </TableCell>
-                      <TableCell className="py-2 sm:py-4 text-center">
+                      <TableCell
+                        className="py-2 sm:py-4 text-center cursor-pointer hover:bg-muted/30 transition-colors"
+                        onClick={() => handleOpenItemRecords(supply)}
+                      >
                         <div className="flex items-center justify-center gap-1 sm:gap-2">
                           <span className={`text-sm sm:text-lg font-semibold ${supply.totalStock === 0 ? 'text-red-600' : ''}`}>
                             {supply.totalStock.toLocaleString()} {supply.unit}
@@ -827,6 +840,13 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
         onOpenChange={setIsEditSafetyStockOpen}
         onSubmit={onUpdateSafetyStock}
         supply={selectedSupply}
+      />
+
+      <ItemRecordsDialog
+        open={isItemRecordsOpen}
+        onOpenChange={setIsItemRecordsOpen}
+        itemStockId={selectedSupply?.id ?? null}
+        itemName={selectedSupply?.name ?? null}
       />
     </div>
   );
