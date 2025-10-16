@@ -1,18 +1,25 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Plus, Check, ChevronsUpDown } from "lucide-react";
 import { AddDonorDialog } from "@/components/donation/AddDonorDialog";
+import { cn } from "@/lib/utils";
 
 interface Donor {
   id: string;
@@ -32,6 +39,7 @@ export function DonorSelect({ selectedDonorId, onDonorChange }: DonorSelectProps
   const [selectedDonor, setSelectedDonor] = useState<Donor | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     loadDonors();
@@ -84,25 +92,67 @@ export function DonorSelect({ selectedDonorId, onDonorChange }: DonorSelectProps
           選擇捐贈人 <span className="text-muted-foreground text-xs">(可選)</span>
         </Label>
         <div className="flex gap-2">
-          <Select
-            value={selectedDonorId || ""}
-            onValueChange={handleDonorSelect}
-            disabled={loading}
-          >
-            <SelectTrigger className="flex-1">
-              <SelectValue placeholder="請選擇捐贈人（可留空）" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="anonymous">
-                <span className="text-muted-foreground">匿名捐贈</span>
-              </SelectItem>
-              {donors.map((donor) => (
-                <SelectItem key={donor.id} value={donor.id}>
-                  {donor.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="flex-1 justify-between"
+                disabled={loading}
+              >
+                {selectedDonor
+                  ? selectedDonor.name
+                  : selectedDonorId === null && selectedDonor === null && !loading
+                  ? "匿名捐贈"
+                  : "請選擇捐贈人（可留空）"}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-0">
+              <Command>
+                <CommandInput placeholder="搜尋捐贈人..." />
+                <CommandList>
+                  <CommandEmpty>查無捐贈人</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="anonymous"
+                      onSelect={() => {
+                        handleDonorSelect("anonymous");
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          selectedDonorId === null ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <span className="text-muted-foreground">匿名捐贈</span>
+                    </CommandItem>
+                    {donors.map((donor) => (
+                      <CommandItem
+                        key={donor.id}
+                        value={donor.name}
+                        onSelect={() => {
+                          handleDonorSelect(donor.id);
+                          setOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            selectedDonorId === donor.id ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {donor.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
           <Button
             type="button"
             variant="outline"

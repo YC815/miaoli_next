@@ -1,18 +1,25 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Plus, Check, ChevronsUpDown } from "lucide-react";
 import { AddRecipientUnitDialog, RecipientUnit } from "@/components/recipient/AddRecipientUnitDialog";
+import { cn } from "@/lib/utils";
 
 interface RecipientUnitSelectProps {
   selectedRecipientId: string | null;
@@ -25,6 +32,7 @@ export function RecipientUnitSelect({ selectedRecipientId, onRecipientChange, ca
   const [selectedRecipient, setSelectedRecipient] = useState<RecipientUnit | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const loadRecipientUnits = async () => {
     setLoading(true);
@@ -76,22 +84,50 @@ export function RecipientUnitSelect({ selectedRecipientId, onRecipientChange, ca
           領取單位 <span className="text-muted-foreground text-xs">(可選)</span>
         </Label>
         <div className="flex gap-2">
-          <Select
-            value={selectedRecipient?.id || ""}
-            onValueChange={handleRecipientSelect}
-            disabled={loading}
-          >
-            <SelectTrigger className="flex-1 min-h-[44px]">
-              <SelectValue placeholder="請選擇領取單位（可留空）" />
-            </SelectTrigger>
-            <SelectContent>
-              {recipientUnits.map(unit => (
-                <SelectItem key={unit.id} value={unit.id}>
-                  {unit.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="flex-1 justify-between min-h-[44px]"
+                disabled={loading}
+              >
+                {selectedRecipient
+                  ? selectedRecipient.name
+                  : "請選擇領取單位（可留空）"}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-0">
+              <Command>
+                <CommandInput placeholder="搜尋領取單位..." />
+                <CommandList>
+                  <CommandEmpty>查無領取單位</CommandEmpty>
+                  <CommandGroup>
+                    {recipientUnits.map((unit) => (
+                      <CommandItem
+                        key={unit.id}
+                        value={unit.name}
+                        onSelect={() => {
+                          handleRecipientSelect(unit.id);
+                          setOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            selectedRecipient?.id === unit.id ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {unit.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
           {canCreate && (
             <Button
               type="button"
