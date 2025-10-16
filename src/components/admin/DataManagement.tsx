@@ -281,42 +281,44 @@ export function DataManagement() {
       </div>
 
       {/* Section Tabs */}
-      <div className="flex gap-2 border-b">
-        <Button
-          variant={activeSection === "items" ? "default" : "ghost"}
-          onClick={() => setActiveSection("items")}
-          className="rounded-b-none"
-        >
-          物資品項 {(counts.standardItems + counts.customItems) > 0 && `(${counts.standardItems + counts.customItems})`}
-        </Button>
-        <Button
-          variant={activeSection === "categories" ? "default" : "ghost"}
-          onClick={() => setActiveSection("categories")}
-          className="rounded-b-none"
-        >
-          物資類別 {counts.categories > 0 && `(${counts.categories})`}
-        </Button>
-        <Button
-          variant={activeSection === "donors" ? "default" : "ghost"}
-          onClick={() => setActiveSection("donors")}
-          className="rounded-b-none"
-        >
-          捐贈單位 {counts.donors > 0 && `(${counts.donors})`}
-        </Button>
-        <Button
-          variant={activeSection === "recipients" ? "default" : "ghost"}
-          onClick={() => setActiveSection("recipients")}
-          className="rounded-b-none"
-        >
-          領取單位 {counts.recipients > 0 && `(${counts.recipients})`}
-        </Button>
-        <Button
-          variant={activeSection === "seals" ? "default" : "ghost"}
-          onClick={() => setActiveSection("seals")}
-          className="rounded-b-none"
-        >
-          印章管理 {counts.seals > 0 && `(${counts.seals})`}
-        </Button>
+      <div className="overflow-x-auto border-b">
+        <div className="flex gap-2 min-w-max">
+          <Button
+            variant={activeSection === "items" ? "default" : "ghost"}
+            onClick={() => setActiveSection("items")}
+            className="rounded-b-none whitespace-nowrap"
+          >
+            物資品項 {(counts.standardItems + counts.customItems) > 0 && `(${counts.standardItems + counts.customItems})`}
+          </Button>
+          <Button
+            variant={activeSection === "categories" ? "default" : "ghost"}
+            onClick={() => setActiveSection("categories")}
+            className="rounded-b-none whitespace-nowrap"
+          >
+            物資類別 {counts.categories > 0 && `(${counts.categories})`}
+          </Button>
+          <Button
+            variant={activeSection === "donors" ? "default" : "ghost"}
+            onClick={() => setActiveSection("donors")}
+            className="rounded-b-none whitespace-nowrap"
+          >
+            捐贈單位 {counts.donors > 0 && `(${counts.donors})`}
+          </Button>
+          <Button
+            variant={activeSection === "recipients" ? "default" : "ghost"}
+            onClick={() => setActiveSection("recipients")}
+            className="rounded-b-none whitespace-nowrap"
+          >
+            領取單位 {counts.recipients > 0 && `(${counts.recipients})`}
+          </Button>
+          <Button
+            variant={activeSection === "seals" ? "default" : "ghost"}
+            onClick={() => setActiveSection("seals")}
+            className="rounded-b-none whitespace-nowrap"
+          >
+            印章管理 {counts.seals > 0 && `(${counts.seals})`}
+          </Button>
+        </div>
       </div>
 
       {/* Data Tables */}
