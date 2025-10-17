@@ -103,7 +103,7 @@ const SealOptionSelector: React.FC<SealOptionSelectorProps> = ({
   const filteredAssets = React.useMemo(
     () =>
       assets.filter((asset) =>
-        asset.name.toLowerCase().includes(search.toLowerCase())
+        asset.nickname.toLowerCase().includes(search.toLowerCase())
       ),
     [assets, search]
   );
@@ -135,7 +135,7 @@ const SealOptionSelector: React.FC<SealOptionSelectorProps> = ({
             onSelect={() => {
               onSelect({
                 sealId: asset.id,
-                name: asset.name,
+                name: asset.nickname,
                 imageUrl: asset.imageUrl,
               });
             }}
@@ -143,11 +143,11 @@ const SealOptionSelector: React.FC<SealOptionSelectorProps> = ({
           >
             <img
               src={asset.imageUrl}
-              alt={asset.name}
+              alt={asset.nickname}
               className="h-10 w-10 rounded border object-contain"
             />
             <div className="flex flex-col">
-              <span className="text-sm font-medium">{asset.name}</span>
+              <span className="text-sm font-medium">{asset.nickname}</span>
               {asset.updatedAt && (
                 <span className="text-xs text-muted-foreground">
                   更新：{new Date(asset.updatedAt).toLocaleDateString("zh-TW")}
@@ -549,7 +549,7 @@ export function ReceiptModal({
       setSealAssets((prev) => [...prev, created]);
       handleUpdateSealSelection(category, {
         sealId: created.id,
-        name: created.name,
+        name: created.nickname,
         imageUrl: created.imageUrl,
         imageDataUrl: dataUrl,
       });
@@ -976,9 +976,7 @@ export function ReceiptModal({
               <div className="flex items-center gap-2">
                 <SealOptionSelector
                   category={category}
-                  assets={sealAssets.filter(
-                    (asset) => asset.category === category
-                  )}
+                  assets={sealAssets}
                   onSelect={(selection) =>
                     handleUpdateSealSelection(category, selection)
                   }

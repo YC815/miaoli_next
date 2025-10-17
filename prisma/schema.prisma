@@ -7,177 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id              String           @id @default(cuid())
-  clerkId         String           @unique
-  email           String           @unique
-  nickname        String?
-  role            Role             @default(VOLUNTEER)
-  isFirstLogin    Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  lastLoginAt     DateTime?
-  customItems     CustomItem[]
-  disbursements   Disbursement[]
-  donationRecords DonationRecord[]
-  inventoryLogs   InventoryLog[]
-}
-
-model Supply {
-  id            String         @id @default(cuid())
-  name          String
-  category      String
-  quantity      Int
-  safetyStock   Int
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  isActive      Boolean        @default(true)
-  sortOrder     Int            @default(0)
-  unit          String         @default("個")
-
-  @@unique([name, category])
-}
-
-model Donor {
-  id        String           @id @default(cuid())
-  name      String           @unique
-  phone     String?
-  taxId     String?
-  address   String?
-  isActive  Boolean          @default(true)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  donations DonationRecord[]
-}
-
-model DonationRecord {
-  id            String         @id @default(cuid())
-  createdAt     DateTime       @default(now())
-  userId        String
-  donorId       String?
-  serialNumber  String         @unique @default("")
-  donationItems DonationItem[]
-  donor         Donor?         @relation(fields: [donorId], references: [id])
-  user          User           @relation(fields: [userId], references: [id])
-}
-
-model DonationItem {
-  id            String          @id @default(cuid())
-  donationId    String
-  quantity      Int             @default(1)
-  expiryDate    DateTime?
-  isStandard    Boolean         @default(false)
-  itemCategory  String
-  itemName      String
-  itemUnit      String
-  notes         String?
-  isHandled     Boolean         @default(false)
-  donation      DonationRecord  @relation(fields: [donationId], references: [id])
-  ItemCondition ItemCondition[]
-}
-
-model Disbursement {
-  id                 String             @id @default(cuid())
-  recipientUnitName  String
-  recipientUnitId    String?
-  recipientPhone     String?
-  recipientAddress   String?
-  createdAt          DateTime           @default(now())
-  userId             String
-  serialNumber       String             @unique @default("")
-  user               User               @relation(fields: [userId], references: [id])
-  recipientUnit      RecipientUnit?     @relation(fields: [recipientUnitId], references: [id])
-  disbursementItems  DisbursementItem[]
-}
-
-model DisbursementItem {
-  id             String          @id @default(cuid())
-  disbursementId String
-  itemCategory   String
-  itemName       String
-  itemUnit       String
-  quantity       Int             @default(1)
-  disbursement   Disbursement    @relation(fields: [disbursementId], references: [id])
-  ItemCondition  ItemCondition[]
-}
-
-model InventoryLog {
-  id           String     @id @default(cuid())
-  itemStockId  String
-  changeType   ChangeType
-  changeAmount Int
-  previousQuantity Int
-  newQuantity  Int
-  reason       String
-  createdAt    DateTime   @default(now())
-  userId       String
-  itemStock    ItemStock  @relation(fields: [itemStockId], references: [id])
-  user         User       @relation(fields: [userId], references: [id])
-}
-
 model Category {
-  id        String   @id @default(cuid())
+  id        String   @id
   name      String   @unique
   isActive  Boolean  @default(true)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model RecipientUnit {
-  id            String         @id @default(cuid())
-  name          String         @unique
-  phone         String?
-  address       String?
-  isActive      Boolean        @default(true)
-  sortOrder     Int            @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  disbursements Disbursement[]
-}
-
-model InventoryChangeReason {
-  id         String     @id @default(cuid())
-  reason     String
-  changeType ChangeType
-  isActive   Boolean    @default(true)
-  sortOrder  Int        @default(0)
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-}
-
-model Unit {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  isActive  Boolean  @default(true)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model SerialNumberCounter {
-  id        String   @id @default(cuid())
-  type      String   @unique
-  counter   Int      @default(0)
-  prefix    String
-  updatedAt DateTime @updatedAt
-  createdAt DateTime @default(now())
-}
-
-model StandardItem {
-  id          String  @id @default(cuid())
-  name        String
-  category    String
-  units       Json
-  defaultUnit String
-  isActive    Boolean @default(true)
-  sortOrder   Int     @default(0)
-
-  @@unique([name, category])
+  updatedAt DateTime
 }
 
 model CustomItem {
-  id          String   @id @default(cuid())
+  id          String   @id
   name        String
   category    String
   units       Json
@@ -187,24 +27,96 @@ model CustomItem {
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   createdBy   String
-  user        User     @relation(fields: [createdBy], references: [id])
+  User        User     @relation(fields: [createdBy], references: [id])
 
   @@unique([name, category])
 }
 
-model ItemStock {
-  id           String   @id @default(cuid())
-  itemName     String
-  itemCategory String
-  itemUnit     String
-  totalStock   Int
-  safetyStock  Int      @default(0)
-  isStandard   Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  inventoryLogs InventoryLog[]
+model Disbursement {
+  id                String             @id
+  recipientPhone    String?
+  createdAt         DateTime           @default(now())
+  userId            String
+  serialNumber      String             @unique @default("")
+  recipientAddress  String?
+  recipientUnitId   String?
+  recipientUnitName String
+  RecipientUnit     RecipientUnit?     @relation(fields: [recipientUnitId], references: [id])
+  User              User               @relation(fields: [userId], references: [id])
+  DisbursementItem  DisbursementItem[]
+}
 
-  @@unique([itemName, itemCategory])
+model DisbursementItem {
+  id             String          @id
+  disbursementId String
+  itemCategory   String
+  itemName       String
+  itemUnit       String
+  quantity       Int             @default(1)
+  Disbursement   Disbursement    @relation(fields: [disbursementId], references: [id])
+  ItemCondition  ItemCondition[]
+}
+
+model DonationItem {
+  id             String          @id
+  donationId     String
+  quantity       Int             @default(1)
+  expiryDate     DateTime?
+  isStandard     Boolean         @default(false)
+  itemCategory   String
+  itemName       String
+  itemUnit       String
+  notes          String?
+  isHandled      Boolean         @default(false)
+  DonationRecord DonationRecord  @relation(fields: [donationId], references: [id])
+  ItemCondition  ItemCondition[]
+}
+
+model DonationRecord {
+  id           String         @id
+  createdAt    DateTime       @default(now())
+  userId       String
+  donorId      String?
+  serialNumber String         @unique @default("")
+  DonationItem DonationItem[]
+  Donor        Donor?         @relation(fields: [donorId], references: [id])
+  User         User           @relation(fields: [userId], references: [id])
+}
+
+model Donor {
+  id             String           @id
+  name           String           @unique
+  phone          String?
+  taxId          String?
+  address        String?
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime
+  DonationRecord DonationRecord[]
+}
+
+model InventoryChangeReason {
+  id         String     @id
+  reason     String
+  changeType ChangeType
+  isActive   Boolean    @default(true)
+  sortOrder  Int        @default(0)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime
+}
+
+model InventoryLog {
+  id               String     @id
+  itemStockId      String
+  changeType       ChangeType
+  changeAmount     Int
+  newQuantity      Int
+  reason           String
+  createdAt        DateTime   @default(now())
+  userId           String
+  previousQuantity Int
+  ItemStock        ItemStock  @relation(fields: [itemStockId], references: [id])
+  User             User       @relation(fields: [userId], references: [id])
 }
 
 model ItemCondition {
@@ -219,23 +131,105 @@ model ItemCondition {
   DonationItem       DonationItem?     @relation(fields: [donationItemId], references: [id])
 }
 
-model ReceiptSeal {
-  id        String               @id @default(cuid())
-  name      String
-  category  ReceiptSealCategory
-  imageData String
-  mimeType  String               @default("image/png")
-  isActive  Boolean              @default(true)
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
-  createdBy String?
-  updatedBy String?
+model ItemStock {
+  id           String         @id
+  itemName     String
+  itemCategory String
+  itemUnit     String
+  totalStock   Int
+  safetyStock  Int            @default(0)
+  isStandard   Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime
+  InventoryLog InventoryLog[]
+
+  @@unique([itemName, itemCategory])
 }
 
-enum Role {
-  ADMIN
-  STAFF
-  VOLUNTEER
+model ReceiptSeal {
+  id        String   @id
+  imageData String
+  mimeType  String   @default("image/png")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  userId    String   @unique
+  nickname  String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RecipientUnit {
+  id           String         @id
+  name         String         @unique
+  phone        String?
+  address      String?
+  isActive     Boolean        @default(true)
+  sortOrder    Int            @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime
+  Disbursement Disbursement[]
+}
+
+model SerialNumberCounter {
+  id        String   @id
+  type      String   @unique
+  counter   Int      @default(0)
+  prefix    String
+  updatedAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model StandardItem {
+  id          String  @id
+  name        String
+  category    String
+  units       Json
+  defaultUnit String
+  isActive    Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  @@unique([name, category])
+}
+
+model Supply {
+  id          String   @id
+  name        String
+  category    String
+  quantity    Int
+  safetyStock Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  unit        String   @default("個")
+
+  @@unique([name, category])
+}
+
+model Unit {
+  id        String   @id
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+}
+
+model User {
+  id              String           @id
+  clerkId         String           @unique
+  email           String           @unique
+  nickname        String?
+  role            Role             @default(VOLUNTEER)
+  isFirstLogin    Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime
+  lastLoginAt     DateTime?
+  customItems     CustomItem[]
+  disbursements   Disbursement[]
+  donationRecords DonationRecord[]
+  inventoryLogs   InventoryLog[]
+  seal            ReceiptSeal?
 }
 
 enum ChangeType {
@@ -243,8 +237,8 @@ enum ChangeType {
   DECREASE
 }
 
-enum ReceiptSealCategory {
-  ORG
-  CHAIRMAN
-  HANDLER
+enum Role {
+  ADMIN
+  STAFF
+  VOLUNTEER
 }

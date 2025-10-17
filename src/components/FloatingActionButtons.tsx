@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Download, Receipt, Package, Menu } from "lucide-react";
+import { Plus, Download, Package, Menu } from "lucide-react";
 import { useState } from "react";
 import { Permission } from "@/lib/permissions";
 
@@ -15,7 +15,7 @@ interface FloatingActionButtonsProps {
   onAddSupply: () => void;
   onBatchPickup: () => void;
   onExportExcel: () => void;
-  onPrintReceipt: () => void;
+  onPrintReceipt: () => void; // Kept for backward compatibility
   userPermissions: Permission | null;
 }
 
@@ -29,38 +29,39 @@ export function FloatingActionButtons({
   const [isOpen, setIsOpen] = useState(false);
 
   const allActions = [
-    { 
-      label: "新增物資", 
-      icon: Plus, 
-      onClick: onAddSupply, 
+    {
+      label: "新增物資",
+      icon: Plus,
+      onClick: onAddSupply,
       variant: "default" as const,
       description: "新增捐贈物資到庫存",
       permission: "canAddSupplies" as keyof Permission
     },
-    { 
-      label: "批量物資領取", 
-      icon: Package, 
-      onClick: onBatchPickup, 
+    {
+      label: "批量物資領取",
+      icon: Package,
+      onClick: onBatchPickup,
       variant: "secondary" as const,
       description: "批量分發物資給受助單位",
       permission: "canAddSupplies" as keyof Permission // 批量領取也算是物資操作
     },
-    { 
-      label: "匯出報表", 
-      icon: Download, 
-      onClick: onExportExcel, 
+    {
+      label: "匯出報表",
+      icon: Download,
+      onClick: onExportExcel,
       variant: "outline" as const,
       description: "匯出物資清單Excel檔案",
       permission: "canExportReports" as keyof Permission
     },
-    { 
-      label: "收據列印", 
-      icon: Receipt, 
-      onClick: onPrintReceipt, 
-      variant: "outline" as const,
-      description: "列印捐贈收據PDF文件",
-      permission: "canPrintReceipts" as keyof Permission
-    },
+    // Receipt printing temporarily disabled - see README.md for restoration instructions
+    // {
+    //   label: "收據列印",
+    //   icon: Receipt,
+    //   onClick: onPrintReceipt,
+    //   variant: "outline" as const,
+    //   description: "列印捐贈收據PDF文件",
+    //   permission: "canPrintReceipts" as keyof Permission
+    // },
   ];
 
   // Filter actions based on user permissions

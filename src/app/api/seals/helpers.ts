@@ -3,7 +3,6 @@ import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 import {
   ReceiptSeal,
-  ReceiptSealCategory,
   Role,
   User,
 } from "@prisma/client";
@@ -29,8 +28,8 @@ export function buildSealImageUrl(seal: ReceiptSeal): string {
 export function sealToResponse(seal: ReceiptSeal) {
   return {
     id: seal.id,
-    name: seal.name,
-    category: seal.category,
+    userId: seal.userId,
+    nickname: seal.nickname,
     imageUrl: buildSealImageUrl(seal),
     createdAt: seal.createdAt,
     updatedAt: seal.updatedAt,
@@ -66,15 +65,6 @@ export async function requireUser(requiredRoles?: Role[]): Promise<AuthResult> {
   }
 
   return { user };
-}
-
-export function parseSealCategory(value: unknown): ReceiptSealCategory | null {
-  if (typeof value !== "string") return null;
-  const upper = value.toUpperCase() as keyof typeof ReceiptSealCategory;
-  if (upper in ReceiptSealCategory) {
-    return ReceiptSealCategory[upper];
-  }
-  return null;
 }
 
 export interface ParsedImageDataUrl {

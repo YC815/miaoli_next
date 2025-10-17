@@ -11,6 +11,7 @@ export async function GET() {
 
     const currentUser = await prisma.user.findUnique({
       where: { clerkId },
+      include: { seal: true },
     });
 
     if (!currentUser) {
@@ -23,6 +24,7 @@ export async function GET() {
       data: {
         lastLoginAt: new Date(),
       },
+      include: { seal: true },
     });
 
     return NextResponse.json(updatedUser);
@@ -37,7 +39,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   console.log('[/api/users/profile] ===== START PROFILE UPDATE =====');
-  
+
   try {
     // Step 1: Test database connection
     console.log('[/api/users/profile] Testing database connection...');
@@ -52,24 +54,24 @@ export async function PUT(request: NextRequest) {
     // Step 2: Authenticate user
     const { userId: clerkId } = await auth();
     console.log('[/api/users/profile] ClerkId from auth:', clerkId ? `${clerkId.substring(0, 8)}...` : 'null');
-    
+
     if (!clerkId) {
       console.log('[/api/users/profile] ❌ No clerkId found - unauthorized');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Step 3: Parse request body
-    const { nickname } = await request.json();
-    console.log('[/api/users/profile] Received nickname update request:', {
+    const { nickname, sealImageDataUrl } = await request.json();
+    console.log('[/api/users/profile] Received update request:', {
       nickname: nickname,
-      type: typeof nickname,
-      length: nickname?.length
+      hasSealImage: Boolean(sealImageDataUrl),
     });
 
     // Step 4: Find current user
     console.log('[/api/users/profile] Finding user in database...');
     const currentUser = await prisma.user.findUnique({
       where: { clerkId },
+      include: { seal: true },
     });
 
     if (!currentUser) {
@@ -81,7 +83,7 @@ export async function PUT(request: NextRequest) {
       id: currentUser.id,
       email: currentUser.email,
       currentNickname: currentUser.nickname,
-      isFirstLogin: currentUser.isFirstLogin
+      hasSeal: Boolean(currentUser.seal),
     });
 
     // Step 5: Validate nickname
@@ -119,7 +121,62 @@ export async function PUT(request: NextRequest) {
       isChanging: currentUser.nickname !== newNickname
     });
 
-    // Step 8: Update user data
+    // Step 8: Handle seal image update
+    if (sealImageDataUrl) {
+      console.log('[/api/users/profile] Processing seal image...');
+
+      // Validate image data URL format
+      const match = sealImageDataUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (!match) {
+        return NextResponse.json({ error: '無效的圖片格式' }, { status: 400 });
+      }
+
+      const mimeType = match[1];
+      const base64Data = match[2];
+
+      // Validate MIME type
+      if (!['image/png', 'image/jpeg', 'image/jpg'].includes(mimeType)) {
+        return NextResponse.json({ error: '僅支援 PNG 或 JPEG 格式' }, { status: 400 });
+      }
+
+      // Validate size (2MB limit)
+      const buffer = Buffer.from(base64Data, 'base64');
+      if (buffer.length > 2 * 1024 * 1024) {
+        return NextResponse.json({ error: '圖片大小不得超過 2MB' }, { status: 400 });
+      }
+
+      // Ensure nickname is set before creating seal
+      const sealNickname = newNickname || currentUser.email.split('@')[0];
+
+      // Upsert seal
+      if (currentUser.seal) {
+        console.log('[/api/users/profile] Updating existing seal...');
+        await prisma.receiptSeal.update({
+          where: { userId: currentUser.id },
+          data: {
+            nickname: sealNickname,
+            imageData: base64Data,
+            mimeType,
+            updatedAt: new Date(),
+          },
+        });
+      } else {
+        console.log('[/api/users/profile] Creating new seal...');
+        await prisma.receiptSeal.create({
+          data: {
+            id: crypto.randomUUID(),
+            userId: currentUser.id,
+            nickname: sealNickname,
+            imageData: base64Data,
+            mimeType,
+            updatedAt: new Date(),
+          },
+        });
+      }
+      console.log('[/api/users/profile] ✅ Seal updated successfully');
+    }
+
+    // Step 9: Update user data
     console.log('[/api/users/profile] Updating user in database...');
     const updatedUser = await prisma.user.update({
       where: { id: currentUser.id },
@@ -127,24 +184,10 @@ export async function PUT(request: NextRequest) {
         nickname: newNickname,
         updatedAt: new Date(),
       },
+      include: { seal: true },
     });
 
-    console.log('[/api/users/profile] ✅ User updated successfully:', {
-      id: updatedUser.id,
-      email: updatedUser.email,
-      oldNickname: currentUser.nickname,
-      newNickname: updatedUser.nickname,
-      updatedAt: updatedUser.updatedAt
-    });
-
-    // Step 9: Verify update in database
-    console.log('[/api/users/profile] Verifying update in database...');
-    const verifyUser = await prisma.user.findUnique({
-      where: { id: currentUser.id },
-      select: { nickname: true, updatedAt: true }
-    });
-    
-    console.log('[/api/users/profile] Database verification result:', verifyUser);
+    console.log('[/api/users/profile] ✅ User updated successfully');
 
     console.log('[/api/users/profile] ===== END PROFILE UPDATE =====');
     return NextResponse.json(updatedUser);
