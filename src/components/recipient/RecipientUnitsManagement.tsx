@@ -54,6 +54,7 @@ export function RecipientUnitsManagement() {
         unit.name,
         unit.phone || "",
         unit.address || "",
+        unit.serviceCount !== null && unit.serviceCount !== undefined ? String(unit.serviceCount) : "",
       ].join(" ").toLowerCase();
       return haystack.includes(keyword);
     });
@@ -85,6 +86,7 @@ export function RecipientUnitsManagement() {
               name: unit.name,
               phone: unit.phone,
               address: unit.address,
+              serviceCount: unit.serviceCount,
               isActive: true,
             }),
           };
@@ -203,13 +205,14 @@ export function RecipientUnitsManagement() {
                 <TableHead>單位名稱</TableHead>
                 <TableHead>聯絡電話</TableHead>
                 <TableHead>地址</TableHead>
+                <TableHead className="w-[120px] text-center">服務人數</TableHead>
                 <TableHead className="w-[140px] text-center">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredRecipientUnits.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                     尚未找到符合條件的領取單位
                   </TableCell>
                 </TableRow>
@@ -226,6 +229,7 @@ export function RecipientUnitsManagement() {
                     </TableCell>
                     <TableCell>{unit.phone || "—"}</TableCell>
                     <TableCell>{unit.address || "—"}</TableCell>
+                    <TableCell className="text-center">{unit.serviceCount ?? "—"}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-2">
                         <Button

@@ -8,6 +8,7 @@ import { FloatingActionButtons } from "@/components/FloatingActionButtons";
 import { AddSupplyModal } from "@/components/modals/AddSupplyModal";
 import { BatchPickupModal } from "@/components/modals/BatchPickupModal";
 import { ReceiptModal } from "@/components/modals/ReceiptModal";
+import { DisbursementReceiptModal } from "@/components/modals/DisbursementReceiptModal";
 import { ExpiryStatusModal } from "@/components/modals/ExpiryStatusModal";
 import { ModeToggle } from "@/components/theme-toggle";
 import { StaffManagement } from "@/components/admin/StaffManagement";
@@ -20,7 +21,7 @@ import { User, AuthGuard } from "@/components/auth/AuthGuard";
 import { toast } from "sonner";
 import { getPermissions } from "@/lib/permissions";
 import { SignOutButton } from "@clerk/nextjs";
-import { Menu, X, BarChart3 } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ExpiryItemDetail, ExpiryPagination } from "@/types/expiry";
 import type { ReceiptDraftSubmission } from "@/types/receipt";
@@ -85,6 +86,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
   const [isAddSupplyOpen, setIsAddSupplyOpen] = useState(false);
   const [isBatchPickupOpen, setIsBatchPickupOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [isDisbursementReceiptOpen, setIsDisbursementReceiptOpen] = useState(false);
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isExpiryModalOpen, setIsExpiryModalOpen] = useState(false);
@@ -460,6 +462,10 @@ function HomePage({ dbUser = null }: HomePageProps) {
     XLSX.writeFile(wb, filename);
   };
 
+  const handleOpenDisbursementReceipt = () => {
+    setIsDisbursementReceiptOpen(true);
+  };
+
   const handleFinalizeReceipt = async (draft: ReceiptDraftSubmission) => {
     if (!draft.recordIds || draft.recordIds.length === 0) {
       toast.error("沒有可生成的收據資料");
@@ -699,6 +705,11 @@ function HomePage({ dbUser = null }: HomePageProps) {
         onFinalize={handleFinalizeReceipt}
       />
 
+      <DisbursementReceiptModal
+        open={isDisbursementReceiptOpen}
+        onOpenChange={setIsDisbursementReceiptOpen}
+      />
+
       <ExpiryStatusModal
         open={isExpiryModalOpen}
         onOpenChange={(openState) => {
@@ -873,6 +884,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
           onAddSupply={() => setIsAddSupplyOpen(true)}
           onBatchPickup={() => setIsBatchPickupOpen(true)}
           onExportExcel={handleExportExcel}
+          onGenerateDisbursementReceipt={handleOpenDisbursementReceipt}
           onPrintReceipt={() => setIsReceiptOpen(true)}
           userPermissions={userPermissions}
         />

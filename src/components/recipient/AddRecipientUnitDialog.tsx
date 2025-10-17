@@ -20,6 +20,7 @@ export interface RecipientUnit {
   name: string;
   phone: string | null;
   address: string | null;
+  serviceCount: number | null;
   isActive: boolean;
 }
 
@@ -34,11 +35,13 @@ export function AddRecipientUnitDialog({ open, onOpenChange, onRecipientCreated 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [serviceCount, setServiceCount] = useState("");
 
   const resetForm = () => {
     setName("");
     setPhone("");
     setAddress("");
+    setServiceCount("");
   };
 
   const handleSubmit = async () => {
@@ -58,6 +61,7 @@ export function AddRecipientUnitDialog({ open, onOpenChange, onRecipientCreated 
           name: name.trim(),
           phone: phone.trim() || null,
           address: address.trim() || null,
+          serviceCount: serviceCount.trim() ? Number(serviceCount) : null,
         }),
       });
 
@@ -130,6 +134,20 @@ export function AddRecipientUnitDialog({ open, onOpenChange, onRecipientCreated 
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="請輸入地址"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="recipient-service-count" className="text-sm font-medium">
+              服務人數
+            </Label>
+            <Input
+              id="recipient-service-count"
+              type="number"
+              min={0}
+              value={serviceCount}
+              onChange={(e) => setServiceCount(e.target.value)}
+              placeholder="請輸入服務人數"
             />
           </div>
         </div>

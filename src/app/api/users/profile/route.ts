@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
+import { randomUUID } from 'crypto';
 
 export async function GET() {
   try {
@@ -23,6 +24,7 @@ export async function GET() {
       where: { id: currentUser.id },
       data: {
         lastLoginAt: new Date(),
+        updatedAt: new Date(),
       },
       include: { seal: true },
     });
@@ -164,7 +166,7 @@ export async function PUT(request: NextRequest) {
         console.log('[/api/users/profile] Creating new seal...');
         await prisma.receiptSeal.create({
           data: {
-            id: crypto.randomUUID(),
+            id: randomUUID(),
             userId: currentUser.id,
             nickname: sealNickname,
             imageData: base64Data,

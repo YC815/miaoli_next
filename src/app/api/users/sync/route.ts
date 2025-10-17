@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
 export async function POST() {
   console.log('[/api/users/sync] ===== START USER SYNC =====');
@@ -69,10 +70,12 @@ export async function POST() {
       const updateData: {
         email: string;
         lastLoginAt: Date;
+        updatedAt: Date;
         nickname?: string | null;
       } = {
         email: userEmail,
         lastLoginAt: new Date(),
+        updatedAt: new Date(),
       };
       
       // 只有在需要更新暱稱時才加入 nickname 欄位
@@ -111,9 +114,11 @@ export async function POST() {
         const emailUpdateData: {
           clerkId: string;
           lastLoginAt: Date;
+          updatedAt: Date;
         } = {
           clerkId: userId,
           lastLoginAt: new Date(),
+          updatedAt: new Date(),
         };
         
         // 永遠不在同步時更新暱稱，保持現有狀態
@@ -140,11 +145,14 @@ export async function POST() {
     console.log(`[/api/users/sync] Step 3: Creating new user with clerkId: ${userId}`);
     const newUser = await prisma.user.create({
       data: {
+        id: randomUUID(),
         clerkId: userId,
         email: userEmail || '',
         nickname: null, // 新用戶暱稱為空，強制進入 onboarding 流程
         role: Role.VOLUNTEER,
         isFirstLogin: true,
+        updatedAt: new Date(),
+        lastLoginAt: new Date(),
       },
     });
 

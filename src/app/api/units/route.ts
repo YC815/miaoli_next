@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { randomUUID } from 'crypto'
 
 const prisma = new PrismaClient()
 
@@ -35,8 +36,10 @@ export async function POST(request: NextRequest) {
 
     const unit = await prisma.unit.create({
       data: {
+        id: randomUUID(),
         name: name.trim(),
-        sortOrder: 0
+        sortOrder: 0,
+        updatedAt: new Date()
       }
     })
 

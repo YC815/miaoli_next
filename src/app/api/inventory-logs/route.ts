@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role, ChangeType, Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,11 +65,13 @@ export async function POST(request: NextRequest) {
         where: { id: itemStockId },
         data: {
           totalStock: newQuantity,
+          updatedAt: new Date(),
         },
       });
 
       const log = await tx.inventoryLog.create({
         data: {
+          id: randomUUID(),
           itemStockId,
           changeType,
           changeAmount,

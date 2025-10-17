@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Prisma, Role } from '@prisma/client';
 import { generateDisbursementSerialNumber } from '@/lib/serialNumber';
+import { randomUUID } from 'crypto';
 
 interface PickupInfo {
   unitId?: string;
@@ -144,6 +145,7 @@ export async function POST(request: NextRequest) {
 
       const disbursement = await tx.disbursement.create({
         data: {
+          id: randomUUID(),
           serialNumber,
           recipientUnitName: unitName,
           recipientUnitId: resolvedUnitId ?? undefined,
@@ -152,6 +154,7 @@ export async function POST(request: NextRequest) {
           userId: currentUser.id,
           disbursementItems: {
             create: normalizedItems.map(item => ({
+              id: randomUUID(),
               itemName: item.itemName,
               itemCategory: item.itemCategory,
               itemUnit: item.itemUnit,
@@ -176,6 +179,7 @@ export async function POST(request: NextRequest) {
             totalStock: {
               decrement: item.quantity,
             },
+            updatedAt: new Date(),
           },
         });
       }
@@ -377,6 +381,13 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           disbursementItems: true,
+          recipientUnit: {
+            select: {
+              id: true,
+              name: true,
+              serviceCount: true,
+            },
+          },
           user: {
             select: {
               id: true,

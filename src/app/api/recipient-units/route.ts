@@ -2,16 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const { userId: clerkId } = await auth();
     if (!clerkId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const includeInactive = request.nextUrl.searchParams.get('includeInactive') === 'true';
+
     const recipientUnits = await prisma.recipientUnit.findMany({
-      where: { isActive: true },
+      where: includeInactive ? {} : { isActive: true },
       orderBy: { sortOrder: 'asc' },
     });
 
@@ -42,10 +45,19 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    const { name, phone, address, sortOrder } = await request.json();
+    const { name, phone, address, sortOrder, serviceCount } = await request.json();
 
     if (!name || typeof name !== 'string') {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+
+    let parsedServiceCount: number | null = null;
+    if (serviceCount !== undefined && serviceCount !== null) {
+      const numericCount = Number(serviceCount);
+      if (!Number.isInteger(numericCount) || numericCount < 0) {
+        return NextResponse.json({ error: '服務人數必須是大於等於 0 的整數' }, { status: 400 });
+      }
+      parsedServiceCount = numericCount;
     }
 
     // Check if recipient unit name already exists
@@ -70,10 +82,13 @@ export async function POST(request: NextRequest) {
 
     const newUnit = await prisma.recipientUnit.create({
       data: {
+        id: randomUUID(),
         name: name.trim(),
         phone: phone ? phone.trim() : null,
         address: address ? address.trim() : null,
+        serviceCount: parsedServiceCount,
         sortOrder: finalSortOrder,
+        updatedAt: new Date(),
       },
     });
 
@@ -104,7 +119,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 403 });
     }
 
-    const { id, name, phone, address, sortOrder } = await request.json();
+    const { id, name, phone, address, sortOrder, serviceCount } = await request.json();
 
     if (!id || typeof id !== 'string') {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
@@ -139,13 +154,29 @@ export async function PUT(request: NextRequest) {
       }, { status: 409 });
     }
 
+    let parsedServiceCount: number | null | undefined = serviceCount;
+    if (serviceCount !== undefined && serviceCount !== null) {
+      const numericCount = Number(serviceCount);
+      if (!Number.isInteger(numericCount) || numericCount < 0) {
+        return NextResponse.json({ error: '服務人數必須是大於等於 0 的整數' }, { status: 400 });
+      }
+      parsedServiceCount = numericCount;
+    }
+
     const updatedUnit = await prisma.recipientUnit.update({
       where: { id },
       data: {
         name: name.trim(),
         phone: phone ? phone.trim() : existingUnit.phone,
         address: address ? address.trim() : existingUnit.address,
+        serviceCount:
+          parsedServiceCount === undefined
+            ? existingUnit.serviceCount
+            : parsedServiceCount === null
+              ? null
+              : parsedServiceCount,
         sortOrder: sortOrder ?? existingUnit.sortOrder,
+        updatedAt: new Date(),
       },
     });
 
@@ -196,7 +227,7 @@ export async function DELETE(request: NextRequest) {
     // Soft delete by setting isActive to false
     const deletedUnit = await prisma.recipientUnit.update({
       where: { id },
-      data: { isActive: false },
+      data: { isActive: false, updatedAt: new Date() },
     });
 
     return NextResponse.json({ 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 export async function GET(request: Request) {
   try {
@@ -90,6 +91,7 @@ export async function POST(request: Request) {
 
     const customItem = await prisma.customItem.create({
       data: {
+        id: randomUUID(),
         name,
         category,
         units: units,

@@ -10,6 +10,8 @@ import {
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
+  RowSelectionState,
+  Updater,
   useReactTable,
 } from "@tanstack/react-table"
 import { ChevronDown } from "lucide-react"
@@ -37,6 +39,7 @@ interface RecordsDataTableProps<TData, TValue> {
   searchKey?: string
   searchPlaceholder?: string
   onSelectionChange?: (selectedRows: TData[]) => void
+  selectionMode?: "single" | "multiple"
 }
 
 export function RecordsDataTable<TData, TValue>({
@@ -45,11 +48,36 @@ export function RecordsDataTable<TData, TValue>({
   searchKey = "",
   searchPlaceholder = "搜尋...",
   onSelectionChange,
+  selectionMode = "multiple",
 }: RecordsDataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
-  const [rowSelection, setRowSelection] = React.useState({})
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
+
+  const handleRowSelectionChange = React.useCallback(
+    (updater: Updater<RowSelectionState>) => {
+      setRowSelection((previous) => {
+        const nextState =
+          typeof updater === "function" ? updater(previous) : updater
+
+        if (selectionMode === "single") {
+          const nextEntries = Object.entries(nextState).filter(([, selected]) => selected)
+          if (nextEntries.length === 0) {
+            return {}
+          }
+
+          const addedEntry = nextEntries.find(([key]) => !previous[key])
+          const targetKey = addedEntry?.[0] ?? nextEntries[nextEntries.length - 1]?.[0]
+
+          return targetKey ? { [targetKey]: true } : {}
+        }
+
+        return nextState
+      })
+    },
+    [selectionMode]
+  )
 
   const table = useReactTable({
     data,
@@ -60,7 +88,7 @@ export function RecordsDataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: handleRowSelectionChange,
     state: {
       sorting,
       columnFilters,

@@ -1,6 +1,7 @@
 import { PrismaClient, ChangeType } from '@prisma/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import { randomUUID } from 'crypto'
 
 const prisma = new PrismaClient()
 
@@ -26,7 +27,12 @@ async function main() {
 
   for (const category of categories) {
     await prisma.category.create({
-      data: category,
+      data: {
+        id: randomUUID(),
+        name: category.name,
+        sortOrder: category.sortOrder,
+        updatedAt: new Date(),
+      },
     })
   }
 
@@ -40,7 +46,13 @@ async function main() {
 
   for (const unit of recipientUnits) {
     await prisma.recipientUnit.create({
-      data: unit,
+      data: {
+        id: randomUUID(),
+        name: unit.name,
+        phone: unit.phone,
+        sortOrder: unit.sortOrder,
+        updatedAt: new Date(),
+      },
     })
   }
 
@@ -63,7 +75,12 @@ async function main() {
 
   for (const unit of units) {
     await prisma.unit.create({
-      data: unit,
+      data: {
+        id: randomUUID(),
+        name: unit.name,
+        sortOrder: unit.sortOrder,
+        updatedAt: new Date(),
+      },
     })
   }
 
@@ -79,9 +96,11 @@ async function main() {
   for (const reason of inventoryReasons) {
     await prisma.inventoryChangeReason.create({
       data: {
+        id: randomUUID(),
         reason: reason.reason,
         changeType: reason.changeType as ChangeType,
         sortOrder: reason.sortOrder,
+        updatedAt: new Date(),
       },
     })
   }
@@ -102,6 +121,7 @@ async function main() {
           }
         },
         create: {
+          id: randomUUID(),
           name: item.item,
           category: category,
           units: item.units,
@@ -127,14 +147,17 @@ async function main() {
       name: '匿名捐贈者'
     },
     create: {
+      id: randomUUID(),
       name: '匿名捐贈者',
       phone: null,
       taxId: null,
       address: null,
-      isActive: true
+      isActive: true,
+      updatedAt: new Date()
     },
     update: {
-      isActive: true
+      isActive: true,
+      updatedAt: new Date()
     }
   })
   console.log(`   ✓ ${defaultDonor.name}`)

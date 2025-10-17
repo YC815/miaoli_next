@@ -20,6 +20,11 @@ export interface DisbursementRecord {
   serialNumber: string
   recipientUnitId: string | null
   recipientUnitName: string
+  recipientUnit?: {
+    id: string
+    name: string
+    serviceCount: number | null
+  } | null
   recipientPhone: string | null
   recipientAddress: string | null
   createdAt: string
@@ -74,6 +79,7 @@ interface DisbursementRecordsTableProps {
   onEdit?: (record: DisbursementRecord) => void
   showFooter?: boolean
   variant?: "records" | "item-dialog"
+  selectionMode?: "single" | "multiple"
 }
 
 const createColumns = (
@@ -273,7 +279,8 @@ export function DisbursementRecordsTable({
   onSelectionChange,
   onDelete,
   onEdit,
-  variant = "records"
+  variant = "records",
+  selectionMode = "multiple",
 }: DisbursementRecordsTableProps) {
   // Flatten disbursement records into individual rows
   const flattenedData = React.useMemo(() => {
@@ -335,6 +342,7 @@ export function DisbursementRecordsTable({
           searchKey={variant === "records" ? "recipientUnitName" : undefined}
           searchPlaceholder="搜尋受贈單位..."
           onSelectionChange={handleSelectionChange}
+          selectionMode={selectionMode}
         />
       </CardContent>
     </Card>

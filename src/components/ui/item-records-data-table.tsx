@@ -8,6 +8,8 @@ import {
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
+  RowSelectionState,
+  Updater,
   useReactTable,
 } from "@tanstack/react-table"
 
@@ -24,16 +26,42 @@ interface ItemRecordsDataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onSelectionChange?: (selectedRows: TData[]) => void
+  selectionMode?: "single" | "multiple"
 }
 
 export function ItemRecordsDataTable<TData, TValue>({
   columns,
   data,
   onSelectionChange,
+  selectionMode = "multiple",
 }: ItemRecordsDataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
-  const [rowSelection, setRowSelection] = React.useState({})
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
+
+  const handleRowSelectionChange = React.useCallback(
+    (updater: Updater<RowSelectionState>) => {
+      setRowSelection((previous) => {
+        const nextState =
+          typeof updater === "function" ? updater(previous) : updater
+
+        if (selectionMode === "single") {
+          const nextEntries = Object.entries(nextState).filter(([, selected]) => selected)
+          if (nextEntries.length === 0) {
+            return {}
+          }
+
+          const addedEntry = nextEntries.find(([key]) => !previous[key])
+          const targetKey = addedEntry?.[0] ?? nextEntries[nextEntries.length - 1]?.[0]
+
+          return targetKey ? { [targetKey]: true } : {}
+        }
+
+        return nextState
+      })
+    },
+    [selectionMode]
+  )
 
   const table = useReactTable({
     data,
@@ -42,7 +70,7 @@ export function ItemRecordsDataTable<TData, TValue>({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: handleRowSelectionChange,
     state: {
       sorting,
       columnVisibility,

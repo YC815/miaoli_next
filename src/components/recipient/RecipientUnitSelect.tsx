@@ -159,6 +159,18 @@ export function RecipientUnitSelect({ selectedRecipientId, onRecipientChange, ca
             className="bg-background"
           />
         </div>
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-muted-foreground">服務人數</Label>
+          <Input
+            value={
+              selectedRecipient?.serviceCount !== null && selectedRecipient?.serviceCount !== undefined
+                ? String(selectedRecipient.serviceCount)
+                : "（未提供）"
+            }
+            disabled
+            className="bg-background"
+          />
+        </div>
       </div>
 
       {canCreate && (

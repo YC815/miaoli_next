@@ -27,7 +27,7 @@ model CustomItem {
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   createdBy   String
-  User        User     @relation(fields: [createdBy], references: [id])
+  user        User     @relation(fields: [createdBy], references: [id])
 
   @@unique([name, category])
 }
@@ -41,9 +41,9 @@ model Disbursement {
   recipientAddress  String?
   recipientUnitId   String?
   recipientUnitName String
-  RecipientUnit     RecipientUnit?     @relation(fields: [recipientUnitId], references: [id])
-  User              User               @relation(fields: [userId], references: [id])
-  DisbursementItem  DisbursementItem[]
+  recipientUnit     RecipientUnit?     @relation(fields: [recipientUnitId], references: [id])
+  user              User               @relation(fields: [userId], references: [id])
+  disbursementItems DisbursementItem[]
 }
 
 model DisbursementItem {
@@ -53,8 +53,8 @@ model DisbursementItem {
   itemName       String
   itemUnit       String
   quantity       Int             @default(1)
-  Disbursement   Disbursement    @relation(fields: [disbursementId], references: [id])
-  ItemCondition  ItemCondition[]
+  disbursement   Disbursement    @relation(fields: [disbursementId], references: [id])
+  itemConditions ItemCondition[]
 }
 
 model DonationItem {
@@ -68,8 +68,8 @@ model DonationItem {
   itemUnit       String
   notes          String?
   isHandled      Boolean         @default(false)
-  DonationRecord DonationRecord  @relation(fields: [donationId], references: [id])
-  ItemCondition  ItemCondition[]
+  donation       DonationRecord  @relation(fields: [donationId], references: [id])
+  itemConditions ItemCondition[]
 }
 
 model DonationRecord {
@@ -78,9 +78,9 @@ model DonationRecord {
   userId       String
   donorId      String?
   serialNumber String         @unique @default("")
-  DonationItem DonationItem[]
-  Donor        Donor?         @relation(fields: [donorId], references: [id])
-  User         User           @relation(fields: [userId], references: [id])
+  donationItems DonationItem[]
+  donor         Donor?         @relation(fields: [donorId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
 }
 
 model Donor {
@@ -92,7 +92,7 @@ model Donor {
   isActive       Boolean          @default(true)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime
-  DonationRecord DonationRecord[]
+  donationRecords DonationRecord[]
 }
 
 model InventoryChangeReason {
@@ -115,8 +115,8 @@ model InventoryLog {
   createdAt        DateTime   @default(now())
   userId           String
   previousQuantity Int
-  ItemStock        ItemStock  @relation(fields: [itemStockId], references: [id])
-  User             User       @relation(fields: [userId], references: [id])
+  itemStock        ItemStock  @relation(fields: [itemStockId], references: [id])
+  user             User       @relation(fields: [userId], references: [id])
 }
 
 model ItemCondition {
@@ -127,8 +127,8 @@ model ItemCondition {
   createdAt          DateTime          @default(now())
   donationItemId     String?
   disbursementItemId String?
-  DisbursementItem   DisbursementItem? @relation(fields: [disbursementItemId], references: [id])
-  DonationItem       DonationItem?     @relation(fields: [donationItemId], references: [id])
+  disbursementItem   DisbursementItem? @relation(fields: [disbursementItemId], references: [id])
+  donationItem       DonationItem?     @relation(fields: [donationItemId], references: [id])
 }
 
 model ItemStock {
@@ -141,7 +141,7 @@ model ItemStock {
   isStandard   Boolean        @default(false)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime
-  InventoryLog InventoryLog[]
+  inventoryLogs InventoryLog[]
 
   @@unique([itemName, itemCategory])
 }
@@ -163,11 +163,12 @@ model RecipientUnit {
   name         String         @unique
   phone        String?
   address      String?
+  serviceCount Int?
   isActive     Boolean        @default(true)
   sortOrder    Int            @default(0)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime
-  Disbursement Disbursement[]
+  disbursements Disbursement[]
 }
 
 model SerialNumberCounter {

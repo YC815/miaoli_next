@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
 const transformItemStock = (item: {
   id: string;
@@ -134,12 +135,14 @@ export async function POST(request: NextRequest) {
         },
       },
       create: {
+        id: randomUUID(),
         itemName: normalizedName,
         itemCategory: normalizedCategory,
         itemUnit: normalizedUnit,
         totalStock: normalizedQuantity ?? 0,
         safetyStock: normalizedSafetyStock ?? 0,
         isStandard: Boolean(isStandard),
+        updatedAt: new Date(),
       },
       update: {
         itemUnit: normalizedUnit,
@@ -150,6 +153,7 @@ export async function POST(request: NextRequest) {
           ? { safetyStock: normalizedSafetyStock }
           : {}),
         isStandard: isStandard === undefined ? undefined : Boolean(isStandard),
+        updatedAt: new Date(),
       },
     });
 

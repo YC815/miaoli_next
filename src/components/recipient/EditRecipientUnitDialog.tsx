@@ -20,6 +20,7 @@ export interface RecipientUnit {
   name: string;
   phone: string | null;
   address: string | null;
+  serviceCount: number | null;
   isActive: boolean;
 }
 
@@ -40,12 +41,18 @@ export function EditRecipientUnitDialog({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [serviceCount, setServiceCount] = useState("");
 
   useEffect(() => {
     if (recipientUnit && open) {
       setName(recipientUnit.name);
       setPhone(recipientUnit.phone || "");
       setAddress(recipientUnit.address || "");
+      setServiceCount(
+        recipientUnit.serviceCount !== null && recipientUnit.serviceCount !== undefined
+          ? String(recipientUnit.serviceCount)
+          : ""
+      );
     }
   }, [recipientUnit, open]);
 
@@ -53,6 +60,7 @@ export function EditRecipientUnitDialog({
     setName("");
     setPhone("");
     setAddress("");
+    setServiceCount("");
   };
 
   const handleSubmit = async () => {
@@ -74,6 +82,7 @@ export function EditRecipientUnitDialog({
           name: name.trim(),
           phone: phone.trim() || null,
           address: address.trim() || null,
+          serviceCount: serviceCount.trim() ? Number(serviceCount) : null,
         }),
       });
 
@@ -147,6 +156,20 @@ export function EditRecipientUnitDialog({
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="請輸入地址"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-recipient-service-count" className="text-sm font-medium">
+              服務人數
+            </Label>
+            <Input
+              id="edit-recipient-service-count"
+              type="number"
+              min={0}
+              value={serviceCount}
+              onChange={(e) => setServiceCount(e.target.value)}
+              placeholder="請輸入服務人數"
             />
           </div>
         </div>

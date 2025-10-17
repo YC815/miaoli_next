@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
 export async function GET() {
   try {
@@ -70,8 +71,10 @@ export async function POST(request: NextRequest) {
 
     const newCategory = await prisma.category.create({
       data: {
+        id: randomUUID(),
         name: name.trim(),
         sortOrder: finalSortOrder,
+        updatedAt: new Date(),
       },
     });
 
@@ -142,6 +145,7 @@ export async function PUT(request: NextRequest) {
       data: {
         name: name.trim(),
         sortOrder: sortOrder ?? existingCategory.sortOrder,
+        updatedAt: new Date(),
       },
     });
 
@@ -192,7 +196,7 @@ export async function DELETE(request: NextRequest) {
     // Soft delete by setting isActive to false
     const deletedCategory = await prisma.category.update({
       where: { id },
-      data: { isActive: false },
+      data: { isActive: false, updatedAt: new Date() },
     });
 
     return NextResponse.json({ 

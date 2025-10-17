@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Prisma, Role } from '@prisma/client';
 import { generateDonationSerialNumber } from '@/lib/serialNumber';
+import { randomUUID } from 'crypto';
 
 interface DonationItemData {
   itemName: string;
@@ -92,11 +93,13 @@ export async function POST(request: NextRequest) {
     const newDonationRecord = await prisma.$transaction(async (tx) => {
       const donationRecord = await tx.donationRecord.create({
         data: {
+          id: randomUUID(),
           serialNumber,
           donorId: donorId || null,
           userId: currentUser.id,
           donationItems: {
             create: normalizedDonationItems.map(item => ({
+              id: randomUUID(),
               itemName: item.itemName,
               itemCategory: item.itemCategory,
               itemUnit: item.itemUnit,
@@ -123,12 +126,14 @@ export async function POST(request: NextRequest) {
             },
           },
           create: {
+            id: randomUUID(),
             itemName: item.itemName,
             itemCategory: item.itemCategory,
             itemUnit: item.itemUnit,
             totalStock: item.quantity,
             safetyStock: 0,
             isStandard: item.isStandard,
+            updatedAt: new Date(),
           },
           update: {
             totalStock: {
@@ -136,6 +141,7 @@ export async function POST(request: NextRequest) {
             },
             itemUnit: item.itemUnit,
             isStandard: item.isStandard,
+            updatedAt: new Date(),
           },
         });
       }

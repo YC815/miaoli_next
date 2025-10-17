@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 export async function GET() {
   try {
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
             }
           },
           create: {
+            id: randomUUID(),
             name: item.name,
             category: item.category,
             units: item.units,

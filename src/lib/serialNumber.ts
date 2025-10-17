@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { randomUUID } from 'crypto';
 
 async function ensureCounter(type: string, prefix: string) {
   const existing = await prisma.serialNumberCounter.findUnique({
@@ -8,9 +9,11 @@ async function ensureCounter(type: string, prefix: string) {
   if (!existing) {
     await prisma.serialNumberCounter.create({
       data: {
+        id: randomUUID(),
         type,
         prefix,
-        counter: 0
+        counter: 0,
+        updatedAt: new Date()
       }
     });
   }
@@ -30,7 +33,7 @@ async function getNextSerialNumber(type: string): Promise<string> {
     
     await tx.serialNumberCounter.update({
       where: { type },
-      data: { counter: nextCounter }
+      data: { counter: nextCounter, updatedAt: new Date() }
     });
     
     return `${counter.prefix}${nextCounter.toString().padStart(6, '0')}`;

@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Download, Package, Menu } from "lucide-react";
+import { Plus, Download, Package, Menu, FileText } from "lucide-react";
 import { useState } from "react";
 import { Permission } from "@/lib/permissions";
 
@@ -15,6 +15,7 @@ interface FloatingActionButtonsProps {
   onAddSupply: () => void;
   onBatchPickup: () => void;
   onExportExcel: () => void;
+  onGenerateDisbursementReceipt: () => void;
   onPrintReceipt: () => void; // Kept for backward compatibility
   userPermissions: Permission | null;
 }
@@ -23,10 +24,12 @@ export function FloatingActionButtons({
   onAddSupply,
   onBatchPickup,
   onExportExcel,
-  onPrintReceipt,
+  onGenerateDisbursementReceipt,
+  onPrintReceipt: _onPrintReceipt,
   userPermissions,
 }: FloatingActionButtonsProps) {
   const [isOpen, setIsOpen] = useState(false);
+  void _onPrintReceipt;
 
   const allActions = [
     {
@@ -44,6 +47,14 @@ export function FloatingActionButtons({
       variant: "secondary" as const,
       description: "批量分發物資給受助單位",
       permission: "canAddSupplies" as keyof Permission // 批量領取也算是物資操作
+    },
+    {
+      label: "物資領取單",
+      icon: FileText,
+      onClick: onGenerateDisbursementReceipt,
+      variant: "outline" as const,
+      description: "從發放紀錄生成領取單 PDF",
+      permission: "canPrintReceipts" as keyof Permission
     },
     {
       label: "匯出報表",

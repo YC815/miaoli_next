@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 export async function GET(request: NextRequest) {
   try {
@@ -96,10 +97,12 @@ export async function POST(request: Request) {
 
     const donor = await prisma.donor.create({
       data: {
+        id: randomUUID(),
         name: name.trim(),
         phone: phone?.trim() || null,
         taxId: taxId?.trim() || null,
-        address: address?.trim() || null
+        address: address?.trim() || null,
+        updatedAt: new Date()
       }
     })
 
@@ -170,6 +173,7 @@ export async function PUT(request: NextRequest) {
         taxId: taxId?.trim() || null,
         address: address?.trim() || null,
         isActive: typeof isActive === 'boolean' ? isActive : donor.isActive,
+        updatedAt: new Date(),
       },
     })
 
@@ -221,6 +225,7 @@ export async function DELETE(request: NextRequest) {
       where: { id },
       data: {
         isActive: false,
+        updatedAt: new Date(),
       },
     })
 

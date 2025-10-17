@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role, ChangeType } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
 export async function GET(request: NextRequest) {
   try {
@@ -74,9 +75,11 @@ export async function POST(request: NextRequest) {
 
     const newReason = await prisma.inventoryChangeReason.create({
       data: {
+        id: randomUUID(),
         reason: reason.trim(),
         changeType,
         sortOrder: finalSortOrder,
+        updatedAt: new Date(),
       },
     });
 
