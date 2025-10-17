@@ -71,6 +71,13 @@ interface SuppliesTableProps {
 type SortField = 'category' | 'name' | 'quantity';
 type SortDirection = 'asc' | 'desc' | null;
 
+function getStockStatus(quantity: number, safetyStock: number) {
+  if (quantity === 0) return { label: '無庫存', color: 'text-red-600 font-bold' };
+  if (quantity < safetyStock) return { label: '庫存不足', color: 'text-orange-600 font-medium' };
+  if (quantity === safetyStock) return { label: '剛好達標', color: 'text-yellow-600 font-medium' };
+  return { label: '庫存充足', color: 'text-green-600' };
+}
+
 export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, onUpdateSafetyStock, userPermissions }: SuppliesTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isEditSupplyOpen, setIsEditSupplyOpen] = useState(false);
@@ -188,12 +195,6 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
     return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
   };
 
-  const getStockStatus = (quantity: number, safetyStock: number) => {
-    if (quantity === 0) return { label: '無庫存', color: 'text-red-600 font-bold' };
-    if (quantity < safetyStock) return { label: '庫存不足', color: 'text-orange-600 font-medium' };
-    if (quantity === safetyStock) return { label: '剛好達標', color: 'text-yellow-600 font-medium' };
-    return { label: '庫存充足', color: 'text-green-600' };
-  };
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
