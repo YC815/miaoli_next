@@ -52,6 +52,7 @@ export function RecipientUnitsManagement() {
       if (!keyword) return true;
       const haystack = [
         unit.name,
+        unit.contactPerson || "",
         unit.phone || "",
         unit.address || "",
         unit.serviceCount !== null && unit.serviceCount !== undefined ? String(unit.serviceCount) : "",
@@ -84,6 +85,7 @@ export function RecipientUnitsManagement() {
             body: JSON.stringify({
               id: unit.id,
               name: unit.name,
+              contactPerson: unit.contactPerson,
               phone: unit.phone,
               address: unit.address,
               serviceCount: unit.serviceCount,
@@ -203,6 +205,7 @@ export function RecipientUnitsManagement() {
               <TableRow>
                 <TableHead className="w-[120px]">狀態</TableHead>
                 <TableHead>單位名稱</TableHead>
+                <TableHead>窗口</TableHead>
                 <TableHead>聯絡電話</TableHead>
                 <TableHead>地址</TableHead>
                 <TableHead className="w-[120px] text-center">服務人數</TableHead>
@@ -212,7 +215,7 @@ export function RecipientUnitsManagement() {
             <TableBody>
               {filteredRecipientUnits.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
                     尚未找到符合條件的領取單位
                   </TableCell>
                 </TableRow>
@@ -227,6 +230,7 @@ export function RecipientUnitsManagement() {
                     <TableCell>
                       <div className="font-medium">{unit.name}</div>
                     </TableCell>
+                    <TableCell>{unit.contactPerson || "—"}</TableCell>
                     <TableCell>{unit.phone || "—"}</TableCell>
                     <TableCell>{unit.address || "—"}</TableCell>
                     <TableCell className="text-center">{unit.serviceCount ?? "—"}</TableCell>

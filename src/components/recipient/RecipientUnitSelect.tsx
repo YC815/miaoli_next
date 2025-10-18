@@ -144,6 +144,14 @@ export function RecipientUnitSelect({ selectedRecipientId, onRecipientChange, ca
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
+          <Label className="text-sm font-medium text-muted-foreground">窗口/聯絡人</Label>
+          <Input
+            value={selectedRecipient?.contactPerson || "（未提供）"}
+            disabled
+            className="bg-background"
+          />
+        </div>
+        <div className="space-y-2">
           <Label className="text-sm font-medium text-muted-foreground">聯絡電話</Label>
           <Input
             value={selectedRecipient?.phone || "（未提供）"}

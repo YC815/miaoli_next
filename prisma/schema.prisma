@@ -159,15 +159,16 @@ model ReceiptSeal {
 }
 
 model RecipientUnit {
-  id           String         @id
-  name         String         @unique
-  phone        String?
-  address      String?
-  serviceCount Int?
-  isActive     Boolean        @default(true)
-  sortOrder    Int            @default(0)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime
+  id            String         @id
+  name          String         @unique
+  contactPerson String?
+  phone         String?
+  address       String?
+  serviceCount  Int?
+  isActive      Boolean        @default(true)
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime
   disbursements Disbursement[]
 }
 

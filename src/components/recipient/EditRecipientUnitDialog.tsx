@@ -18,6 +18,7 @@ import { toast } from "sonner";
 export interface RecipientUnit {
   id: string;
   name: string;
+  contactPerson: string | null;
   phone: string | null;
   address: string | null;
   serviceCount: number | null;
@@ -39,6 +40,7 @@ export function EditRecipientUnitDialog({
 }: EditRecipientUnitDialogProps) {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
+  const [contactPerson, setContactPerson] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [serviceCount, setServiceCount] = useState("");
@@ -46,6 +48,7 @@ export function EditRecipientUnitDialog({
   useEffect(() => {
     if (recipientUnit && open) {
       setName(recipientUnit.name);
+      setContactPerson(recipientUnit.contactPerson || "");
       setPhone(recipientUnit.phone || "");
       setAddress(recipientUnit.address || "");
       setServiceCount(
@@ -58,6 +61,7 @@ export function EditRecipientUnitDialog({
 
   const resetForm = () => {
     setName("");
+    setContactPerson("");
     setPhone("");
     setAddress("");
     setServiceCount("");
@@ -80,6 +84,7 @@ export function EditRecipientUnitDialog({
         body: JSON.stringify({
           id: recipientUnit.id,
           name: name.trim(),
+          contactPerson: contactPerson.trim() || null,
           phone: phone.trim() || null,
           address: address.trim() || null,
           serviceCount: serviceCount.trim() ? Number(serviceCount) : null,
@@ -131,6 +136,19 @@ export function EditRecipientUnitDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="請輸入單位名稱"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-recipient-contact-person" className="text-sm font-medium">
+              窗口/聯絡人
+            </Label>
+            <Input
+              id="edit-recipient-contact-person"
+              type="text"
+              value={contactPerson}
+              onChange={(e) => setContactPerson(e.target.value)}
+              placeholder="請輸入窗口姓名"
             />
           </div>
 

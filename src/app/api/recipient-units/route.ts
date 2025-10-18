@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    const { name, phone, address, sortOrder, serviceCount } = await request.json();
+    const { name, contactPerson, phone, address, sortOrder, serviceCount } = await request.json();
 
     if (!name || typeof name !== 'string') {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       data: {
         id: randomUUID(),
         name: name.trim(),
+        contactPerson: contactPerson ? contactPerson.trim() : null,
         phone: phone ? phone.trim() : null,
         address: address ? address.trim() : null,
         serviceCount: parsedServiceCount,
@@ -119,7 +120,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 403 });
     }
 
-    const { id, name, phone, address, sortOrder, serviceCount } = await request.json();
+    const { id, name, contactPerson, phone, address, sortOrder, serviceCount } = await request.json();
 
     if (!id || typeof id !== 'string') {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
@@ -167,6 +168,7 @@ export async function PUT(request: NextRequest) {
       where: { id },
       data: {
         name: name.trim(),
+        contactPerson: contactPerson !== undefined ? (contactPerson ? contactPerson.trim() : null) : existingUnit.contactPerson,
         phone: phone ? phone.trim() : existingUnit.phone,
         address: address ? address.trim() : existingUnit.address,
         serviceCount:
