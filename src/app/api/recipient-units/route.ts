@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { classifyError } from '@/lib/errors';
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,9 +22,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(recipientUnits);
   } catch (error) {
     console.error('Error fetching recipient units:', error);
+
+    const classified = classifyError(error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      {
+        error: classified.userMessage,
+        type: classified.type,
+        retryable: classified.retryable,
+      },
+      { status: classified.statusCode }
     );
   }
 }
@@ -96,9 +103,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newUnit, { status: 201 });
   } catch (error) {
     console.error('Error creating recipient unit:', error);
+
+    const classified = classifyError(error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      {
+        error: classified.userMessage,
+        type: classified.type,
+        retryable: classified.retryable,
+      },
+      { status: classified.statusCode }
     );
   }
 }
@@ -185,9 +198,15 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(updatedUnit);
   } catch (error) {
     console.error('Error updating recipient unit:', error);
+
+    const classified = classifyError(error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      {
+        error: classified.userMessage,
+        type: classified.type,
+        retryable: classified.retryable,
+      },
+      { status: classified.statusCode }
     );
   }
 }
@@ -232,15 +251,21 @@ export async function DELETE(request: NextRequest) {
       data: { isActive: false, updatedAt: new Date() },
     });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Recipient unit deleted successfully',
-      recipientUnit: deletedUnit 
+      recipientUnit: deletedUnit
     });
   } catch (error) {
     console.error('Error deleting recipient unit:', error);
+
+    const classified = classifyError(error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      {
+        error: classified.userMessage,
+        type: classified.type,
+        retryable: classified.retryable,
+      },
+      { status: classified.statusCode }
     );
   }
 }

@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { Prisma, Role } from '@prisma/client';
 import { generateDonationSerialNumber } from '@/lib/serialNumber';
 import { randomUUID } from 'crypto';
+import { classifyError } from '@/lib/errors';
 
 interface DonationItemData {
   itemName: string;
@@ -153,20 +154,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newDonationRecord, { status: 201 });
   } catch (error) {
     console.error('💥 Error creating donation:', error);
-    console.error('💥 Error details:', JSON.stringify(error, null, 2));
 
-    // 檢查是否為 Prisma 錯誤
-    if (error instanceof Error) {
-      console.error('💥 Error message:', error.message);
-      console.error('💥 Error stack:', error.stack);
-    }
-
+    const classified = classifyError(error);
     return NextResponse.json(
       {
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: classified.userMessage,
+        type: classified.type,
+        retryable: classified.retryable,
       },
-      { status: 500 }
+      { status: classified.statusCode }
     );
   }
 }
@@ -402,9 +398,15 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching donation records:', error);
+
+    const classified = classifyError(error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      {
+        error: classified.userMessage,
+        type: classified.type,
+        retryable: classified.retryable,
+      },
+      { status: classified.statusCode }
     );
   }
 }

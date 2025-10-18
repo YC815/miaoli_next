@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { toast } from "sonner";
+import { apiPost } from "@/lib/api-client";
 
 export interface RecipientUnit {
   id: string;
@@ -55,33 +56,21 @@ export function AddRecipientUnitDialog({ open, onOpenChange, onRecipientCreated 
 
     setLoading(true);
     try {
-      const response = await fetch("/api/recipient-units", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          contactPerson: contactPerson.trim() || null,
-          phone: phone.trim() || null,
-          address: address.trim() || null,
-          serviceCount: serviceCount.trim() ? Number(serviceCount) : null,
-        }),
+      const data = await apiPost<RecipientUnit>("/api/recipient-units", {
+        name: name.trim(),
+        contactPerson: contactPerson.trim() || null,
+        phone: phone.trim() || null,
+        address: address.trim() || null,
+        serviceCount: serviceCount.trim() ? Number(serviceCount) : null,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success("領取單位新增成功");
-        onRecipientCreated(data);
-        resetForm();
-        onOpenChange(false);
-      } else {
-        toast.error(data.error || "新增領取單位失敗");
-      }
+      toast.success("領取單位新增成功");
+      onRecipientCreated(data);
+      resetForm();
+      onOpenChange(false);
     } catch (error) {
       console.error("新增領取單位失敗:", error);
-      toast.error("新增領取單位失敗，請稍後再試");
+      // Error toast is already shown by apiPost
     } finally {
       setLoading(false);
     }

@@ -12,6 +12,7 @@ import { AddDonorDialog } from "@/components/donation/AddDonorDialog";
 import { EditDonorDialog, Donor } from "@/components/admin/EditDonorDialog";
 import { Search, Users, RefreshCcw, Edit3, EyeOff, Eye, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
 
 export function DonorsManagement() {
   const [donors, setDonors] = useState<Donor[]>([]);
@@ -25,16 +26,11 @@ export function DonorsManagement() {
   const fetchDonors = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/donors?includeInactive=true");
-      const data = await response.json();
-      if (response.ok) {
-        setDonors(data.data || []);
-      } else {
-        toast.error(data.error || "載入捐贈人資料失敗");
-      }
+      const data = await apiGet<{ data: Donor[] }>("/api/donors?includeInactive=true");
+      setDonors(data.data || []);
     } catch (error) {
       console.error("載入捐贈人資料失敗:", error);
-      toast.error("載入捐贈人資料失敗");
+      // Error toast is already shown by apiGet
     } finally {
       setLoading(false);
     }
@@ -72,37 +68,22 @@ export function DonorsManagement() {
 
   const toggleDonorStatus = async (donor: Donor) => {
     try {
-      const requestOptions: RequestInit = donor.isActive
-        ? {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: donor.id }),
-          }
-        : {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: donor.id,
-              name: donor.name,
-              phone: donor.phone,
-              taxId: donor.taxId,
-              address: donor.address,
-              isActive: true,
-            }),
-          };
+      const data = donor.isActive
+        ? await apiDelete<{ message: string; data: Donor }>("/api/donors", { id: donor.id })
+        : await apiPut<{ message: string; data: Donor }>("/api/donors", {
+            id: donor.id,
+            name: donor.name,
+            phone: donor.phone,
+            taxId: donor.taxId,
+            address: donor.address,
+            isActive: true,
+          });
 
-      const response = await fetch("/api/donors", requestOptions);
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success(data.message || (donor.isActive ? "捐贈人已停用" : "捐贈人已啟用"));
-        handleDonorUpdated(data.data);
-      } else {
-        toast.error(data.error || "更新捐贈人狀態失敗");
-      }
+      toast.success(data.message || (donor.isActive ? "捐贈人已停用" : "捐贈人已啟用"));
+      handleDonorUpdated(data.data);
     } catch (error) {
       console.error("更新捐贈人狀態失敗:", error);
-      toast.error("更新捐贈人狀態失敗");
+      // Error toast is already shown by apiDelete/apiPut
     }
   };
 

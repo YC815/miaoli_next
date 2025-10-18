@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { Prisma, Role } from '@prisma/client';
 import { generateDisbursementSerialNumber } from '@/lib/serialNumber';
 import { randomUUID } from 'crypto';
+import { classifyError } from '@/lib/errors';
 
 interface PickupInfo {
   unitId?: string;
@@ -199,13 +200,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating disbursement:', error);
 
-    if (error instanceof Error && (error as Error & { code?: string }).code === 'VALIDATION_ERROR') {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
+    const classified = classifyError(error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      {
+        error: classified.userMessage,
+        type: classified.type,
+        retryable: classified.retryable,
+      },
+      { status: classified.statusCode }
     );
   }
 }
@@ -423,9 +425,15 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching disbursement records:', error);
+
+    const classified = classifyError(error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      {
+        error: classified.userMessage,
+        type: classified.type,
+        retryable: classified.retryable,
+      },
+      { status: classified.statusCode }
     );
   }
 }

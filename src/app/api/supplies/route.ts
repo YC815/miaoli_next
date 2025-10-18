@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { classifyError } from '@/lib/errors';
 
 const transformItemStock = (item: {
   id: string;
@@ -76,9 +77,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(itemStocks.map(transformItemStock));
   } catch (error) {
     console.error('Error fetching item stocks:', error);
+
+    const classified = classifyError(error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      {
+        error: classified.userMessage,
+        type: classified.type,
+        retryable: classified.retryable,
+      },
+      { status: classified.statusCode }
     );
   }
 }
@@ -160,9 +167,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(transformItemStock(itemStock), { status: 201 });
   } catch (error) {
     console.error('Error creating or updating item stock:', error);
+
+    const classified = classifyError(error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      {
+        error: classified.userMessage,
+        type: classified.type,
+        retryable: classified.retryable,
+      },
+      { status: classified.statusCode }
     );
   }
 }
