@@ -337,34 +337,6 @@ function HomePage({ dbUser = null }: HomePageProps) {
     }
   };
 
-  const handleUpdateSupply = async (updatedSupply: ItemStock) => {
-    try {
-      const response = await fetch(`/api/supplies/${updatedSupply.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: updatedSupply.name,
-          category: updatedSupply.category,
-          unit: updatedSupply.unit,
-          isStandard: updatedSupply.isStandard,
-        }),
-      });
-
-      if (response.ok) {
-        toast.success("物資資訊更新成功！");
-        fetchSupplies(); // Refresh supplies list
-      } else {
-        const errorData = await response.json();
-        toast.error(`更新物資失敗: ${errorData.error || response.statusText}`);
-      }
-    } catch (error) {
-      console.error("Error updating supply:", error);
-      toast.error("更新物資失敗");
-    }
-  };
-
   const handleInventoryCount = async (
     id: string,
     newQuantity: number,
@@ -656,7 +628,6 @@ function HomePage({ dbUser = null }: HomePageProps) {
             <div className="flex-1 pb-3 sm:pb-6">
               <SuppliesTable
                 supplies={supplies}
-                onUpdateSupply={handleUpdateSupply}
                 onPerformInventory={handleInventoryCount}
                 onUpdateSafetyStock={handleUpdateSafetyStock}
                 userPermissions={userPermissions}

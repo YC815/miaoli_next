@@ -30,7 +30,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
-  MoreHorizontal,
   Search,
   AlertTriangle,
   Package,
@@ -42,9 +41,9 @@ import {
   Filter,
   SlidersHorizontal,
   X,
+  Pencil,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { EditSupplyModal } from "@/components/modals/EditSupplyModal";
 import { EditSafetyStockModal } from "@/components/modals/EditSafetyStockModal";
 import { InventoryCountModal } from "@/components/modals/InventoryCountModal";
 import { ItemRecordsDialog } from "@/components/modals/ItemRecordsDialog";
@@ -62,7 +61,6 @@ interface ItemStock {
 
 interface SuppliesTableProps {
   supplies: ItemStock[];
-  onUpdateSupply: (updatedSupply: ItemStock) => void;
   onPerformInventory: (id: string, newQuantity: number, changeType: 'INCREASE' | 'DECREASE', reason: string) => void;
   onUpdateSafetyStock: (id: string, newSafetyStock: number) => void;
   userPermissions: Permission | null;
@@ -78,9 +76,8 @@ function getStockStatus(quantity: number, safetyStock: number) {
   return { label: '庫存充足', color: 'text-green-600' };
 }
 
-export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, onUpdateSafetyStock, userPermissions }: SuppliesTableProps) {
+export function SuppliesTable({ supplies, onPerformInventory, onUpdateSafetyStock, userPermissions }: SuppliesTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [isEditSupplyOpen, setIsEditSupplyOpen] = useState(false);
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [isEditSafetyStockOpen, setIsEditSafetyStockOpen] = useState(false);
   const [isItemRecordsOpen, setIsItemRecordsOpen] = useState(false);
@@ -262,11 +259,6 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
     selectedUnits.length > 0 ||
     stockTypeFilter !== "all" ||
     showOnlyBelowSafetyStock;
-
-  const handleEditSupply = (supply: ItemStock) => {
-    setSelectedSupply(supply);
-    setIsEditSupplyOpen(true);
-  };
 
   const handleInventory = (supply: ItemStock) => {
     setSelectedSupply(supply);
@@ -709,13 +701,12 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
                 <TableHead className="font-semibold text-base py-4 text-center">安全庫存</TableHead>
                 <TableHead className="font-semibold text-base py-4 text-center">庫存狀態</TableHead>
                 <TableHead className="font-semibold text-base py-4 text-center">盤點</TableHead>
-                <TableHead className="w-[80px] text-center font-semibold text-base py-4">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredAndSortedSupplies.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-32 text-center">
+                  <TableCell colSpan={6} className="h-32 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <Package className="h-8 w-8" />
                       <p className="text-lg">找不到符合條件的物資</p>
@@ -756,10 +747,22 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="py-2 sm:py-4 text-center">
-                        <span className="text-sm sm:text-base text-muted-foreground">
-                          {supply.safetyStock.toLocaleString()} {supply.unit}
-                        </span>
+                      <TableCell
+                        className="py-2 sm:py-4 text-center cursor-pointer hover:bg-muted/30 transition-colors"
+                        onClick={() => {
+                          if (userPermissions?.canEditSafetyStock) {
+                            handleEditSafetyStock(supply);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center justify-center gap-1 sm:gap-2">
+                          <span className={`text-sm sm:text-base ${userPermissions?.canEditSafetyStock ? 'text-blue-600 dark:text-blue-400 hover:underline font-medium' : 'text-muted-foreground'}`}>
+                            {supply.safetyStock.toLocaleString()} {supply.unit}
+                          </span>
+                          {userPermissions?.canEditSafetyStock && (
+                            <Pencil className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="py-2 sm:py-4 text-center">
                         <span className={`inline-flex px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-medium ${status.color}`}>
@@ -780,38 +783,6 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
                           <span className="text-xs text-muted-foreground">無權限</span>
                         )}
                       </TableCell>
-                      <TableCell className="py-2 sm:py-4 text-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-muted min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px]"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">開啟選單</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-36 sm:w-40">
-                            {userPermissions?.canEditSupplyInfo && (
-                              <DropdownMenuItem 
-                                className="text-sm sm:text-base py-2 cursor-pointer"
-                                onClick={() => handleEditSupply(supply)}
-                              >
-                                編輯資訊
-                              </DropdownMenuItem>
-                            )}
-                            {userPermissions?.canEditSafetyStock && (
-                              <DropdownMenuItem 
-                                className="text-sm sm:text-base py-2 cursor-pointer"
-                                onClick={() => handleEditSafetyStock(supply)}
-                              >
-                                編輯安全庫存
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
                     </TableRow>
                   );
                 })
@@ -822,13 +793,6 @@ export function SuppliesTable({ supplies, onUpdateSupply, onPerformInventory, on
       </div>
 
       {/* Modals */}
-      <EditSupplyModal
-        open={isEditSupplyOpen}
-        onOpenChange={setIsEditSupplyOpen}
-        onSubmit={onUpdateSupply}
-        supply={selectedSupply}
-      />
-
       <InventoryCountModal
         open={isInventoryModalOpen}
         onOpenChange={setIsInventoryModalOpen}

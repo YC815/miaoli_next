@@ -29,7 +29,12 @@ interface EditSafetyStockModalProps {
   supply: ItemStock | null;
 }
 
-export function EditSafetyStockModal({ open, onOpenChange, onSubmit, supply }: EditSafetyStockModalProps) {
+export function EditSafetyStockModal({
+  open,
+  onOpenChange,
+  onSubmit,
+  supply,
+}: EditSafetyStockModalProps) {
   const [safetyStock, setSafetyStock] = useState<number>(0);
 
   useEffect(() => {
@@ -55,11 +60,14 @@ export function EditSafetyStockModal({ open, onOpenChange, onSubmit, supply }: E
 
   const getStockStatus = () => {
     if (!supply) return null;
-    
-    if (supply.totalStock === 0) return { label: '無庫存', color: 'text-red-600' };
-    if (supply.totalStock < safetyStock) return { label: '將顯示庫存不足', color: 'text-orange-600' };
-    if (supply.totalStock === safetyStock) return { label: '將顯示剛好達標', color: 'text-yellow-600' };
-    return { label: '將顯示庫存充足', color: 'text-green-600' };
+
+    if (supply.totalStock === 0)
+      return { label: "無庫存", color: "text-red-600" };
+    if (supply.totalStock < safetyStock)
+      return { label: "將顯示庫存不足", color: "text-orange-600" };
+    if (supply.totalStock === safetyStock)
+      return { label: "將顯示剛好達標", color: "text-yellow-600" };
+    return { label: "將顯示庫存充足", color: "text-green-600" };
   };
 
   const status = getStockStatus();
@@ -68,12 +76,15 @@ export function EditSafetyStockModal({ open, onOpenChange, onSubmit, supply }: E
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[95vw] max-w-md max-h-[95vh] overflow-y-auto sm:w-full">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">編輯安全庫存量</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">
+            編輯安全庫存量
+          </DialogTitle>
           <DialogDescription className="text-sm">
-            {supply && `${supply.name} - 目前庫存：${supply.totalStock} ${supply.unit}`}
+            {supply &&
+              `${supply.name} - 目前庫存：${supply.totalStock} ${supply.unit}`}
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="safety-stock">安全庫存量</Label>
@@ -96,7 +107,9 @@ export function EditSafetyStockModal({ open, onOpenChange, onSubmit, supply }: E
               <div className="text-xs sm:text-sm">
                 <p className="font-medium mb-2">設定預覽：</p>
                 <div className="space-y-1">
-                  <p className="break-words">目前庫存：{supply.totalStock} {supply.unit}</p>
+                  <p className="break-words">
+                    目前庫存：{supply.totalStock} {supply.unit}
+                  </p>
                   <p className="break-words">
                     安全庫存：{supply.safetyStock} → {safetyStock} {supply.unit}
                   </p>
@@ -111,23 +124,18 @@ export function EditSafetyStockModal({ open, onOpenChange, onSubmit, supply }: E
           )}
 
           {/* 建議提示 */}
-          <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
-            <p className="text-xs text-blue-800 dark:text-blue-200">
-              💡 建議將安全庫存量設為平均月消耗量的 1-2 倍，以確保不會缺貨
-            </p>
-          </div>
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => onOpenChange(false)}
             className="w-full sm:w-auto min-h-[44px]"
           >
             取消
           </Button>
-          <Button 
-            onClick={handleSubmit} 
+          <Button
+            onClick={handleSubmit}
             disabled={safetyStock < 0}
             className="w-full sm:w-auto min-h-[44px]"
           >
