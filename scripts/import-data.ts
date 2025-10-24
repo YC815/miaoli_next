@@ -38,14 +38,14 @@ async function importData() {
         await prisma.$executeRawUnsafe(line);
         insertCount++;
         process.stdout.write(`\r   已匯入: ${insertCount} 筆 (跳過: ${skipCount})`);
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Skip if record already exists (from seed data)
-        if (error.code === 'P2010' && error.meta?.code === '23505') {
+        if (error && typeof error === 'object' && 'code' in error && error.code === 'P2010' && 'meta' in error && error.meta && typeof error.meta === 'object' && 'code' in error.meta && error.meta.code === '23505') {
           skipCount++;
           process.stdout.write(`\r   已匯入: ${insertCount} 筆 (跳過: ${skipCount})`);
         } else {
           console.error(`\n❌ 錯誤於: ${line.substring(0, 100)}...`);
-          console.error(`   錯誤訊息: ${error.message}`);
+          console.error(`   錯誤訊息: ${error instanceof Error ? error.message : String(error)}`);
           throw error;
         }
       }

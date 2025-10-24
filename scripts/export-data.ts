@@ -174,7 +174,7 @@ async function exportData() {
   }
 }
 
-function escape(value: any): string {
+function escape(value: unknown): string {
   if (value === null || value === undefined) return 'NULL';
   if (typeof value === 'boolean') return value.toString().toUpperCase();
   if (typeof value === 'number') return value.toString();
