@@ -10,19 +10,15 @@ async function main() {
 
   // 清理現有數據 (按依賴關係順序)
   await prisma.inventoryChangeReason.deleteMany()
-  await prisma.recipientUnit.deleteMany()
   await prisma.unit.deleteMany()
   await prisma.category.deleteMany()
-  // 不清理 StandardItem，使用 upsert 更新
+  // 不清理 StandardItem、RecipientUnit、Donor，使用 upsert 更新
 
   console.log('📦 創建物資類別...')
   const categories = [
     { name: '食品', sortOrder: 1 },
     { name: '衛生用品', sortOrder: 2 },
     { name: '清潔用品', sortOrder: 3 },
-    { name: '生活用品', sortOrder: 4 },
-    { name: '衣物', sortOrder: 5 },
-    { name: '醫療用品', sortOrder: 6 },
   ]
 
   for (const category of categories) {
@@ -36,27 +32,7 @@ async function main() {
     })
   }
 
-  console.log('🏢 創建領取單位...')
-  const recipientUnits = [
-    { name: '慈濟基金會', phone: '02-2898-9991', sortOrder: 1 },
-    { name: '紅十字會', phone: '02-2365-2555', sortOrder: 2 },
-    { name: '世界展望會', phone: '02-2175-1995', sortOrder: 3 },
-    { name: '創世基金會', phone: '02-2835-7700', sortOrder: 4 },
-  ]
-
-  for (const unit of recipientUnits) {
-    await prisma.recipientUnit.create({
-      data: {
-        id: randomUUID(),
-        name: unit.name,
-        phone: unit.phone,
-        sortOrder: unit.sortOrder,
-        updatedAt: new Date(),
-      },
-    })
-  }
-
-  console.log('📏 創建單位...')
+  console.log('📏 創建計量單位...')
   const units = [
     { name: '包', sortOrder: 1 },
     { name: '罐', sortOrder: 2 },
@@ -67,10 +43,6 @@ async function main() {
     { name: '片', sortOrder: 7 },
     { name: '支', sortOrder: 8 },
     { name: '條', sortOrder: 9 },
-    { name: '袋', sortOrder: 10 },
-    { name: '件', sortOrder: 11 },
-    { name: '組', sortOrder: 12 },
-    { name: '公升', sortOrder: 13 },
   ]
 
   for (const unit of units) {
@@ -140,44 +112,18 @@ async function main() {
     }
   }
 
-  // 🆕 建立預設捐贈人
-  console.log('👤 創建預設捐贈人...')
-  const defaultDonor = await prisma.donor.upsert({
-    where: {
-      name: '匿名捐贈者'
-    },
-    create: {
-      id: randomUUID(),
-      name: '匿名捐贈者',
-      phone: null,
-      taxId: null,
-      address: null,
-      isActive: true,
-      updatedAt: new Date()
-    },
-    update: {
-      isActive: true,
-      updatedAt: new Date()
-    }
-  })
-  console.log(`   ✓ ${defaultDonor.name}`)
-
   console.log('\n✅ 種子數據填充完成！')
 
   // 顯示填充結果
   const categoryCount = await prisma.category.count()
-  const recipientUnitCount = await prisma.recipientUnit.count()
   const unitCount = await prisma.unit.count()
   const reasonCount = await prisma.inventoryChangeReason.count()
-  const donorCount = await prisma.donor.count()
 
   console.log(`\n📊 填充結果:`)
   console.log(`   - 物資類別: ${categoryCount} 筆`)
-  console.log(`   - 領取單位: ${recipientUnitCount} 筆`)
-  console.log(`   - 單位: ${unitCount} 筆`)
+  console.log(`   - 計量單位: ${unitCount} 筆`)
   console.log(`   - 庫存變更原因: ${reasonCount} 筆`)
   console.log(`   - 標準物資品項: ${standardItemCount} 筆`)
-  console.log(`   - 捐贈人: ${donorCount} 筆`)
 }
 
 main()
