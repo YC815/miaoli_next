@@ -112,18 +112,56 @@ async function main() {
     }
   }
 
+  // 🆕 種子 RecipientUnit（從 mechanism_list.json）
+  console.log('\n🏢 創建受贈單位（RecipientUnit）...')
+  const mechanismListPath = join(process.cwd(), 'public', 'mechanism_list.json')
+  const mechanismListData = JSON.parse(readFileSync(mechanismListPath, 'utf8')) as Array<{
+    name: string
+    adult?: number
+    child?: number
+    elderly?: number
+    family?: number
+    service?: string
+  }>
+
+  let recipientUnitCount = 0
+  for (const mechanism of mechanismListData) {
+    // 計算服務人數總計
+    const serviceCount = (mechanism.adult || 0) + (mechanism.child || 0) + (mechanism.elderly || 0) + (mechanism.family || 0)
+
+    await prisma.recipientUnit.upsert({
+      where: { name: mechanism.name },
+      create: {
+        id: randomUUID(),
+        name: mechanism.name,
+        serviceCount: serviceCount > 0 ? serviceCount : null,
+        isActive: true,
+        sortOrder: recipientUnitCount,
+        updatedAt: new Date()
+      },
+      update: {
+        serviceCount: serviceCount > 0 ? serviceCount : null,
+        isActive: true
+      }
+    })
+    recipientUnitCount++
+    console.log(`   ✓ ${mechanism.name}${serviceCount > 0 ? ` (服務人數: ${serviceCount})` : ''}`)
+  }
+
   console.log('\n✅ 種子數據填充完成！')
 
   // 顯示填充結果
   const categoryCount = await prisma.category.count()
   const unitCount = await prisma.unit.count()
   const reasonCount = await prisma.inventoryChangeReason.count()
+  const recipientCount = await prisma.recipientUnit.count()
 
   console.log(`\n📊 填充結果:`)
   console.log(`   - 物資類別: ${categoryCount} 筆`)
   console.log(`   - 計量單位: ${unitCount} 筆`)
   console.log(`   - 庫存變更原因: ${reasonCount} 筆`)
   console.log(`   - 標準物資品項: ${standardItemCount} 筆`)
+  console.log(`   - 受贈單位: ${recipientCount} 筆`)
 }
 
 main()

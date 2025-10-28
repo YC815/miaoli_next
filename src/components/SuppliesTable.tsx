@@ -46,7 +46,6 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EditSafetyStockModal } from "@/components/modals/EditSafetyStockModal";
-import { InventoryCountModal } from "@/components/modals/InventoryCountModal";
 import { ItemRecordsDialog } from "@/components/modals/ItemRecordsDialog";
 import { Permission } from "@/lib/permissions";
 import { sortItems } from "@/lib/item-sorting";
@@ -65,7 +64,6 @@ interface ItemStock {
 
 interface SuppliesTableProps {
   supplies: ItemStock[];
-  onPerformInventory: (id: string, newQuantity: number, changeType: 'INCREASE' | 'DECREASE', reason: string) => void;
   onUpdateSafetyStock: (id: string, newSafetyStock: number) => void;
   userPermissions: Permission | null;
 }
@@ -80,9 +78,8 @@ function getStockStatus(quantity: number, safetyStock: number) {
   return { label: '庫存充足', color: 'text-green-600' };
 }
 
-export function SuppliesTable({ supplies, onPerformInventory, onUpdateSafetyStock, userPermissions }: SuppliesTableProps) {
+export function SuppliesTable({ supplies, onUpdateSafetyStock, userPermissions }: SuppliesTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [isEditSafetyStockOpen, setIsEditSafetyStockOpen] = useState(false);
   const [isItemRecordsOpen, setIsItemRecordsOpen] = useState(false);
   const [selectedSupply, setSelectedSupply] = useState<ItemStock | null>(null);
@@ -266,11 +263,6 @@ export function SuppliesTable({ supplies, onPerformInventory, onUpdateSafetyStoc
     selectedUnits.length > 0 ||
     stockTypeFilter !== "all" ||
     showOnlyBelowSafetyStock;
-
-  const handleInventory = (supply: ItemStock) => {
-    setSelectedSupply(supply);
-    setIsInventoryModalOpen(true);
-  };
 
   const handleEditSafetyStock = (supply: ItemStock) => {
     setSelectedSupply(supply);
@@ -741,13 +733,12 @@ export function SuppliesTable({ supplies, onPerformInventory, onUpdateSafetyStoc
                 </TableHead>
                 <TableHead className="font-semibold text-base py-4 text-center">安全庫存</TableHead>
                 <TableHead className="font-semibold text-base py-4 text-center">庫存狀態</TableHead>
-                <TableHead className="font-semibold text-base py-4 text-center">盤點</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredAndSortedSupplies.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center">
+                  <TableCell colSpan={5} className="h-32 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <Package className="h-8 w-8" />
                       <p className="text-lg">找不到符合條件的物資</p>
@@ -810,20 +801,6 @@ export function SuppliesTable({ supplies, onPerformInventory, onUpdateSafetyStoc
                           {status.label}
                         </span>
                       </TableCell>
-                      <TableCell className="py-2 sm:py-4 text-center">
-                        {userPermissions?.canEditQuantity ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="min-h-[36px] min-w-[72px]"
-                            onClick={() => handleInventory(supply)}
-                          >
-                            盤點
-                          </Button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">無權限</span>
-                        )}
-                      </TableCell>
                     </TableRow>
                   );
                 })
@@ -834,13 +811,6 @@ export function SuppliesTable({ supplies, onPerformInventory, onUpdateSafetyStoc
       </div>
 
       {/* Modals */}
-      <InventoryCountModal
-        open={isInventoryModalOpen}
-        onOpenChange={setIsInventoryModalOpen}
-        onSubmit={onPerformInventory}
-        supply={selectedSupply}
-      />
-
       <EditSafetyStockModal
         open={isEditSafetyStockOpen}
         onOpenChange={setIsEditSafetyStockOpen}

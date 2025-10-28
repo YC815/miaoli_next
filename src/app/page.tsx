@@ -15,6 +15,8 @@ import { StaffManagement } from "@/components/admin/StaffManagement";
 import { DataManagement } from "@/components/admin/DataManagement";
 import { RecordsView } from "@/components/RecordsView";
 import { UserProfile } from "@/components/auth/UserProfile";
+import { InventoryCountView } from "@/components/InventoryCountView";
+import { AnalyticsView } from "@/components/AnalyticsView";
 import * as XLSX from "xlsx";
 import { generateReceiptsPDF } from "@/lib/receipt-generator";
 import { User, AuthGuard } from "@/components/auth/AuthGuard";
@@ -22,12 +24,11 @@ import { toast } from "sonner";
 import { getPermissions } from "@/lib/permissions";
 import { SignOutButton } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
-import { useRouter } from "next/navigation";
 import type { ExpiryItemDetail, ExpiryPagination } from "@/types/expiry";
 import type { ReceiptDraftSubmission } from "@/types/receipt";
 import type { ItemStock } from "@/types/item";
 
-type TabType = "supplies" | "records" | "staff" | "data";
+type TabType = "supplies" | "inventory" | "records" | "analytics" | "staff" | "data";
 
 interface DonationItemData {
   itemName: string;
@@ -61,7 +62,6 @@ interface HomePageProps {
 
 function HomePage({ dbUser = null }: HomePageProps) {
   console.log("🔍 HomePage Debug:", { dbUser: dbUser?.id });
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("supplies");
   const [currentDbUser, setCurrentDbUser] = useState<User | null>(dbUser);
 
@@ -329,53 +329,6 @@ function HomePage({ dbUser = null }: HomePageProps) {
     }
   };
 
-  const handleInventoryCount = async (
-    id: string,
-    newQuantity: number,
-    changeType: "INCREASE" | "DECREASE",
-    reason: string
-  ) => {
-    try {
-      const currentSupply = supplies.find((s) => s.id === id);
-      if (!currentSupply) {
-        toast.error("找不到對應的物資資料");
-        return;
-      }
-
-      const changeAmount = Math.abs(newQuantity - currentSupply.totalStock);
-
-      if (changeAmount === 0) {
-        toast.info("此次盤點沒有調整數量");
-        return;
-      }
-
-      const response = await fetch("/api/inventory-logs", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          itemStockId: id,
-          changeType,
-          changeAmount,
-          reason,
-        }),
-      });
-
-      if (response.ok) {
-        toast.success("盤點紀錄已更新！");
-        fetchSupplies(); // Refresh supplies list
-        fetchExpirySummary(); // Refresh expiry summary
-        setHasLoadedExpiryDetails(false);
-      } else {
-        const errorData = await response.json();
-        toast.error(`盤點失敗: ${errorData.error || response.statusText}`);
-      }
-    } catch (error) {
-      console.error("Error performing inventory count:", error);
-      toast.error("盤點失敗，請稍後再試");
-    }
-  };
 
   const handleUpdateSafetyStock = async (
     id: string,
@@ -500,6 +453,16 @@ function HomePage({ dbUser = null }: HomePageProps) {
               >
                 物資管理
               </Button>
+              {userPermissions?.canEditQuantity && (
+                <Button
+                  variant={activeTab === "inventory" ? "default" : "ghost"}
+                  onClick={() => setActiveTab("inventory")}
+                  className="rounded-md text-sm px-3 py-2"
+                  size="sm"
+                >
+                  盤點管理
+                </Button>
+              )}
               {userPermissions?.canViewRecords && (
                 <Button
                   variant={activeTab === "records" ? "default" : "ghost"}
@@ -511,8 +474,8 @@ function HomePage({ dbUser = null }: HomePageProps) {
                 </Button>
               )}
               <Button
-                variant="ghost"
-                onClick={() => router.push("/analytics")}
+                variant={activeTab === "analytics" ? "default" : "ghost"}
+                onClick={() => setActiveTab("analytics")}
                 className="rounded-md text-sm px-3 py-2"
                 size="sm"
               >
@@ -609,39 +572,65 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
       {/* Main Content */}
       <main className="flex flex-col flex-1 pb-20 sm:pb-24 md:pb-32">
-        {activeTab === "supplies" && (
-          <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto">
-            <div className="py-3 sm:py-6">
-              <StatisticsCards
-                stats={stats}
-                onShowExpiry={() => setIsExpiryModalOpen(true)}
-              />
-            </div>
-            <div className="flex-1 pb-3 sm:pb-6">
-              <SuppliesTable
-                supplies={supplies}
-                onPerformInventory={handleInventoryCount}
-                onUpdateSafetyStock={handleUpdateSafetyStock}
-                userPermissions={userPermissions}
-              />
-            </div>
+        {/* All tabs are always mounted, visibility controlled by CSS */}
+        <div
+          className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto"
+          style={{ display: activeTab === "supplies" ? "flex" : "none" }}
+        >
+          <div className="py-3 sm:py-6">
+            <StatisticsCards
+              stats={stats}
+              onShowExpiry={() => setIsExpiryModalOpen(true)}
+            />
+          </div>
+          <div className="flex-1 pb-3 sm:pb-6">
+            <SuppliesTable
+              supplies={supplies}
+              onUpdateSafetyStock={handleUpdateSafetyStock}
+              userPermissions={userPermissions}
+            />
+          </div>
+        </div>
+
+        {userPermissions?.canEditQuantity && (
+          <div
+            className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-3 sm:py-6"
+            style={{ display: activeTab === "inventory" ? "flex" : "none" }}
+          >
+            <InventoryCountView />
           </div>
         )}
 
-        {activeTab === "records" && (
-          <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-3 sm:py-6">
+        {userPermissions?.canViewRecords && (
+          <div
+            className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-3 sm:py-6"
+            style={{ display: activeTab === "records" ? "flex" : "none" }}
+          >
             <RecordsView />
           </div>
         )}
 
-        {activeTab === "staff" && (
-          <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-3 sm:py-6">
+        <div
+          className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-3 sm:py-6"
+          style={{ display: activeTab === "analytics" ? "flex" : "none" }}
+        >
+          <AnalyticsView />
+        </div>
+
+        {userPermissions?.canManageUsers && (
+          <div
+            className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-3 sm:py-6"
+            style={{ display: activeTab === "staff" ? "flex" : "none" }}
+          >
             <StaffManagement />
           </div>
         )}
 
-        {activeTab === "data" && (
-          <div className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-3 sm:py-6">
+        {userPermissions?.canManageUsers && (
+          <div
+            className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-3 sm:py-6"
+            style={{ display: activeTab === "data" ? "flex" : "none" }}
+          >
             <DataManagement />
           </div>
         )}
@@ -744,6 +733,19 @@ function HomePage({ dbUser = null }: HomePageProps) {
                 物資管理
               </Button>
 
+              {userPermissions?.canEditQuantity && (
+                <Button
+                  variant={activeTab === "inventory" ? "default" : "ghost"}
+                  onClick={() => {
+                    setActiveTab("inventory");
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="w-full justify-start text-left min-h-[48px] px-4"
+                >
+                  盤點管理
+                </Button>
+              )}
+
               {userPermissions?.canViewRecords && (
                 <Button
                   variant={activeTab === "records" ? "default" : "ghost"}
@@ -758,9 +760,9 @@ function HomePage({ dbUser = null }: HomePageProps) {
               )}
 
               <Button
-                variant="ghost"
+                variant={activeTab === "analytics" ? "default" : "ghost"}
                 onClick={() => {
-                  router.push("/analytics");
+                  setActiveTab("analytics");
                   setIsMobileMenuOpen(false);
                 }}
                 className="w-full justify-start text-left min-h-[48px] px-4"
