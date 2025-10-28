@@ -25,18 +25,9 @@ import { Menu, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ExpiryItemDetail, ExpiryPagination } from "@/types/expiry";
 import type { ReceiptDraftSubmission } from "@/types/receipt";
+import type { ItemStock } from "@/types/item";
 
 type TabType = "supplies" | "records" | "staff" | "data";
-
-interface ItemStock {
-  id: string;
-  category: string;
-  name: string;
-  unit: string;
-  totalStock: number;
-  safetyStock: number;
-  isStandard: boolean;
-}
 
 interface DonationItemData {
   itemName: string;
@@ -127,6 +118,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
           totalStock: Number(item.totalStock ?? item.quantity ?? 0),
           safetyStock: Number(item.safetyStock ?? 0),
           isStandard: Boolean(item.isStandard),
+          sortOrder: item.sortOrder ?? 9999,
         }));
 
         setSupplies(normalizedSupplies);

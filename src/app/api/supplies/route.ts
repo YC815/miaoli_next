@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { classifyError } from '@/lib/errors';
+import { attachSortOrder, CUSTOM_ITEM_SORT_ORDER, getSortOrderMap } from '@/lib/item-sorting';
 
 const transformItemStock = (item: {
   id: string;
@@ -13,7 +14,7 @@ const transformItemStock = (item: {
   totalStock: number;
   safetyStock: number;
   isStandard: boolean;
-}) => ({
+}, sortOrder: number) => ({
   id: item.id,
   name: item.itemName,
   category: item.itemCategory,
@@ -22,6 +23,7 @@ const transformItemStock = (item: {
   totalStock: item.totalStock,
   safetyStock: item.safetyStock,
   isStandard: item.isStandard,
+  sortOrder,
 });
 
 export async function GET(request: NextRequest) {
@@ -63,10 +65,6 @@ export async function GET(request: NextRequest) {
 
     const itemStocks = await prisma.itemStock.findMany({
       where: filters,
-      orderBy: [
-        { itemCategory: 'asc' },
-        { itemName: 'asc' },
-      ],
     });
 
     if (namesOnly) {
@@ -74,7 +72,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(uniqueNames);
     }
 
-    return NextResponse.json(itemStocks.map(transformItemStock));
+    // 使用統一工具函式附加 sortOrder 並排序
+    const itemsWithSortOrder = await attachSortOrder(itemStocks);
+
+    return NextResponse.json(itemsWithSortOrder.map(item =>
+      transformItemStock(item, item.sortOrder)
+    ));
   } catch (error) {
     console.error('Error fetching item stocks:', error);
 
@@ -164,7 +167,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(transformItemStock(itemStock), { status: 201 });
+    // 使用統一工具函式查詢 sortOrder
+    const sortOrderMap = await getSortOrderMap();
+    const key = `${itemStock.itemName}|${itemStock.itemCategory}`;
+    const sortOrder = sortOrderMap.get(key) ?? CUSTOM_ITEM_SORT_ORDER;
+
+    return NextResponse.json(transformItemStock(itemStock, sortOrder), { status: 201 });
   } catch (error) {
     console.error('Error creating or updating item stock:', error);
 

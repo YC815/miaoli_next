@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { attachSortOrder } from '@/lib/item-sorting';
 
 type InventoryStatus = 'sufficient' | 'insufficient' | 'out_of_stock';
 
@@ -11,6 +12,8 @@ interface SupplyWithStatus {
   safetyStock: number;
   unit: string;
   status: InventoryStatus;
+  isStandard: boolean;
+  sortOrder: number;
 }
 
 interface InventorySummary {
@@ -68,15 +71,15 @@ export async function GET(request: NextRequest) {
         totalStock: true,
         safetyStock: true,
         itemUnit: true,
+        isStandard: true,
       },
-      orderBy: [
-        { itemCategory: 'asc' },
-        { itemName: 'asc' }
-      ],
     });
 
+    // 使用統一工具函式附加 sortOrder 並排序
+    const suppliesWithSortOrder = await attachSortOrder(supplies);
+
     // 計算庫存狀態
-    const suppliesWithStatus: SupplyWithStatus[] = supplies.map(supply => ({
+    const suppliesWithStatus: SupplyWithStatus[] = suppliesWithSortOrder.map(supply => ({
       id: supply.id,
       name: supply.itemName,
       category: supply.itemCategory,
@@ -84,6 +87,8 @@ export async function GET(request: NextRequest) {
       safetyStock: supply.safetyStock,
       unit: supply.itemUnit,
       status: calculateStatus(supply.totalStock, supply.safetyStock),
+      isStandard: supply.isStandard,
+      sortOrder: supply.sortOrder,
     }));
 
     // 根據狀態過濾

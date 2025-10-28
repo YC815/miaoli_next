@@ -28,6 +28,7 @@ interface CustomItem {
   units: string[];
   defaultUnit: string;
   isHidden: boolean;
+  createdAt: string;
 }
 
 interface CustomItemDialogProps {

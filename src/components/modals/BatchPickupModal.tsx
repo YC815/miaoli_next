@@ -11,11 +11,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { MultiStepWizard, WizardStep } from "@/components/ui/multi-step-wizard";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { User } from "@/components/auth/AuthGuard";
 import { RecipientUnitSelect } from "@/components/recipient/RecipientUnitSelect";
 import type { RecipientUnit } from "@/components/recipient/AddRecipientUnitDialog";
+import { sortItems, CUSTOM_ITEM_SORT_ORDER } from "@/lib/item-sorting";
 
 interface BatchPickupInfo {
   unitId: string | null;
@@ -32,6 +34,8 @@ interface PickupItem {
   availableQuantity: number;
   requestedQuantity: number;
   unit: string;
+  isStandard: boolean;
+  sortOrder: number;
 }
 
 interface ItemStock {
@@ -40,6 +44,8 @@ interface ItemStock {
   name: string;
   totalStock: number;
   unit: string;
+  isStandard: boolean;
+  sortOrder?: number;
 }
 
 interface SelectedPickupItem {
@@ -66,14 +72,19 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, items, dbUser }
   const [pickupItems, setPickupItems] = useState<PickupItem[]>([]);
 
   useEffect(() => {
-    const availableItems: PickupItem[] = items.map(item => ({
+    // 使用統一排序工具函式
+    const itemsWithSort = items.map(item => ({
       id: item.id,
       name: item.name,
       category: item.category,
       availableQuantity: item.totalStock,
       requestedQuantity: 0,
       unit: item.unit,
+      isStandard: item.isStandard,
+      sortOrder: item.sortOrder ?? CUSTOM_ITEM_SORT_ORDER,
     }));
+
+    const availableItems = sortItems(itemsWithSort);
     setPickupItems(availableItems);
   }, [items]);
 
@@ -211,8 +222,12 @@ export function BatchPickupModal({ open, onOpenChange, onSubmit, items, dbUser }
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center justify-between">
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium text-sm">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">{item.category}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm">{item.name}</p>
+                            <Badge variant="outline" className="text-xs">
+                              {item.category}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
                       <div className="text-sm text-muted-foreground">

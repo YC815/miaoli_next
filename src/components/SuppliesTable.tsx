@@ -42,12 +42,14 @@ import {
   SlidersHorizontal,
   X,
   Pencil,
+  RotateCcw,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EditSafetyStockModal } from "@/components/modals/EditSafetyStockModal";
 import { InventoryCountModal } from "@/components/modals/InventoryCountModal";
 import { ItemRecordsDialog } from "@/components/modals/ItemRecordsDialog";
 import { Permission } from "@/lib/permissions";
+import { sortItems } from "@/lib/item-sorting";
 
 interface ItemStock {
   id: string;
@@ -57,6 +59,8 @@ interface ItemStock {
   unit: string;
   safetyStock: number;
   isStandard: boolean;
+  sortOrder?: number;
+  createdAt?: string;
 }
 
 interface SuppliesTableProps {
@@ -148,7 +152,10 @@ export function SuppliesTable({ supplies, onPerformInventory, onUpdateSafetyStoc
       return true;
     });
 
-    if (!sortField || !sortDirection) return filtered;
+    // 當使用者未手動排序時，使用統一排序邏輯
+    if (!sortField || !sortDirection) {
+      return sortItems(filtered);
+    }
 
     return [...filtered].sort((a, b) => {
       let aValue: string | number;
@@ -323,6 +330,22 @@ export function SuppliesTable({ supplies, onPerformInventory, onUpdateSafetyStoc
             </Button>
           </div>
           <div className="hidden sm:flex flex-wrap items-center gap-2">
+            {/* Reset Sort Button - Only show when user has manually sorted */}
+            {(sortField !== null || sortDirection !== null) && (
+              <Button
+                variant="default"
+                size="sm"
+                className="flex items-center gap-2 min-h-[40px] bg-primary hover:bg-primary/90"
+                onClick={() => {
+                  setSortField(null);
+                  setSortDirection(null);
+                }}
+              >
+                <RotateCcw className="h-4 w-4" />
+                恢復預設排序
+              </Button>
+            )}
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -540,6 +563,24 @@ export function SuppliesTable({ supplies, onPerformInventory, onUpdateSafetyStoc
                 <DialogTitle>篩選條件</DialogTitle>
               </DialogHeader>
               <div className="space-y-6">
+                {/* Reset Sort Button for Mobile */}
+                {(sortField !== null || sortDirection !== null) && (
+                  <section className="space-y-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="w-full flex items-center justify-center gap-2 min-h-[44px] bg-primary hover:bg-primary/90"
+                      onClick={() => {
+                        setSortField(null);
+                        setSortDirection(null);
+                      }}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      恢復預設排序
+                    </Button>
+                  </section>
+                )}
+
                 <section className="space-y-2">
                   <h3 className="text-sm font-semibold text-muted-foreground">分類</h3>
                   <div className="space-y-2">

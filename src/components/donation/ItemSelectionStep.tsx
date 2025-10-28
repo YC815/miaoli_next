@@ -16,12 +16,14 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, X } from "lucide-react";
 import { CustomItemDialog } from "@/components/donation/CustomItemDialog";
 import type { User } from "@/components/auth/AuthGuard";
+import { sortItems, CUSTOM_ITEM_SORT_ORDER } from "@/lib/item-sorting";
 
 interface StandardItem {
   name: string;
   category: string;
   units: string[];
   defaultUnit: string;
+  sortOrder: number;
 }
 
 interface CustomItem {
@@ -31,6 +33,7 @@ interface CustomItem {
   units: string[];
   defaultUnit: string;
   isHidden: boolean;
+  createdAt: string;
 }
 
 interface SelectedItem {
@@ -84,21 +87,13 @@ export function ItemSelectionStep({ selectedItems, onItemsChange }: Omit<ItemSel
     }
   };
 
-  // 所有可選物品清單
-  const availableItems = [
+  // 使用統一排序工具函式
+  const availableItems = sortItems([
     ...standardItems.map(item => ({ ...item, isStandard: true })),
-    ...customItems.filter(item => !item.isHidden).map(item => ({ ...item, isStandard: false }))
-  ];
-
-  // 依分類分組物品
-  const itemsByCategory = availableItems.reduce((groups, item) => {
-    const category = item.category;
-    if (!groups[category]) {
-      groups[category] = [];
-    }
-    groups[category].push(item);
-    return groups;
-  }, {} as Record<string, typeof availableItems>);
+    ...customItems
+      .filter(item => !item.isHidden)
+      .map(item => ({ ...item, isStandard: false, sortOrder: CUSTOM_ITEM_SORT_ORDER }))
+  ]);
 
   const addItem = () => {
     const newItem: SelectedItem = {
@@ -215,35 +210,31 @@ export function ItemSelectionStep({ selectedItems, onItemsChange }: Omit<ItemSel
                       <SelectValue placeholder="請選擇物品" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(itemsByCategory).map(([category, items]) => (
-                        <React.Fragment key={category}>
-                          <div className="px-2 py-1 text-sm font-medium text-muted-foreground bg-muted/50">
-                            {category}
-                          </div>
-                          {items.map((availableItem) => {
-                            const itemKey = `${availableItem.name}|${availableItem.category}`;
-                            const disabled = isItemSelected(availableItem.name, availableItem.category) &&
-                                            !(item.itemName === availableItem.name && item.itemCategory === availableItem.category);
+                      {availableItems.map((availableItem) => {
+                        const itemKey = `${availableItem.name}|${availableItem.category}`;
+                        const disabled = isItemSelected(availableItem.name, availableItem.category) &&
+                                        !(item.itemName === availableItem.name && item.itemCategory === availableItem.category);
 
-                            return (
-                              <SelectItem
-                                key={itemKey}
-                                value={itemKey}
-                                disabled={disabled}
-                              >
-                                <div className="flex items-center justify-between w-full">
-                                  <span>{availableItem.name}</span>
-                                  <div className="flex items-center gap-2 ml-2">
-                                    <Badge variant={availableItem.isStandard ? "default" : "secondary"} className="text-xs">
-                                      {availableItem.isStandard ? "標準" : "自訂"}
-                                    </Badge>
-                                  </div>
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
-                        </React.Fragment>
-                      ))}
+                        return (
+                          <SelectItem
+                            key={itemKey}
+                            value={itemKey}
+                            disabled={disabled}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span>{availableItem.name}</span>
+                              <div className="flex items-center gap-1 ml-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {availableItem.category}
+                                </Badge>
+                                <Badge variant={availableItem.isStandard ? "default" : "secondary"} className="text-xs">
+                                  {availableItem.isStandard ? "標準" : "自訂"}
+                                </Badge>
+                              </div>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                       <SelectItem value="custom">
                         <div className="flex items-center">
                           <Plus className="h-4 w-4 mr-2" />

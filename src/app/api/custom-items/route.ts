@@ -28,8 +28,7 @@ export async function GET(request: Request) {
         }
       },
       orderBy: [
-        { sortOrder: 'asc' },
-        { name: 'asc' }
+        { createdAt: 'asc' }
       ]
     })
 
