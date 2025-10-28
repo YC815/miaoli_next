@@ -611,7 +611,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
         )}
 
         <div
-          className="flex flex-col flex-1 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-3 sm:py-6"
+          className="flex flex-col flex-1 min-h-0 container px-2 sm:px-4 lg:px-6 max-w-7xl mx-auto py-3 sm:py-6"
           style={{ display: activeTab === "analytics" ? "flex" : "none" }}
         >
           <AnalyticsView />
