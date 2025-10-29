@@ -19,6 +19,7 @@ async function main() {
     { name: '食品', sortOrder: 1 },
     { name: '衛生用品', sortOrder: 2 },
     { name: '清潔用品', sortOrder: 3 },
+    { name: '衛生用品.', sortOrder: 4 },
   ]
 
   for (const category of categories) {
@@ -82,6 +83,28 @@ async function main() {
   const itemListPath = join(process.cwd(), 'public', 'item_list.json')
   const itemListData = JSON.parse(readFileSync(itemListPath, 'utf8'))
 
+  // 先收集 JSON 中所有的品項,用於判斷哪些需要軟刪除
+  const jsonItems = new Set<string>()
+  for (const [category, items] of Object.entries(itemListData)) {
+    for (const item of items as Array<{ item: string; units: string[]; defaultUnit: string }>) {
+      jsonItems.add(`${category}::${item.item}`)
+    }
+  }
+
+  // 軟刪除不在 JSON 中的項目
+  const existingItems = await prisma.standardItem.findMany()
+  for (const existing of existingItems) {
+    const key = `${existing.category}::${existing.name}`
+    if (!jsonItems.has(key)) {
+      await prisma.standardItem.update({
+        where: { id: existing.id },
+        data: { isActive: false }
+      })
+      console.log(`   ⚠️  軟刪除: ${existing.category} - ${existing.name}`)
+    }
+  }
+
+  // 按照 JSON 順序建立或更新品項
   let standardItemCount = 0
   for (const [category, items] of Object.entries(itemListData)) {
     for (const item of items as Array<{ item: string; units: string[]; defaultUnit: string }>) {
@@ -104,11 +127,12 @@ async function main() {
         update: {
           units: item.units,
           defaultUnit: item.defaultUnit,
-          isActive: true
+          isActive: true,
+          sortOrder: standardItemCount
         }
       })
       standardItemCount++
-      console.log(`   ✓ ${category} - ${item.item} (單位: ${item.units.join('/')})`)
+      console.log(`   ✓ ${category} - ${item.item} (單位: ${item.units.join('/')}, sortOrder: ${standardItemCount - 1})`)
     }
   }
 
