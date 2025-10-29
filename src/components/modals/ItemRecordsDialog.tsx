@@ -7,11 +7,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Loader2, Package } from "lucide-react";
 import { DonationRecordsTable } from "@/components/tables/DonationRecordsTable";
 import { DisbursementRecordsTable } from "@/components/tables/DisbursementRecordsTable";
 import { InventoryLogsTable } from "@/components/tables/InventoryLogsTable";
+import { EditDonationModal } from "@/components/modals/EditDonationModal";
+import { EditDisbursementModal } from "@/components/modals/EditDisbursementModal";
 import { toast } from "sonner";
 import type { DonationRecord } from "@/types/donation";
 import type { DisbursementRecord } from "@/components/tables/DisbursementRecordsTable";
@@ -50,6 +62,8 @@ interface InventoryResponse {
   totalPages: number;
 }
 
+type DeletableRecord = (DonationRecord | DisbursementRecord | InventoryLog) & { recordType: TabType };
+
 export function ItemRecordsDialog({
   open,
   onOpenChange,
@@ -71,6 +85,14 @@ export function ItemRecordsDialog({
   const [donationsLoading, setDonationsLoading] = React.useState(false);
   const [disbursementsLoading, setDisbursementsLoading] = React.useState(false);
   const [inventoryLoading, setInventoryLoading] = React.useState(false);
+
+  // Edit/Delete state management
+  const [donationToEdit, setDonationToEdit] = React.useState<DonationRecord | null>(null);
+  const [disbursementToEdit, setDisbursementToEdit] = React.useState<DisbursementRecord | null>(null);
+  const [isEditDonationModalOpen, setIsEditDonationModalOpen] = React.useState(false);
+  const [isEditDisbursementModalOpen, setIsEditDisbursementModalOpen] = React.useState(false);
+  const [recordToDelete, setRecordToDelete] = React.useState<DeletableRecord | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 
   // Reset pages when dialog opens with new item
   React.useEffect(() => {
@@ -227,6 +249,135 @@ export function ItemRecordsDialog({
     }
   };
 
+  // Edit handlers
+  const handleEditDonation = (record: DonationRecord) => {
+    setDonationToEdit(record);
+    setIsEditDonationModalOpen(true);
+  };
+
+  const handleEditDisbursement = (record: DisbursementRecord) => {
+    setDisbursementToEdit(record);
+    setIsEditDisbursementModalOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+    // Refresh the appropriate list based on active tab
+    if (activeTab === "donations") {
+      setDonationPage(1);
+      // Trigger refetch by setting page
+      const currentPage = donationPage;
+      setDonationPage(0);
+      setTimeout(() => setDonationPage(currentPage || 1), 0);
+    } else if (activeTab === "disbursements") {
+      setDisbursementPage(1);
+      const currentPage = disbursementPage;
+      setDisbursementPage(0);
+      setTimeout(() => setDisbursementPage(currentPage || 1), 0);
+    }
+  };
+
+  // Delete handlers
+  const handleDeleteRecord = (
+    record: DonationRecord | DisbursementRecord | InventoryLog,
+    type: TabType
+  ) => {
+    setRecordToDelete({ ...record, recordType: type });
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!recordToDelete) return;
+
+    const { recordType, id } = recordToDelete;
+    const endpointMap: Record<TabType, string> = {
+      donations: `/api/donations/${id}`,
+      disbursements: `/api/disbursements/${id}`,
+      inventory: `/api/inventory-logs/${id}`,
+    };
+
+    const successMessages: Record<TabType, string> = {
+      donations: "捐贈紀錄已刪除",
+      disbursements: "發放紀錄已刪除",
+      inventory: "盤點紀錄已刪除",
+    };
+
+    try {
+      const response = await fetch(endpointMap[recordType], {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        toast.success(successMessages[recordType]);
+        setIsDeleteDialogOpen(false);
+        setRecordToDelete(null);
+
+        // Refresh the data by resetting page
+        if (recordType === "donations") {
+          const currentPage = donationPage;
+          setDonationPage(0);
+          setTimeout(() => setDonationPage(currentPage || 1), 0);
+        } else if (recordType === "disbursements") {
+          const currentPage = disbursementPage;
+          setDisbursementPage(0);
+          setTimeout(() => setDisbursementPage(currentPage || 1), 0);
+        } else {
+          const currentPage = inventoryPage;
+          setInventoryPage(0);
+          setTimeout(() => setInventoryPage(currentPage || 1), 0);
+        }
+      } else {
+        const errorData = await response.json();
+        toast.error(`刪除失敗: ${errorData.error || "未知錯誤"}`);
+      }
+    } catch (error) {
+      console.error("刪除紀錄時發生錯誤:", error);
+      toast.error("刪除失敗，請稍後再試");
+    }
+  };
+
+  const getRecordDetails = () => {
+    if (!recordToDelete) return null;
+
+    switch (recordToDelete.recordType) {
+      case "donations":
+        const donation = recordToDelete as DonationRecord;
+        return (
+          <>
+            <p className="font-medium">流水號: {donation.serialNumber}</p>
+            <p className="text-sm">捐贈者: {donation.donor ? donation.donor.name : "匿名"}</p>
+            <p className="text-sm">
+              物品: {donation.donationItems.map((item) => item.itemName).join(", ")}
+            </p>
+          </>
+        );
+      case "disbursements":
+        const disbursement = recordToDelete as DisbursementRecord;
+        return (
+          <>
+            <p className="font-medium">流水號: {disbursement.serialNumber}</p>
+            <p className="text-sm">受贈單位: {disbursement.recipientUnitName}</p>
+            <p className="text-sm">
+              物品: {disbursement.disbursementItems.map((item) => item.itemName).join(", ")}
+            </p>
+          </>
+        );
+      case "inventory":
+        const inventory = recordToDelete as InventoryLog;
+        return (
+          <>
+            <p className="font-medium">調整物資: {inventory.itemStock.itemName}</p>
+            <p className="text-sm">
+              調整類型: {inventory.changeType === "INCREASE" ? "增加" : "減少"}
+            </p>
+            <p className="text-sm">調整數量: {inventory.changeAmount}</p>
+            <p className="text-sm">原因: {inventory.reason}</p>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="!w-[95vw] sm:!w-[90vw] md:!w-[80vw] lg:!w-[70vw] !max-w-none max-h-[85vh] overflow-hidden flex flex-col">
@@ -281,8 +432,8 @@ export function ItemRecordsDialog({
                   key={`donation-${donationPage}`}
                   data={donationData?.items ?? []}
                   onSelectionChange={() => {}}
-                  onDelete={() => {}}
-                  onEdit={() => {}}
+                  onDelete={(record) => handleDeleteRecord(record, "donations")}
+                  onEdit={handleEditDonation}
                   showFooter={false}
                   variant="item-dialog"
                 />
@@ -292,8 +443,8 @@ export function ItemRecordsDialog({
                   key={`disbursement-${disbursementPage}`}
                   data={disbursementData?.items ?? []}
                   onSelectionChange={() => {}}
-                  onDelete={() => {}}
-                  onEdit={() => {}}
+                  onDelete={(record) => handleDeleteRecord(record, "disbursements")}
+                  onEdit={handleEditDisbursement}
                   showFooter={false}
                   variant="item-dialog"
                 />
@@ -303,7 +454,7 @@ export function ItemRecordsDialog({
                   key={`inventory-${inventoryPage}`}
                   data={inventoryData?.items ?? []}
                   onSelectionChange={() => {}}
-                  onDelete={() => {}}
+                  onDelete={(record) => handleDeleteRecord(record, "inventory")}
                   showFooter={false}
                   variant="item-dialog"
                 />
@@ -342,6 +493,47 @@ export function ItemRecordsDialog({
           </div>
         </div>
       </DialogContent>
+
+      {/* Edit Modals */}
+      <EditDonationModal
+        open={isEditDonationModalOpen}
+        onOpenChange={setIsEditDonationModalOpen}
+        record={donationToEdit}
+        onSuccess={handleEditSuccess}
+      />
+
+      <EditDisbursementModal
+        open={isEditDisbursementModalOpen}
+        onOpenChange={setIsEditDisbursementModalOpen}
+        record={disbursementToEdit}
+        onSuccess={handleEditSuccess}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>確認刪除</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>此操作無法復原，確定要刪除此紀錄嗎？</p>
+                <div className="rounded-lg bg-muted p-3 text-sm">
+                  {getRecordDetails()}
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              確認刪除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
