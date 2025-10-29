@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Package, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useDataRefresh } from "@/contexts/DataRefreshContext";
 
 interface ItemStock {
   id: string;
@@ -27,6 +28,7 @@ interface ItemStock {
 }
 
 export function InventoryCountView() {
+  const { refreshKey, triggerRefresh } = useDataRefresh();
   const [supplies, setSupplies] = useState<ItemStock[]>([]);
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -34,7 +36,7 @@ export function InventoryCountView() {
 
   useEffect(() => {
     fetchSupplies();
-  }, []);
+  }, [refreshKey]);
 
   const fetchSupplies = async () => {
     try {
@@ -100,9 +102,9 @@ export function InventoryCountView() {
         const result = await response.json();
         toast.success(`成功更新 ${result.successCount} 項物資${result.skippedCount > 0 ? `，跳過 ${result.skippedCount} 項無變更` : ''}`);
 
-        // Clear inputs and refresh
+        // Clear inputs and trigger global refresh
         setInputValues({});
-        await fetchSupplies();
+        triggerRefresh();
       } else {
         const errorData = await response.json();
         toast.error(`盤點失敗: ${errorData.error || response.statusText}`);

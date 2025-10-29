@@ -11,6 +11,7 @@ import { ItemsManagement } from "@/components/admin/ItemsManagement";
 import { DonorsManagement } from "@/components/admin/DonorsManagement";
 import { RecipientUnitsManagement } from "@/components/recipient/RecipientUnitsManagement";
 import { SealManagement } from "@/components/admin/SealManagement";
+import { useDataRefresh } from "@/contexts/DataRefreshContext";
 
 interface Category {
   id: string;
@@ -31,6 +32,7 @@ interface DataCounts {
 }
 
 export function DataManagement() {
+  const { refreshKey, triggerRefresh } = useDataRefresh();
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeSection, setActiveSection] = useState<"categories" | "recipients" | "donors" | "items" | "seals">("items");
@@ -48,7 +50,7 @@ export function DataManagement() {
 
   useEffect(() => {
     loadAllData();
-  }, []);
+  }, [refreshKey]);
 
   const loadAllData = async () => {
     setInitialLoading(true);
@@ -126,6 +128,7 @@ export function DataManagement() {
 
       if (response.ok) {
         toast.success(`「${editingItem.name}」已成功更新為「${editName.trim()}」`);
+        triggerRefresh(); // Trigger global data refresh
         fetchCategories();
         setEditingItem(null);
         setEditName("");
@@ -160,6 +163,7 @@ export function DataManagement() {
 
       if (response.ok) {
         toast.success(`「${name}」已成功停用`);
+        triggerRefresh(); // Trigger global data refresh
         fetchCategories();
       } else {
         const errorData = await response.json();

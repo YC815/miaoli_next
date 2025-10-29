@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import type { DonationRecord } from "@/types/donation";
 import type { DisbursementRecord } from "@/components/tables/DisbursementRecordsTable";
 import type { InventoryLog } from "@/components/tables/InventoryLogsTable";
+import { useDataRefresh } from "@/contexts/DataRefreshContext";
 
 type TabType = "donations" | "disbursements" | "inventory";
 
@@ -70,6 +71,7 @@ export function ItemRecordsDialog({
   itemStockId,
   itemName,
 }: ItemRecordsDialogProps) {
+  const { refreshKey, triggerRefresh } = useDataRefresh();
   const [activeTab, setActiveTab] = React.useState<TabType>("donations");
   const [donationPage, setDonationPage] = React.useState(1);
   const [disbursementPage, setDisbursementPage] = React.useState(1);
@@ -135,7 +137,7 @@ export function ItemRecordsDialog({
 
     loadDonations();
     return () => controller.abort();
-  }, [open, itemStockId, activeTab, donationPage]);
+  }, [open, itemStockId, activeTab, donationPage, refreshKey]);
 
   // Fetch disbursements
   React.useEffect(() => {
@@ -172,7 +174,7 @@ export function ItemRecordsDialog({
 
     loadDisbursements();
     return () => controller.abort();
-  }, [open, itemStockId, activeTab, disbursementPage]);
+  }, [open, itemStockId, activeTab, disbursementPage, refreshKey]);
 
   // Fetch inventory logs
   React.useEffect(() => {
@@ -209,7 +211,7 @@ export function ItemRecordsDialog({
 
     loadInventoryLogs();
     return () => controller.abort();
-  }, [open, itemStockId, activeTab, inventoryPage]);
+  }, [open, itemStockId, activeTab, inventoryPage, refreshKey]);
 
   const isLoading =
     activeTab === "donations"
@@ -261,6 +263,8 @@ export function ItemRecordsDialog({
   };
 
   const handleEditSuccess = () => {
+    // Trigger global data refresh
+    triggerRefresh();
     // Refresh the appropriate list based on active tab
     if (activeTab === "donations") {
       setDonationPage(1);
@@ -308,6 +312,7 @@ export function ItemRecordsDialog({
 
       if (response.ok) {
         toast.success(successMessages[recordType]);
+        triggerRefresh(); // Trigger global data refresh
         setIsDeleteDialogOpen(false);
         setRecordToDelete(null);
 

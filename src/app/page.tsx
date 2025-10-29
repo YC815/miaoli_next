@@ -27,6 +27,8 @@ import { Menu, X } from "lucide-react";
 import type { ExpiryItemDetail, ExpiryPagination } from "@/types/expiry";
 import type { ReceiptDraftSubmission } from "@/types/receipt";
 import type { ItemStock } from "@/types/item";
+import { DataRefreshProvider, useDataRefresh } from "@/contexts/DataRefreshContext";
+import { SkeletonStatisticsCards, SkeletonSuppliesTable } from "@/components/ui/loading-wrappers";
 
 type TabType = "supplies" | "inventory" | "records" | "analytics" | "staff" | "data";
 
@@ -62,6 +64,7 @@ interface HomePageProps {
 
 function HomePage({ dbUser = null }: HomePageProps) {
   console.log("🔍 HomePage Debug:", { dbUser: dbUser?.id });
+  const { refreshKey, triggerRefresh } = useDataRefresh();
   const [activeTab, setActiveTab] = useState<TabType>("supplies");
   const [currentDbUser, setCurrentDbUser] = useState<User | null>(dbUser);
 
@@ -83,6 +86,8 @@ function HomePage({ dbUser = null }: HomePageProps) {
   const [isExpiryModalOpen, setIsExpiryModalOpen] = useState(false);
 
   const [supplies, setSupplies] = useState<ItemStock[]>([]);
+  const [suppliesLoading, setSuppliesLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(false);
   const [stats, setStats] = useState({
     totalCategories: 0,
     monthlyDonations: 0,
@@ -105,6 +110,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
   const fetchSupplies = async () => {
     try {
+      setSuppliesLoading(true);
       const response = await fetch("/api/supplies");
       if (response.ok) {
         const data = await response.json();
@@ -140,11 +146,14 @@ function HomePage({ dbUser = null }: HomePageProps) {
     } catch (error) {
       console.error("Error fetching supplies:", error);
       toast.error("載入物資失敗");
+    } finally {
+      setSuppliesLoading(false);
     }
   };
 
   const fetchStatistics = async () => {
     try {
+      setStatsLoading(true);
       const response = await fetch("/api/statistics");
       if (response.ok) {
         const data = await response.json();
@@ -158,6 +167,8 @@ function HomePage({ dbUser = null }: HomePageProps) {
       }
     } catch (error) {
       console.error("Error fetching statistics:", error);
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -222,7 +233,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
       fetchStatistics();
       fetchExpirySummary();
     }
-  }, [currentDbUser]); // Add currentDbUser to dependency array
+  }, [currentDbUser, refreshKey]); // Listen to refreshKey for data updates
 
   useEffect(() => {
     if (isExpiryModalOpen && !hasLoadedExpiryDetails) {
@@ -278,9 +289,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
         const responseData = await response.json();
         console.log("✅ Success response:", responseData);
         toast.success("物資捐贈新增成功！");
-        fetchSupplies(); // Refresh supplies list
-        fetchStatistics(); // Refresh statistics
-        fetchExpirySummary(); // Refresh expiry summary
+        triggerRefresh(); // Trigger global data refresh
         setHasLoadedExpiryDetails(false);
         setIsAddSupplyOpen(false);
       } else {
@@ -314,9 +323,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
       if (response.ok) {
         toast.success("批量領取成功！");
-        fetchSupplies(); // Refresh supplies list
-        fetchStatistics(); // Refresh statistics
-        fetchExpirySummary(); // Refresh expiry summary
+        triggerRefresh(); // Trigger global data refresh
         setHasLoadedExpiryDetails(false);
         setIsBatchPickupOpen(false);
       } else {
@@ -345,7 +352,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
 
       if (response.ok) {
         toast.success("安全庫存量更新成功！");
-        fetchSupplies(); // Refresh supplies list
+        triggerRefresh(); // Trigger global data refresh
       } else {
         const errorData = await response.json();
         toast.error(
@@ -578,17 +585,25 @@ function HomePage({ dbUser = null }: HomePageProps) {
           style={{ display: activeTab === "supplies" ? "flex" : "none" }}
         >
           <div className="py-3 sm:py-6">
-            <StatisticsCards
-              stats={stats}
-              onShowExpiry={() => setIsExpiryModalOpen(true)}
-            />
+            {statsLoading ? (
+              <SkeletonStatisticsCards />
+            ) : (
+              <StatisticsCards
+                stats={stats}
+                onShowExpiry={() => setIsExpiryModalOpen(true)}
+              />
+            )}
           </div>
           <div className="flex-1 pb-3 sm:pb-6">
-            <SuppliesTable
-              supplies={supplies}
-              onUpdateSafetyStock={handleUpdateSafetyStock}
-              userPermissions={userPermissions}
-            />
+            {suppliesLoading ? (
+              <SkeletonSuppliesTable />
+            ) : (
+              <SuppliesTable
+                supplies={supplies}
+                onUpdateSafetyStock={handleUpdateSafetyStock}
+                userPermissions={userPermissions}
+              />
+            )}
           </div>
         </div>
 
@@ -858,11 +873,19 @@ function HomePage({ dbUser = null }: HomePageProps) {
   );
 }
 
+function HomePageWithProviders(props: HomePageProps) {
+  return (
+    <DataRefreshProvider>
+      <HomePage {...props} />
+    </DataRefreshProvider>
+  );
+}
+
 // Wrap HomePage with AuthGuard for authentication management
 export default function App() {
   return (
     <AuthGuard>
-      <HomePage />
+      <HomePageWithProviders />
     </AuthGuard>
   );
 }

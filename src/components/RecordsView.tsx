@@ -45,6 +45,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { DonationRecordsTable } from "@/components/tables/DonationRecordsTable";
 import type { DonationRecord } from "@/types/donation";
+import { useDataRefresh } from "@/contexts/DataRefreshContext";
 import {
   DisbursementRecordsTable,
   DisbursementRecord,
@@ -235,6 +236,7 @@ const RecordDetails = ({ record }: { record: DeletableRecord | null }) => {
 };
 
 export function RecordsView() {
+  const { refreshKey, triggerRefresh } = useDataRefresh();
   const [activeTab, setActiveTab] = React.useState<TabType>("donations");
 
   const [categories, setCategories] = React.useState<string[]>([]);
@@ -383,7 +385,7 @@ export function RecordsView() {
 
     loadDonations();
     return () => controller.abort();
-  }, [activeTab, donationFilters, donationsRefreshKey]);
+  }, [activeTab, donationFilters, donationsRefreshKey, refreshKey]);
 
   React.useEffect(() => {
     if (activeTab !== "disbursements") return;
@@ -417,7 +419,7 @@ export function RecordsView() {
 
     loadDisbursements();
     return () => controller.abort();
-  }, [activeTab, disbursementFilters, disbursementsRefreshKey]);
+  }, [activeTab, disbursementFilters, disbursementsRefreshKey, refreshKey]);
 
   React.useEffect(() => {
     if (activeTab !== "inventory") return;
@@ -451,7 +453,7 @@ export function RecordsView() {
 
     loadInventoryLogs();
     return () => controller.abort();
-  }, [activeTab, inventoryFilters, inventoryRefreshKey]);
+  }, [activeTab, inventoryFilters, inventoryRefreshKey, refreshKey]);
 
   React.useEffect(() => {
     setSelectedDonations([]);
@@ -503,6 +505,8 @@ export function RecordsView() {
   };
 
   const handleEditSuccess = () => {
+    // Trigger global data refresh
+    triggerRefresh();
     // Refresh the appropriate list based on active tab
     if (activeTab === "donations") {
       setDonationsRefreshKey((key) => key + 1);
@@ -534,6 +538,7 @@ export function RecordsView() {
 
       if (response.ok) {
         toast.success(successMessages[recordType]);
+        triggerRefresh(); // Trigger global data refresh
         setIsDeleteDialogOpen(false);
         setRecordToDelete(null);
 
