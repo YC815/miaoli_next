@@ -88,20 +88,35 @@ export function EditDisbursementModal({
 
     setLoading(true);
     try {
+      const payload = {
+        recipientUnitId: selectedUnitId,
+      };
+
+      // DEBUG: 記錄前端送出的資料
+      console.log('🚀 [EditDisbursementModal] 準備送出 PATCH request');
+      console.log('🚀 Record ID:', record.id);
+      console.log('🚀 Payload:', payload);
+
       const response = await fetch(`/api/disbursements/${record.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          recipientUnitId: selectedUnitId,
-        }),
+        body: JSON.stringify(payload),
       });
+
+      // DEBUG: 記錄回應狀態
+      console.log('📨 Response status:', response.status);
+      console.log('📨 Response ok:', response.ok);
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('❌ API 回傳錯誤:', errorData);
         throw new Error(errorData.error || '更新失敗');
       }
+
+      const responseData = await response.json();
+      console.log('✅ API 回傳成功，資料:', responseData);
 
       toast.success('發放紀錄已更新');
       onSuccess();
