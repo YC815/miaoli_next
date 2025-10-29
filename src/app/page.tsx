@@ -444,7 +444,7 @@ function HomePage({ dbUser = null }: HomePageProps) {
                 苗
               </span>
             </div>
-            <h1 className="hidden sm:block text-lg sm:text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            <h1 className="hidden lg:block whitespace-nowrap text-lg xl:text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               苗栗社福物資管理平台
             </h1>
           </div>
