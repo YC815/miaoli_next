@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
+  _prismaExitHandlerRegistered?: boolean;
 };
 
 const prisma = globalForPrisma.prisma ?? new PrismaClient({
@@ -24,8 +25,9 @@ export async function checkDatabaseConnection(): Promise<boolean> {
   }
 }
 
-// Graceful disconnect on process termination
-if (typeof window === 'undefined') {
+// Graceful disconnect on process termination (guard against duplicate registration)
+if (typeof window === 'undefined' && !globalForPrisma._prismaExitHandlerRegistered) {
+  globalForPrisma._prismaExitHandlerRegistered = true;
   process.on('beforeExit', async () => {
     await prisma.$disconnect();
   });

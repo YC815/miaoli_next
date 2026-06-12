@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
 
     const itemStocks = await prisma.itemStock.findMany({
       where: filters,
+      take: 2000,
     });
 
     if (namesOnly) {

@@ -6,17 +6,7 @@ export async function POST(request: NextRequest) {
   console.log('[/api/users/complete-onboarding] ===== START ONBOARDING COMPLETION =====');
   
   try {
-    // Step 1: Verify database connection
-    console.log('[/api/users/complete-onboarding] Testing database connection...');
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-      console.log('[/api/users/complete-onboarding] ✅ Database connection successful');
-    } catch (dbError) {
-      console.error('[/api/users/complete-onboarding] ❌ Database connection failed:', dbError);
-      throw new Error('Database connection failed');
-    }
-
-    // Step 2: Authenticate user
+    // Step 1: Authenticate user
     const { userId: clerkId } = await auth();
     console.log('[/api/users/complete-onboarding] ClerkId from auth:', clerkId ? `${clerkId.substring(0, 8)}...` : 'null');
     

@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
         itemUnit: true,
         isStandard: true,
       },
+      take: 2000,
     });
 
     // 使用統一工具函式附加 sortOrder 並排序

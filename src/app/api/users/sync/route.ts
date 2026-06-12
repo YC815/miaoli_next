@@ -6,18 +6,8 @@ import { randomUUID } from 'crypto';
 
 export async function POST() {
   console.log('[/api/users/sync] ===== START USER SYNC =====');
-  
-  try {
-    // Step 0: Test database connection
-    console.log('[/api/users/sync] Testing database connection...');
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-      console.log('[/api/users/sync] ✅ Database connection successful');
-    } catch (dbError) {
-      console.error('[/api/users/sync] ❌ Database connection failed:', dbError);
-      throw new Error('Database connection failed');
-    }
 
+  try {
     const { userId } = await auth();
     console.log('[/api/users/sync] ClerkId from auth:', userId ? `${userId.substring(0, 8)}...` : 'null');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -187,18 +177,8 @@ export async function POST() {
 
 export async function GET() {
   console.log('[/api/users/sync] ===== START USER FETCH =====');
-  
-  try {
-    // Test database connection
-    console.log('[/api/users/sync] Testing database connection...');
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-      console.log('[/api/users/sync] ✅ Database connection successful');
-    } catch (dbError) {
-      console.error('[/api/users/sync] ❌ Database connection failed:', dbError);
-      throw new Error('Database connection failed');
-    }
 
+  try {
     const { userId: clerkId } = await auth();
     console.log('[/api/users/sync] GET - ClerkId from auth:', clerkId ? `${clerkId.substring(0, 8)}...` : 'null');
     
