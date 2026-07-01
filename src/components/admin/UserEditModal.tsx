@@ -30,6 +30,7 @@ interface User {
   nickname?: string;
   avatarUrl?: string;
   role: "ADMIN" | "STAFF" | "VOLUNTEER";
+  isActive: boolean;
   isFirstLogin: boolean;
   createdAt: Date;
   updatedAt: Date;

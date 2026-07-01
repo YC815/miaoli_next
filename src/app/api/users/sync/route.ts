@@ -42,8 +42,14 @@ export async function POST() {
         isFirstLogin: existingUser.isFirstLogin
       });
       
+      // 停用中的帳號直接擋下（防止 Clerk ban 前既有 session 的空窗期）
+      if (!existingUser.isActive) {
+        console.log(`[/api/users/sync] ⛔ User ${existingUser.id} is disabled`);
+        return NextResponse.json({ error: 'ACCOUNT_DISABLED' }, { status: 403 });
+      }
+
       console.log(`[/api/users/sync] Updating existing user: ${existingUser.id}`);
-      
+
       // 決定是否更新暱稱：永遠不自動設定暱稱，讓用戶在 onboarding 流程中自己設定
       // 如果用戶已經有自定義暱稱，保持不變；如果沒有暱稱，也保持 null 狀態
       const shouldUpdateNickname = false; // 永遠不在同步時自動更新暱稱
@@ -98,6 +104,11 @@ export async function POST() {
       });
 
       if (userWithSameEmail) {
+        // 停用中的帳號直接擋下，且不因重新註冊而自動復啟
+        if (!userWithSameEmail.isActive) {
+          console.log(`[/api/users/sync] ⛔ Email user ${userWithSameEmail.id} is disabled`);
+          return NextResponse.json({ error: 'ACCOUNT_DISABLED' }, { status: 403 });
+        }
         // Email exists for another user - this could be a re-registration case
         console.log(`[/api/users/sync] Email ${userEmail} already exists for user ${userWithSameEmail.id}, updating clerkId`);
         // 對於通過 email 找到的用戶，也保護已有的暱稱，永遠不自動設定

@@ -12,22 +12,35 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Search, 
-  Shield, 
-  Users, 
+import {
+  Search,
+  Shield,
+  Users,
   Crown,
   MoreHorizontal,
   UserCheck,
-  Clock
+  Clock,
+  Ban,
+  RotateCcw
 } from "lucide-react";
 import Image from "next/image";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { UserEditModal } from "./UserEditModal";
 
 interface User {
@@ -37,6 +50,7 @@ interface User {
   nickname?: string;
   avatarUrl?: string;
   role: "ADMIN" | "STAFF" | "VOLUNTEER";
+  isActive: boolean;
   isFirstLogin: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -50,6 +64,10 @@ export function StaffManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [confirmUser, setConfirmUser] = useState<User | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"disable" | "reactivate" | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     fetchUsers();
@@ -83,11 +101,58 @@ export function StaffManagement() {
   };
 
   const handleUserUpdate = (updatedUser: User) => {
-    setUsers(users.map(user => 
+    setUsers(users.map(user =>
       user.id === updatedUser.id ? updatedUser : user
     ));
     setIsEditModalOpen(false);
     setSelectedUser(null);
+  };
+
+  const openConfirm = (user: User, action: "disable" | "reactivate") => {
+    setActionError("");
+    setConfirmUser(user);
+    setConfirmAction(action);
+  };
+
+  const closeConfirm = () => {
+    if (isProcessing) return;
+    setConfirmUser(null);
+    setConfirmAction(null);
+    setActionError("");
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmUser || !confirmAction) return;
+
+    setIsProcessing(true);
+    setActionError("");
+
+    try {
+      const response = confirmAction === "disable"
+        ? await fetch(`/api/admin/users/${confirmUser.id}`, { method: "DELETE" })
+        : await fetch(`/api/admin/users/${confirmUser.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ isActive: true }),
+          });
+
+      if (response.ok) {
+        const updatedUser = await response.json();
+        setUsers(users.map(user =>
+          user.id === updatedUser.id ? updatedUser : user
+        ));
+        setConfirmUser(null);
+        setConfirmAction(null);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setActionError(errorData.error || "操作失敗");
+      }
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      setActionError("操作時發生錯誤");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const getRoleBadge = (role: string) => {
@@ -295,7 +360,11 @@ export function StaffManagement() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {user.isFirstLogin ? (
+                      {!user.isActive ? (
+                        <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                          已停用
+                        </Badge>
+                      ) : user.isFirstLogin ? (
                         <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
                           首次登入
                         </Badge>
@@ -313,12 +382,32 @@ export function StaffManagement() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem 
-                            onClick={() => handleEditUser(user)}
-                            className="cursor-pointer"
-                          >
-                            編輯用戶
-                          </DropdownMenuItem>
+                          {user.isActive ? (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => handleEditUser(user)}
+                                className="cursor-pointer"
+                              >
+                                編輯用戶
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => openConfirm(user, "disable")}
+                                className="cursor-pointer text-red-600 focus:text-red-600"
+                              >
+                                <Ban className="h-4 w-4 mr-2" />
+                                停用帳號
+                              </DropdownMenuItem>
+                            </>
+                          ) : (
+                            <DropdownMenuItem
+                              onClick={() => openConfirm(user, "reactivate")}
+                              className="cursor-pointer"
+                            >
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              重新啟用帳號
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -337,6 +426,52 @@ export function StaffManagement() {
         user={selectedUser}
         onUserUpdate={handleUserUpdate}
       />
+
+      {/* 停用 / 重新啟用確認框 */}
+      <AlertDialog open={!!confirmUser} onOpenChange={(open) => !open && closeConfirm()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction === "disable" ? "停用帳號" : "重新啟用帳號"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction === "disable" ? (
+                <>
+                  確定要停用「{confirmUser?.nickname || confirmUser?.email}」的帳號嗎？
+                  停用後該用戶將無法登入系統，但其既有紀錄會完整保留。之後可隨時重新啟用。
+                </>
+              ) : (
+                <>
+                  確定要重新啟用「{confirmUser?.nickname || confirmUser?.email}」的帳號嗎？
+                  啟用後該用戶即可正常登入系統。
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {actionError && (
+            <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-lg">
+              <p className="text-sm text-red-800 dark:text-red-200">{actionError}</p>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmAction();
+              }}
+              disabled={isProcessing}
+              className={confirmAction === "disable" ? "bg-red-600 hover:bg-red-700 focus:ring-red-600" : ""}
+            >
+              {isProcessing
+                ? "處理中..."
+                : confirmAction === "disable"
+                  ? "確認停用"
+                  : "確認啟用"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

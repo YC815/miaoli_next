@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useUser, SignOutButton } from "@clerk/nextjs";
 import { OnboardingFlow } from "./OnboardingFlow";
 import { toast } from "sonner";
 
@@ -28,6 +28,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [isDisabled, setIsDisabled] = useState(false);
 
   // 調試信息
   console.log('🔍 AuthGuard Debug:', {
@@ -86,6 +87,15 @@ export function AuthGuard({ children }: AuthGuardProps) {
         } else {
           console.log('✅ 用戶已完成入職流程 - isFirstLogin:', user.isFirstLogin, 'nickname:', user.nickname);
         }
+      } else if (response.status === 403) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData?.error === 'ACCOUNT_DISABLED') {
+          console.warn('⛔ 帳號已被停用');
+          setIsDisabled(true);
+          return;
+        }
+        console.error('❌ API 錯誤:', errorData);
+        throw new Error('Failed to sync user');
       } else {
         const errorData = await response.text();
         console.error('❌ API 錯誤:', errorData);
@@ -164,6 +174,26 @@ export function AuthGuard({ children }: AuthGuardProps) {
           >
             前往登入
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isDisabled) {
+    console.log('⛔ 帳號已被停用，顯示停用提示');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4 text-center max-w-md">
+          <div className="text-4xl mb-4">🚫</div>
+          <h2 className="text-2xl font-semibold">帳號已被停用</h2>
+          <p className="text-muted-foreground mb-6">
+            您的帳號已被管理員停用，如有疑問請聯絡管理員
+          </p>
+          <SignOutButton>
+            <button className="px-6 py-3 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors text-lg font-medium">
+              登出
+            </button>
+          </SignOutButton>
         </div>
       </div>
     );

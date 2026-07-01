@@ -223,6 +223,7 @@ model User {
   email           String           @unique
   nickname        String?
   role            Role             @default(VOLUNTEER)
+  isActive        Boolean          @default(true)
   isFirstLogin    Boolean          @default(true)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime
