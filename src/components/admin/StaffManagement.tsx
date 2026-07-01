@@ -74,10 +74,13 @@ export function StaffManagement() {
   }, []);
 
   useEffect(() => {
-    const filtered = users.filter(user => 
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.nickname && user.nickname.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const filtered = users
+      .filter(user =>
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.nickname && user.nickname.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+      // 停用帳號自動置底（同組維持原本 createdAt desc 排序，sort 為穩定排序）
+      .sort((a, b) => Number(b.isActive) - Number(a.isActive));
     setFilteredUsers(filtered);
   }, [users, searchTerm]);
 
@@ -205,6 +208,8 @@ export function StaffManagement() {
   };
 
   const stats = getStatistics();
+  // 第一個停用帳號的位置，用來在啟用中與停用之間插分隔線
+  const firstInactiveIndex = filteredUsers.findIndex(u => !u.isActive);
 
   if (isLoading) {
     return (
@@ -310,8 +315,16 @@ export function StaffManagement() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.id} className="hover:bg-muted/20">
+                filteredUsers.map((user, index) => (
+                  <React.Fragment key={user.id}>
+                    {index === firstInactiveIndex && index > 0 && (
+                      <TableRow className="hover:bg-transparent border-t-2 border-border">
+                        <TableCell colSpan={7} className="py-1.5 bg-muted/40 text-xs font-medium text-muted-foreground">
+                          已停用帳號
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  <TableRow className={`hover:bg-muted/20 ${!user.isActive ? "opacity-60" : ""}`}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
                         <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
@@ -412,6 +425,7 @@ export function StaffManagement() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
+                  </React.Fragment>
                 ))
               )}
             </TableBody>
