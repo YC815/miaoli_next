@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client'; // Import Role enum
 
@@ -21,16 +21,6 @@ async function checkDisableGuard(
     }
   }
   return null;
-}
-
-// 在 Clerk 端封鎖 / 解除封鎖帳號，讓停用直接擋在認證層
-async function setClerkBanned(clerkId: string, banned: boolean) {
-  const client = await clerkClient();
-  if (banned) {
-    await client.users.banUser(clerkId);
-  } else {
-    await client.users.unbanUser(clerkId);
-  }
 }
 
 export async function PUT(
@@ -125,11 +115,7 @@ export async function PUT(
       }
     }
 
-    // 啟用狀態有變動時，先同步 Clerk 端封鎖狀態，成功後再更新 DB
-    if (isActive !== undefined && isActive !== targetUser.isActive) {
-      await setClerkBanned(targetUser.clerkId, !isActive);
-    }
-
+    // 停用/啟用只改本地 isActive；停用帳號會在 /api/users/sync 被擋下（回 403 ACCOUNT_DISABLED）
     const updatedUser = await prisma.user.update({
       where: { id: targetUserId },
       data: {
@@ -244,9 +230,6 @@ export async function DELETE(
     if (disableError) {
       return NextResponse.json({ error: disableError }, { status: 400 });
     }
-
-    // 先封鎖 Clerk，成功後再更新 DB
-    await setClerkBanned(targetUser.clerkId, true);
 
     const updatedUser = await prisma.user.update({
       where: { id: targetUserId },
